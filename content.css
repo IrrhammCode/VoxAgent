@@ -1,0 +1,12 @@
+/* Vox Agent Host Container — Isolation Layer */
+vox-copilot-root {
+  all: initial !important;
+  display: block !important;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 2147483647 !important; /* Maximum 32-bit integer z-index */
+  pointer-events: none !important; /* Allows underlying website clicks to pass through */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
