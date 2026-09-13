@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vox Agent — In-Browser Living Multi-Agent Voice Copilot</title>
   <script src="config.js"></script>
+  <script>window.__VOX_SIMULATOR__ = true;</script>
   <style>
     :root {
       --font-main: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -1550,8 +1551,8 @@
     </div>
 
     <div class="hud-tabs" role="tablist">
-      <button id="tab-audit" class="hud-tab active" type="button" role="tab" aria-selected="true">Active audit</button>
-      <button id="tab-stores" class="hud-tab" type="button" role="tab" aria-selected="false">🔐 Identity Vault</button>
+      <button id="tab-audit" class="hud-tab active" type="button" role="tab" aria-selected="true">💬 Copilot Chat</button>
+      <button id="tab-stores" class="hud-tab" type="button" role="tab" aria-selected="false">📍 Isi Alamat & Web</button>
       <button id="tab-history" class="hud-tab" type="button" role="tab" aria-selected="false">
         History (<span id="history-badge">0</span>)
       </button>
@@ -3083,7 +3084,7 @@
       } else if (nextMode === 'actions') {
         if (iconActions) iconActions.style.display = 'block';
         if (capsuleOverline) capsuleOverline.textContent = 'WHAT CAN I DO?';
-        if (capsuleMainText) capsuleMainText.textContent = 'Select shopping action';
+        if (capsuleMainText) capsuleMainText.textContent = 'Select AI helper action';
         if (capsuleBtnIcon) capsuleBtnIcon.textContent = '×';
         if (successCard) successCard.style.display = 'none';
       }
@@ -3221,7 +3222,12 @@
       } catch (_) {}
     }
 
-    function stopVoice() {
+    let currentVoiceSeqId = 0;
+
+    function stopVoice(invalidateAsync = true) {
+      if (invalidateAsync) {
+        currentVoiceSeqId++;
+      }
       if (currentAudio) {
         try {
           currentAudio.pause();
@@ -3323,14 +3329,14 @@
       const voices = window.speechSynthesis.getVoices() || [];
       let selectedVoice = null;
       if (lang.startsWith('id')) {
-        selectedVoice = voices.find(v => /google.*indonesia/i.test(v.name)) ||
-                        voices.find(v => /gadis|ardi|natural.*id/i.test(v.name)) ||
-                        voices.find(v => /damayanti/i.test(v.name)) ||
+        selectedVoice = voices.find(v => /ardi|natural.*id.*male/i.test(v.name)) ||
+                        voices.find(v => /google.*indonesia/i.test(v.name)) ||
+                        voices.find(v => /gadis|damayanti/i.test(v.name)) ||
                         voices.find(v => v.lang.startsWith('id'));
       } else {
-        selectedVoice = voices.find(v => /google.*us english/i.test(v.name)) ||
-                        voices.find(v => /natural.*english|jenny|guy|aria/i.test(v.name)) ||
-                        voices.find(v => /samantha.*enhanced|daniel/i.test(v.name)) ||
+        selectedVoice = voices.find(v => /daniel|guy|natural.*(male|guy|david)|david|mark/i.test(v.name)) ||
+                        voices.find(v => /google.*us english/i.test(v.name)) ||
+                        voices.find(v => /samantha.*enhanced/i.test(v.name)) ||
                         voices.find(v => v.lang.startsWith('en'));
       }
       if (selectedVoice) u.voice = selectedVoice;
@@ -3342,7 +3348,11 @@
     }
 
     async function speakVoice(text, onDone) {
+      stopVoice(true);
+      const thisVoiceSeqId = currentVoiceSeqId;
+
       const finish = () => {
+        if (thisVoiceSeqId !== currentVoiceSeqId) return;
         isSpeaking = false;
         // Resume hands-free mic after speech
         if (isHandsFreeMode && recognition) {
@@ -3362,7 +3372,6 @@
       // Pause mic to prevent echo
       isSpeaking = true;
       if (recognition) try { recognition.stop(); } catch (_) {}
-      stopVoice();
 
       const isIndonesian = /yang|dan|di|ini|untuk|dengan|tidak|worth|kegunaan|halo|kami|kamu|layak|harga|fitur/i.test(text);
       const lang = isIndonesian ? 'id' : 'en';
@@ -3371,10 +3380,10 @@
       const elKey = window.VOX_ENV?.ELEVENLABS_API_KEY || localStorage.getItem('elevenlabs_api_key');
       if (elKey) {
         try {
-          let voiceId = window.VOX_ENV?.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
-          if (voiceId === '21m00Tcm4TlvDq8ikWAM') voiceId = 'EXAVITQu4vr4xnSDxMaL';
+          let voiceId = window.VOX_ENV?.ELEVENLABS_VOICE_ID || 'IKne3meq5aSn9XLyUdCD';
+          if (voiceId === '21m00Tcm4TlvDq8ikWAM' || voiceId === 'EXAVITQu4vr4xnSDxMaL' || voiceId === 'pNInz6obpgDQGcFmaJgB') voiceId = 'IKne3meq5aSn9XLyUdCD';
           const model = window.VOX_ENV?.ELEVENLABS_MODEL || 'eleven_multilingual_v2';
-          const candidates = [voiceId, 'EXAVITQu4vr4xnSDxMaL', 'cgSgspJ2msm6clMCkdW9'];
+          const candidates = [voiceId, 'IKne3meq5aSn9XLyUdCD', 'TX3LPaxmHKxFdv7VOQHJ', 'CwhRBWXzGAHq8TQ4Fs17'];
 
           for (const vid of [...new Set(candidates)]) {
             try {
@@ -3384,12 +3393,14 @@
                 body: JSON.stringify({
                   text: text.slice(0, 4000),
                   model_id: model,
-                  voice_settings: { stability: 0.55, similarity_boost: 0.78 }
+                  voice_settings: { stability: 0.38, similarity_boost: 0.80, style: 0.45, use_speaker_boost: true }
                 })
               });
               if (res.ok) {
+                if (thisVoiceSeqId !== currentVoiceSeqId) return;
                 const blob = await res.blob();
                 const audioUrl = URL.createObjectURL(blob);
+                stopVoice(false);
                 const audio = new Audio(audioUrl);
                 currentAudio = audio;
                 audio.playbackRate = voiceSpeed;
@@ -3407,6 +3418,8 @@
         }
       }
 
+      if (thisVoiceSeqId !== currentVoiceSeqId) return;
+
       if (voiceEngine === 'neural') {
         try {
           await playNeuralAudioStream(text, lang, finish);
@@ -3416,6 +3429,7 @@
         }
       }
 
+      if (thisVoiceSeqId !== currentVoiceSeqId) return;
       speakWebSpeech(text, isIndonesian ? 'id-ID' : 'en-US', finish);
     }
 
@@ -3441,6 +3455,10 @@
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = window.VOX_ENV?.VOX_LANGUAGE === 'id' ? 'id-ID' : 'en-US';
+      recognition.onspeechstart = () => {
+        stopVoice(true);
+        isSpeaking = false;
+      };
       recognition.onstart = () => {
         openHud();
         playUiChime('listen');
@@ -3448,6 +3466,10 @@
         hudTranscript.textContent = 'Listening…';
       };
       recognition.onresult = (e) => {
+        if (isSpeaking) {
+          stopVoice(true);
+          isSpeaking = false;
+        }
         let transcript = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
           transcript += e.results[i][0].transcript;
@@ -3455,9 +3477,11 @@
         hudTranscript.textContent = transcript ? `"${transcript}"` : 'Analyzing page…';
         if (e.results[e.results.length - 1].isFinal) {
           const harmonized = typeof harmonizeUserVocab === 'function' ? harmonizeUserVocab(transcript) : transcript;
-          const t = harmonized.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks)[,.]?\s*/i, '').trim();
-          const finalQ = t || (transcript.trim() ? 'hai' : '');
+          const t = harmonized.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks|vos|voss|foss)[,.]?\s*/i, '').trim();
+          const cleanQ = t.replace(/^(terus|lalu|kemudian|and\s+then|then)\s+/i, '').trim();
+          const finalQ = cleanQ || (transcript.trim() ? 'hai' : '');
           if (finalQ.length >= 2) {
+            stopVoice(true);
             try { recognition.stop(); } catch (_) {}
             runAgentSwarm(finalQ);
           }
@@ -4064,7 +4088,7 @@ If user asks in English, reply in English. If user asks in Indonesian, reply in 
     restoreCapsuleSide();
     renderPage('cyberstore');
     updateHistoryUI();
-    setCapsuleState('idle', 'READY', 'AI Shopping Agent Ready · Say “Hey Vox”');
+    setCapsuleState('idle', 'READY', 'AI Agent Helper Ready · Say “Hey Vox”');
 
     // Wire up quick shopping chips on the floating dock
     const sbChipBuy = document.getElementById('sb-chip-buy');

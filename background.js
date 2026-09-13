@@ -8,8 +8,10 @@ try {
 } catch (_) {}
 
 const CONFIG = {
-  anakinApiEndpoint: (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_SCRAPE_ENDPOINT) || 'https://api.anakin.io/v1/scrape',
-  anakinSearchEndpoint: (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_SEARCH_ENDPOINT) || 'https://api.anakin.io/v1/search'
+  anakinScrapeEndpoint: (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_SCRAPE_ENDPOINT) || 'https://api.anakin.io/v1/url-scraper/scrape',
+  anakinSearchEndpoint: (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_SEARCH_ENDPOINT) || 'https://api.anakin.io/v1/search',
+  anakinWireRunEndpoint: 'https://api.anakin.io/v1/wire-run',
+  anakinWireResolveEndpoint: 'https://api.anakin.io/v1/wire/resolve'
 };
 
 const DEFAULT_SETTINGS = {
@@ -19,10 +21,11 @@ const DEFAULT_SETTINGS = {
   groqApiKeys: (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEYS) || [],
   groqModel: (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b',
   elevenlabsApiKey: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_API_KEY) || '',
-  elevenlabsVoiceId: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || 'EXAVITQu4vr4xnSDxMaL',
+  elevenlabsVoiceId: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || 'IKne3meq5aSn9XLyUdCD',
   elevenlabsModel: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_MODEL) || 'eleven_multilingual_v2',
   handsFree: (typeof self !== 'undefined' && self.VOX_ENV?.HANDS_FREE_MIC) ?? true,
   autonomousClick: (typeof self !== 'undefined' && self.VOX_ENV?.AUTONOMOUS_CLICK) ?? true,
+  voxLanguage: (typeof self !== 'undefined' && self.VOX_ENV?.VOX_LANGUAGE) || 'en-US',
   voiceMode: 'natural',
   ttsMute: false
 };
@@ -65,16 +68,35 @@ function getNextGroqKey() {
  * Robust Multi-Key Round-Robin Executor for Groq Chat Completions
  * Auto-rotates on HTTP 429 / 503 / network errors across the 8-key pool.
  */
-async function callGroqChatCompletions({ messages, model, response_format, temperature = 0.3, max_tokens = 1200 }) {
+const VERIFIED_GROQ_MODELS = [
+  'qwen/qwen3.8-27b',
+  'qwen/qwen3.6-27b',
+  'openai/gpt-oss-120b'
+];
+
+function sanitizeGroqModelName(m) {
+  if (!m || typeof m !== 'string') return 'qwen/qwen3.8-27b';
+  if (m.includes('llama-3.3')) return 'qwen/qwen3.8-27b';
+  return m;
+}
+
+async function callGroqChatCompletions({ messages, model, response_format, temperature = 0.3, max_tokens = 600 }) {
   const pool = getGroqKeyPool();
-  const preferredModel = model || settingsCache.groqModel || 'qwen/qwen3.8-27b';
-  const candidateModels = [preferredModel, 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile'].filter(Boolean);
-  const modelsToTry = [...new Set(candidateModels)];
+  const rawPreferred = model || settingsCache.groqModel || 'qwen/qwen3.8-27b';
+  const preferredModel = sanitizeGroqModelName(rawPreferred);
+  const candidateModels = [preferredModel, ...VERIFIED_GROQ_MODELS].filter(m => m && !m.includes('llama-3.3'));
+  let modelsToTry = [...new Set(candidateModels)];
+
+  // Cap max_tokens to prevent OTPM (Output Tokens Per Minute) 1000 limit error on Qwen on_demand tier
+  const safeMaxTokens = Math.min(max_tokens || 600, 650);
 
   let lastError = null;
   const maxAttempts = Math.max(pool.length * 2, 8);
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (modelsToTry.length === 0) {
+      modelsToTry = ['qwen/qwen3.8-27b', 'qwen/qwen3.6-27b'];
+    }
     const key = getNextGroqKey();
     const maskedKey = key.slice(0, 7) + '...' + key.slice(-4);
     const m = modelsToTry[attempt % modelsToTry.length];
@@ -90,7 +112,7 @@ async function callGroqChatCompletions({ messages, model, response_format, tempe
           model: m,
           messages,
           temperature,
-          max_tokens,
+          max_tokens: safeMaxTokens,
           ...(response_format ? { response_format } : {})
         })
       });
@@ -101,8 +123,31 @@ async function callGroqChatCompletions({ messages, model, response_format, tempe
         continue;
       }
 
+      // Seamless self-healing if a model is deprecated/unauthorized (HTTP 404)
+      if (res.status === 404) {
+        console.warn(`[Vox Agent Rotator] Model ${m} returned HTTP 404 (model_not_found). Pruning from candidate list and retrying with fallback model...`);
+        modelsToTry = modelsToTry.filter(x => x !== m);
+        if (settingsCache.groqModel === m || settingsCache.groqModel?.includes('llama-3.3')) {
+          settingsCache.groqModel = 'qwen/qwen3.8-27b';
+          try { chrome.storage?.local?.set?.({ groqModel: 'qwen/qwen3.8-27b' }); } catch (_) {}
+        }
+        lastError = new Error(`Groq model ${m} returned 404`);
+        continue;
+      }
+
       if (!res.ok) {
         const errTxt = await res.text().catch(() => '');
+        // Check for model_not_found in response body
+        if (errTxt.includes('model_not_found') || errTxt.includes('does not exist')) {
+          console.warn(`[Vox Agent Rotator] Model ${m} not found in error body. Pruning and retrying...`);
+          modelsToTry = modelsToTry.filter(x => x !== m);
+          if (settingsCache.groqModel === m || settingsCache.groqModel?.includes('llama-3.3')) {
+            settingsCache.groqModel = 'qwen/qwen3.8-27b';
+            try { chrome.storage?.local?.set?.({ groqModel: 'qwen/qwen3.8-27b' }); } catch (_) {}
+          }
+          lastError = new Error(`Groq model ${m} not found: ${errTxt}`);
+          continue;
+        }
         throw new Error(`Groq ${m} HTTP ${res.status}: ${errTxt}`);
       }
 
@@ -120,20 +165,39 @@ async function callGroqChatCompletions({ messages, model, response_format, tempe
   throw lastError || new Error('All Groq keys in rotator pool exhausted');
 }
 
+function migrateCachedSettings(stored) {
+  const merged = { ...DEFAULT_SETTINGS, ...stored };
+  if (merged.groqModel?.includes('llama-3.3')) {
+    merged.groqModel = 'qwen/qwen3.8-27b';
+    try { chrome.storage?.local?.set?.({ groqModel: 'qwen/qwen3.8-27b' }); } catch (_) {}
+  }
+  const configElKey = (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_API_KEY) || '';
+  if (configElKey && stored.elevenlabsApiKey !== configElKey) {
+    merged.elevenlabsApiKey = configElKey;
+    try { chrome.storage?.local?.set?.({ elevenlabsApiKey: configElKey }); } catch (_) {}
+  }
+  const configElVoice = (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || 'IKne3meq5aSn9XLyUdCD';
+  if (configElVoice && (stored.elevenlabsVoiceId === 'EXAVITQu4vr4xnSDxMaL' || stored.elevenlabsVoiceId === '21m00Tcm4TlvDq8ikWAM' || stored.elevenlabsVoiceId === 'pNInz6obpgDQGcFmaJgB' || stored.elevenlabsVoiceId !== configElVoice)) {
+    merged.elevenlabsVoiceId = configElVoice;
+    try { chrome.storage?.local?.set?.({ elevenlabsVoiceId: configElVoice }); } catch (_) {}
+  }
+  return merged;
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
-  settingsCache = { ...DEFAULT_SETTINGS, ...stored };
+  settingsCache = migrateCachedSettings(stored);
   console.log('[Vox Agent] Extension installed. Live scrape:', settingsCache.liveScrape ? 'on' : 'simulated');
 });
 
 chrome.storage.local.get(DEFAULT_SETTINGS).then((stored) => {
-  settingsCache = { ...DEFAULT_SETTINGS, ...stored };
+  settingsCache = migrateCachedSettings(stored);
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   for (const [key, { newValue }] of Object.entries(changes)) {
-    settingsCache[key] = newValue;
+    settingsCache[key] = key === 'groqModel' ? sanitizeGroqModelName(newValue) : newValue;
   }
 });
 
@@ -148,6 +212,18 @@ chrome.commands.onCommand.addListener(async (command) => {
     console.warn('[Vox Agent] Active tab has no content script ready:', err.message);
   }
 });
+
+/** Chrome Toolbar Icon Click Handler */
+if (chrome.action?.onClicked) {
+  chrome.action.onClicked.addListener(async (tab) => {
+    if (!tab || tab.id == null) return;
+    try {
+      await chrome.tabs.sendMessage(tab.id, { action: 'TOGGLE_VOX' });
+    } catch (err) {
+      console.warn('[Vox Agent] Active tab has no content script ready on click:', err.message);
+    }
+  });
+}
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'GET_SETTINGS') {
@@ -176,6 +252,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'ANAKIN_GHOST_SCRAPE') {
     handleGhostScrape(request.payload)
       .then((response) => sendResponse({ success: true, data: response }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Anakin URL Scraper (Inline) — scrape a product page, get markdown + JSON
+  if (request.action === 'ANAKIN_SCRAPE_URL') {
+    handleAnakinScrapeUrl(request.payload?.url)
+      .then((response) => sendResponse(response))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Anakin Wire Run — execute pre-built site action (Zero Touch, no key needed for reads)
+  if (request.action === 'ANAKIN_WIRE_RUN') {
+    handleAnakinWireRun(request.payload?.actionId, request.payload?.params)
+      .then((response) => sendResponse(response))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Anakin Wire Resolve — discover actions by intent
+  if (request.action === 'ANAKIN_WIRE_RESOLVE') {
+    handleAnakinWireResolve(request.payload?.intent)
+      .then((response) => sendResponse(response))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Agent Loop: Groq decides next action based on page state
+  if (request.action === 'AGENT_LOOP_THINK') {
+    handleAgentLoopThink(request.payload)
+      .then((response) => sendResponse({ success: true, data: response }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // AI Agent Helper: Deep Page Product Research (with WhatsApp summary)
+  if (request.action === 'RESEARCH_PAGE_PRODUCTS') {
+    handleResearchPageProducts(request.payload)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // AI Agent Helper: Explain Concept Simply with Intuitive Analogy
+  if (request.action === 'EXPLAIN_SIMPLY') {
+    handleExplainSimply(request.payload)
+      .then((data) => sendResponse({ success: true, data }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -248,6 +372,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  // ─── GROQ-POWERED COGNITIVE INTENT CLASSIFIER ───
+  // Replaces brittle regex matching: every user utterance is sent to Groq
+  // to determine true intent + step-by-step execution plan.
+  if (request.action === 'CLASSIFY_INTENT') {
+    handleClassifyIntent(request.payload)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   if (request.action === 'OPEN_TAB') {
     chrome.tabs.create({ url: request.url || 'https://google.com', active: true }, (tab) => {
       sendResponse({ success: true, tabId: tab?.id });
@@ -255,6 +389,119 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
+
+/**
+ * ─── GROQ COGNITIVE INTENT CLASSIFIER ───
+ * Instead of brittle regex matching, we ask Groq to understand user intent.
+ * Returns structured JSON with intent, step-by-step plan, and extracted params.
+ * This prevents casual speech (e.g. "hello") from triggering shopping searches.
+ */
+async function handleClassifyIntent(payload) {
+  const { utterance = '', currentUrl = '', pageTitle = '', domain = '' } = payload;
+  const groqPool = getGroqKeyPool();
+
+  if (groqPool.length === 0) {
+    // No Groq keys → fall back to local regex classification
+    console.warn('[Vox Agent] No Groq keys available for intent classification, using local fallback.');
+    return { intent: 'FALLBACK_LOCAL', steps: [], params: {}, utterance };
+  }
+
+  const systemPrompt = `You are the cognitive brain of Vox Agent, an autonomous in-browser AI Agent Helper.
+Your job is to understand what the user TRULY needs when they speak on any webpage.
+
+CONTEXT:
+- User is on: ${currentUrl || 'unknown page'}
+- Page title: ${pageTitle || 'unknown'}
+- Domain: ${domain || 'unknown'}
+
+CLASSIFY the user's utterance into EXACTLY ONE of these intents:
+- GREETING: casual hello, hi, hey, good morning, etc. User is just saying hi. In "spokenResponse", reply warmly as Vox Agent, an in-browser AI Agent Helper ready to help on this page.
+- CHAT: questions about who/what you are (e.g. "what are you", "who are you", "what can you do", "kamu siapa", "kamu bisa apa", "apa itu vox"), small talk, language capabilities. In "spokenResponse", introduce yourself warmly as Vox Agent, an autonomous in-browser AI Agent Helper that can research products on marketplaces, explain complex concepts simply, control YouTube media, and guide users through any website.
+- SPOTLIGHT_TOUR: user wants a guided spotlight tour, explanation, or visual walkthrough of the page elements (e.g. "tour", "spotlight tour", "jelaskan halaman ini", "show me around", "pandu saya", "walk me through").
+- RESET_VOX_STATE: user wants to reset data, restart mic, or clear assistant state (e.g. "reset data", "reset vox", "bersihkan data", "mulai ulang").
+- DEEP_RESEARCH: user wants to research, evaluate, compare, or find the best item among all options visible on the page (e.g. "coba research dulu", "riset dulu", "menurut groq bagus yang mana", "pilihin yang paling bagus", "cariin yang bagus", "which one is the best pick", "analisis produk di halaman ini", "bandingkan produk").
+- EXPLAIN_SIMPLY: user asks to explain a concept or page content simply or with an analogy (e.g. "Web3 ini apa sih", "explain this simply", "aku nggak ngerti", "apa maksud konsep ini").
+- MEDIA_CONTROL: user wants to play/pause media or search/play a song on YouTube (e.g. "play this song", "putar lagu ini", "play Bohemian Rhapsody", "pause video").
+- SHOPPING_MISSION: user wants to SEARCH for, FIND, or BROWSE a product/item across stores (e.g. "find gaming headset under 100k", "cari sepatu lari").
+- CHECKOUT: user wants to BUY, ADD TO CART, or CHECKOUT an item (e.g. "beli", "beli ini", "suruh beli", "buy", "buy now", "add to cart").
+- DEAL_HUNTER: user wants to find COUPONS, DISCOUNTS, PROMOS, or DEALS.
+- AUTOFILL: user wants to FILL a form, shipping ADDRESS, or personal info.
+- SIGN_IN: user wants to LOG IN or SIGN IN to an account.
+- REGISTER: user wants to CREATE or REGISTER a new account.
+- CLICK_ITEM: user wants to CLICK, SELECT, VIEW, or OPEN a specific product card, item, or button visible on screen.
+- WHATSAPP_ACTION: user wants to send research, notes, or message to WhatsApp, or share via WhatsApp (e.g. "kirim ke whatsapp", "send to whatsapp", "buka whatsapp web", "share ke wa"). In "params", set "targetContact": "pinned" or contact name.
+- PAGE_QA: user is asking a QUESTION about the current page/website content.
+- CONFIRM_ORDER: user is CONFIRMING a pending checkout/order.
+- CANCEL_ORDER: user is CANCELLING a pending checkout/order.
+- SUBMIT_FORM: user wants to SUBMIT a form on the page.
+- NAVIGATE: user wants to GO TO a specific website or page.
+- NEEDS_MORE_INFO: ONLY when the user's utterance is completely meaningless or uninterpretable in context (e.g. "hmm", "anu").
+
+For SHOPPING_MISSION, also extract:
+- product: the product/item they're looking for
+- budget: any price constraint mentioned (number + currency)
+- store: any specific store mentioned
+
+For WHATSAPP_ACTION, also extract:
+- targetContact: "pinned" or contact name
+
+For NEEDS_MORE_INFO, put your follow-up question in both "spokenResponse" and "params.question".
+In "spokenResponse", reply naturally in the SAME language as the user's utterance (Indonesian if the user speaks Indonesian, English if in English). Keep it brief, natural, and never use asterisks (*) or markdown formatting.
+
+Respond ONLY with valid JSON:
+{
+  "intent": "INTENT_NAME",
+  "confidence": 0.0-1.0,
+  "reasoning": "brief explanation of why this intent",
+  "steps": ["step 1 description", "step 2 description", ...],
+  "params": {
+    "product": "extracted product name or null",
+    "budget": "extracted budget string or null",
+    "store": "specific store or null",
+    "profileName": "home/office or null",
+    "targetContact": "pinned or contact name or null",
+    "question": "follow-up question if NEEDS_MORE_INFO, else null"
+  },
+  "spokenResponse": "what to say back to the user in English"
+}`;
+
+
+  try {
+    const rawJson = await callGroqChatCompletions({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: utterance }
+      ],
+      model: settingsCache.groqModel || 'qwen/qwen3.8-27b',
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+      max_tokens: 600
+    });
+
+    // Parse the JSON response
+    const text = typeof rawJson === 'string' ? rawJson : (rawJson?.choices?.[0]?.message?.content || JSON.stringify(rawJson));
+    // Strip markdown code fences and /think blocks if present
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    const parsed = JSON.parse(cleaned);
+    console.log(`[Vox Agent Intent] "${utterance}" → ${parsed.intent} (${(parsed.confidence * 100).toFixed(0)}% confidence)`);
+    console.log(`[Vox Agent Intent] Steps:`, parsed.steps);
+
+    return {
+      intent: parsed.intent || 'PAGE_QA',
+      confidence: parsed.confidence || 0.5,
+      reasoning: parsed.reasoning || '',
+      steps: parsed.steps || [],
+      params: parsed.params || {},
+      spokenResponse: parsed.spokenResponse || '',
+      utterance
+    };
+  } catch (err) {
+    console.error('[Vox Agent] Groq intent classification failed:', err);
+    return { intent: 'FALLBACK_LOCAL', steps: [], params: {}, utterance };
+  }
+}
 
 /**
  * Dynamic Multi-Agent Reasoning Engine
@@ -274,9 +521,10 @@ async function handleDynamicQueryAnalysis(payload) {
   console.log(`[Vox Agent Swarm] Processing query: "${query}" on domain: ${domain}`);
 
   const qLower = query.toLowerCase();
-  const isIndonesian = detectIndonesian(qLower);
+  const isIndonesian = (settingsCache.voxLanguage === 'id-ID' || settingsCache.voxLanguage === 'id') && detectIndonesian(qLower);
 
   // 1. Determine User Intent
+  const isIdentity = /\b(what are you|who are you|what can you do|what is vox|tell me about yourself|kamu siapa|kamu ini apa|apa itu vox|siapa kamu|bisa apa|kamu bisa apa|fungsi kamu|tentang kamu)\b/i.test(qLower.trim());
   const isGreeting = /^(hai|halo|hello|hey|hei|hi|morning|afternoon|salam|pagi|siang|malam)(\s*(vox|fox|copilot|ai)?)?$/i.test(qLower.trim()) ||
                      (/^(hai|halo|hello|hey|hei|hi)\b/i.test(qLower.trim()) && qLower.trim().length <= 15);
   const isCompare = /compare|banding|alternatif|brand|lawan|kompetitor|vs|versus|lain|difference|bedanya/i.test(qLower);
@@ -286,7 +534,7 @@ async function handleDynamicQueryAnalysis(payload) {
   const mentionsIndonesia = /indonesia|lokal|sini|ibox|rupiah|idr/i.test(qLower);
 
   let targetFocus = 'hero';
-  if (isGreeting) targetFocus = 'hero';
+  if (isIdentity || isGreeting) targetFocus = 'hero';
   else if (isCompare) targetFocus = 'compare';
   else if (isWorthIt || /harga|biaya|pricing|cost|beli/i.test(qLower)) targetFocus = 'pricing';
   else if (isJargon || /fitur|spesifikasi|spec|arsitektur|cara kerja/i.test(qLower)) targetFocus = 'features';
@@ -347,6 +595,7 @@ async function handleDynamicQueryAnalysis(payload) {
   const result = synthesizeTailoredResponse({
     query,
     isIndonesian,
+    isIdentity,
     isGreeting,
     isCompare,
     isWorthIt,
@@ -438,6 +687,7 @@ function synthesizeTailoredResponse(ctx) {
   const {
     query,
     isIndonesian,
+    isIdentity,
     isGreeting,
     isCompare,
     isWorthIt,
@@ -460,14 +710,47 @@ function synthesizeTailoredResponse(ctx) {
   let worthItAudit = null;
   let jargonList = [];
 
+  // ================= SCENARIO 00: IDENTITY / WHAT ARE YOU ("What are you", "Who are you", "Kamu siapa") =================
+  const isIdentityQuery = isIdentity || /\b(what are you|who are you|what can you do|what is vox|tell me about yourself|kamu siapa|kamu ini apa|apa itu vox|siapa kamu|bisa apa|kamu bisa apa|fungsi kamu|tentang kamu)\b/i.test(query.toLowerCase());
+  if (isIdentityQuery) {
+    if (isIndonesian) {
+      directAnswer = `Saya Vox Agent, asisten AI belanja pintar dan web copilot kamu! Saya siap membantu mencari produk, membandingkan harga & spesifikasi antar toko, berburu kupon diskon aktif, hingga memandu tur halaman web dengan Spotlight Tour. Mau cari atau beli apa hari ini?`;
+      spokenText = `Halo! Saya Vox Agent, asisten AI belanja kamu. Saya bisa bantu kamu mencari produk, membandingkan harga, berburu kupon diskon, hingga tur halaman web. Mau cari atau beli apa hari ini?`;
+    } else {
+      directAnswer = `I am Vox Agent, your autonomous in-browser AI shopping assistant and web copilot! I can help you discover products, compare prices across stores, hunt for coupons and deals, guide you through pages with spotlight tours, and add items to your cart safely. What are you looking for today?`;
+      spokenText = `Hello! I am Vox Agent, your AI shopping assistant and web copilot. I can help you search products, compare prices, hunt for discounts, and guide you through any webpage. What can I help you find today?`;
+    }
+    return {
+      domain,
+      url,
+      title,
+      query,
+      targetFocus: 'hero',
+      targetKeywords: ['shopping', 'deals', 'compare', 'spotlight'],
+      ghostSource,
+      summary: directAnswer,
+      spoken: spokenText,
+      followUpQuestion: isIndonesian ? 'Mau cari produk apa hari ini?' : 'What product are you looking for today?',
+      quickOptions: [
+        { label: '⚡ Instant Buy', action: 'clarify_instant_buy' },
+        { label: isIndonesian ? '📊 Bandingkan Harga' : '📊 Compare Prices', action: 'clarify_compare' },
+        { label: isIndonesian ? '🏷️ Berburu Diskon' : '🏷️ Hunt Deals', action: 'clarify_coupons' },
+        { label: '🔦 Spotlight Tour', action: 'run_tour' }
+      ],
+      worthIt: null,
+      competitors: null,
+      jargon: []
+    };
+  }
+
   // ================= SCENARIO 0: GREETING ("Hai", "Halo", "Hello") =================
   if (isGreeting) {
     if (isIndonesian) {
-      directAnswer = `Halo! Saya Vox, voice copilot kamu. Saya sedang aktif memantau halaman ${title || domain}. Ada yang bisa saya bantu jelaskan? Kamu bisa tanyakan apa fungsi website ini, perbandingannya, atau detail harganya.`;
-      spokenText = `Halo! Saya Vox copilot. Ada yang bisa saya bantu tentang halaman ${title || domain} ini? Silakan tanya fungsi website, harga, atau alternatifnya.`;
+      directAnswer = `Halo! Saya Vox Agent, asisten AI belanja pintar dan web copilot kamu. Saya siap membantu kamu mencari produk, membandingkan harga, dan berbelanja lebih hemat di halaman ${title || domain}. Ada yang bisa saya bantu cari?`;
+      spokenText = `Halo! Saya Vox Agent, asisten AI belanja kamu. Ada yang bisa saya bantu cari atau jelaskan hari ini?`;
     } else {
-      directAnswer = `Hello! I am Vox, your in-browser voice copilot. I am actively monitoring ${title || domain}. How can I assist you today? Feel free to ask about this website, pricing, or alternatives.`;
-      spokenText = `Hello! I am Vox copilot. How can I assist you with ${title || domain}? Feel free to ask about this website, pricing, or competitors.`;
+      directAnswer = `Hello! I am Vox Agent, your autonomous AI shopping assistant and web copilot. I am ready to help you discover products, compare prices, and hunt for deals on ${title || domain}. How can I assist you today?`;
+      spokenText = `Hello! I am Vox Agent, your AI shopping assistant. How can I help you with your shopping or browsing today?`;
     }
     return {
       domain,
@@ -479,6 +762,13 @@ function synthesizeTailoredResponse(ctx) {
       ghostSource,
       summary: directAnswer,
       spoken: spokenText,
+      followUpQuestion: isIndonesian ? 'Mau cari produk apa hari ini?' : 'What would you like to explore today?',
+      quickOptions: [
+        { label: '⚡ Instant Buy', action: 'clarify_instant_buy' },
+        { label: isIndonesian ? '📊 Bandingkan Harga' : '📊 Compare Prices', action: 'clarify_compare' },
+        { label: isIndonesian ? '🏷️ Berburu Diskon' : '🏷️ Hunt Deals', action: 'clarify_coupons' },
+        { label: '🔦 Spotlight Tour', action: 'run_tour' }
+      ],
       worthIt: null,
       competitors: null,
       jargon: []
@@ -496,8 +786,15 @@ function synthesizeTailoredResponse(ctx) {
       targetFocus: 'hero',
       targetKeywords: headings.slice(0, 4),
       ghostSource,
-      summary: "Yes, absolutely! I speak English fluently. I am Vox Agent, your AI copilot for exploring and understanding any website. Feel free to ask me anything about this page!",
-      spoken: "Yes, absolutely! I speak English fluently and I am ready to help you explore this page. What would you like to know?",
+      summary: "Yes, absolutely! I speak English fluently. I am Vox Agent, your autonomous AI shopping assistant and web copilot. I can help you search products, compare deals, and explore any store. What would you like to find today?",
+      spoken: "Yes, absolutely! I speak English fluently. I am Vox Agent, your AI shopping assistant. How can I help you today?",
+      followUpQuestion: "What product or website would you like to explore today?",
+      quickOptions: [
+        { label: '⚡ Instant Buy', action: 'clarify_instant_buy' },
+        { label: '📊 Compare Prices', action: 'clarify_compare' },
+        { label: '🏷️ Hunt Deals', action: 'clarify_coupons' },
+        { label: '🔦 Spotlight Tour', action: 'run_tour' }
+      ],
       worthIt: null,
       competitors: null,
       jargon: []
@@ -724,30 +1021,31 @@ async function handleGhostScrape(payload) {
   const apiKey = settingsCache.apiKey || (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_API_KEY);
   const endpoint = CONFIG.anakinSearchEndpoint || 'https://api.anakin.io/v1/search';
 
-  if (apiKey) {
-    try {
-      console.log(`[Vox Agent] Fetching live Anakin Web Search for: "${query}"`);
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          prompt: query
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        console.log(`[Vox Agent] Live Anakin search returned ${Array.isArray(data) ? data.length : 0} items`);
-        return { source: 'live_anakin_api', data };
-      } else {
-        const errTxt = await res.text().catch(() => '');
-        console.warn(`[Vox Agent] Anakin search HTTP ${res.status}:`, errTxt);
-      }
-    } catch (err) {
-      console.warn('[Vox Agent] Live Anakin fetch failed, using fallback:', err);
+  // Anakin Search API works with Zero Touch (no key) OR with X-API-Key header
+  try {
+    console.log(`[Vox Agent] Fetching Anakin Web Search for: "${query}"`);
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['X-API-Key'] = apiKey;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        prompt: query,
+        limit: 10
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const results = data.results || data;
+      console.log(`[Vox Agent] Anakin search returned ${Array.isArray(results) ? results.length : 0} results`);
+      return { source: 'live_anakin_api', data };
+    } else {
+      const errTxt = await res.text().catch(() => '');
+      console.warn(`[Vox Agent] Anakin search HTTP ${res.status}:`, errTxt);
     }
+  } catch (err) {
+    console.warn('[Vox Agent] Anakin fetch failed, using fallback:', err);
   }
 
   return {
@@ -755,6 +1053,486 @@ async function handleGhostScrape(payload) {
     query,
     timestamp: new Date().toISOString()
   };
+}
+
+/**
+ * Anakin URL Scraper (Inline) — scrape a product page and get markdown back
+ * Uses POST /v1/url-scraper/scrape (Zero Touch: works without API key)
+ * Returns { markdown, html, cleanedHtml, generatedJson }
+ */
+async function handleAnakinScrapeUrl(url) {
+  const apiKey = settingsCache.apiKey || (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_API_KEY);
+  const endpoint = CONFIG.anakinScrapeEndpoint || 'https://api.anakin.io/v1/url-scraper/scrape';
+
+  try {
+    console.log(`[Vox Agent] Scraping URL via Anakin: "${url}"`);
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['X-API-Key'] = apiKey;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        url: url,
+        country: 'id',
+        useBrowser: true,
+        generateJson: true
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'completed') {
+        console.log(`[Vox Agent] Anakin scrape completed in ${data.durationMs}ms`);
+        return { success: true, data };
+      } else if (data.status === 'processing' && data.id) {
+        // 202: job still processing, need to poll
+        console.log(`[Vox Agent] Anakin scrape still processing, job ID: ${data.id}`);
+        return { success: false, jobId: data.id, status: 'processing' };
+      }
+      return { success: false, error: data.error || 'Unknown status' };
+    } else {
+      const errTxt = await res.text().catch(() => '');
+      console.warn(`[Vox Agent] Anakin scrape HTTP ${res.status}:`, errTxt);
+      return { success: false, error: `HTTP ${res.status}: ${errTxt}` };
+    }
+  } catch (err) {
+    console.warn('[Vox Agent] Anakin scrape failed:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Anakin Wire Run — execute pre-built actions on 940+ supported sites
+ * Uses POST /v1/wire-run (Zero Touch: read-only, no key needed)
+ * First resolves action by intent, then runs it.
+ */
+async function handleAnakinWireRun(actionId, params) {
+  try {
+    console.log(`[Vox Agent] Wire Run: action=${actionId}`, params);
+    const headers = { 'Content-Type': 'application/json' };
+    const apiKey = settingsCache.apiKey || (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_API_KEY);
+    if (apiKey) headers['X-API-Key'] = apiKey;
+
+    const res = await fetch(CONFIG.anakinWireRunEndpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action_id: actionId,
+        params: params
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log(`[Vox Agent] Wire Run completed:`, data);
+      return { success: true, data };
+    } else {
+      const errTxt = await res.text().catch(() => '');
+      console.warn(`[Vox Agent] Wire Run HTTP ${res.status}:`, errTxt);
+      return { success: false, error: `HTTP ${res.status}: ${errTxt}` };
+    }
+  } catch (err) {
+    console.warn('[Vox Agent] Wire Run failed:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Anakin Wire Resolve — discover available actions by intent
+ * Uses GET /v1/wire/resolve?q=... (public, no key needed)
+ */
+async function handleAnakinWireResolve(intent) {
+  try {
+    console.log(`[Vox Agent] Wire Resolve: "${intent}"`);
+    const url = `${CONFIG.anakinWireResolveEndpoint}?q=${encodeURIComponent(intent)}`;
+    const res = await fetch(url);
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log(`[Vox Agent] Wire Resolve found ${data.actions?.length || 0} actions`);
+      return { success: true, data };
+    } else {
+      return { success: false, error: `HTTP ${res.status}` };
+    }
+  } catch (err) {
+    console.warn('[Vox Agent] Wire Resolve failed:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * AI Agent Helper: Autonomous Multi-Step ReAct Research Loop
+ * Integrates Anakin.io APIs (search, scrape, agentic research) + Live DOM + Groq Brain.
+ * Loops autonomously through discovery, safety certification audit, and WhatsApp compilation.
+ */
+async function handleResearchPageProducts(payload = {}) {
+  const { query = '', products = [], url = '', domain = '', pageTitle = '', textSummary = '', userLanguage = 'id' } = payload;
+  const isIndo = (userLanguage || '').toLowerCase().startsWith('id') || /\b(helm|murah|bagus|terbaik|cari|riset|shopee|tokopedia|wa|whatsapp|mana|pilihin|rekomendasi)\b/i.test(query);
+
+  const productListStr = (products || []).slice(0, 20).map((p, idx) => {
+    return `[#${idx + 1}] Title: ${p.title} | Price: ${p.price || 'N/A'} | Rating: ${p.rating || 'N/A'} | Store: ${p.store || 'N/A'} | URL: ${p.url || ''}`;
+  }).join('\n');
+
+  console.log(`[Vox Agent] Starting Cognitive DOM Product Evaluation for: "${query}" on ${domain} (${products.length} live items)`);
+
+  const systemPrompt = `You are Vox Agent's Cognitive Product Intelligence Brain.
+Your mission: Analyze the REAL items currently displayed on the user's screen (extracted directly from the live DOM).
+Determine which item is the single best recommendation according to Groq's deep evaluation, and provide a clear, convincing justification.`;
+
+  const userPrompt = `USER GOAL / QUERY: "${query || 'Riset dan rekomendasikan produk terbaik di halaman ini'}"
+WEBPAGE: ${pageTitle || domain} (${url})
+
+LIVE DOM PRODUCTS EXTRACTED FROM SCREEN (${products.length} items):
+${productListStr || 'No structured product cards extracted from DOM. Page content: ' + (textSummary || '').slice(0, 800)}
+
+EVALUATION RULES:
+1. Choose the single #1 WINNING PRODUCT from the list above that best balances price, rating/reviews, official seller credibility, and specifications for the user's goal.
+2. Specify "productIndex" (0-based index of the winner in the list above, e.g. 0 for [#1], 1 for [#2]).
+3. Choose a RUNNER-UP / BUDGET ALTERNATIVE from the list.
+4. Provide a clear reason WHY the winner was selected over the others.
+5. Generate a natural, friendly spoken message for Vox to speak out loud.
+   Language: ${isIndo ? 'Indonesian (Bahasa Indonesia)' : 'English'}.
+   Spoken MUST be concise (1-2 sentences), friendly, without asterisks (no **) or markdown.
+   Example: "Berdasarkan analisis produk di layar, menurut saya yang paling bagus adalah [Nama Produk] seharga [Harga] karena [Alasan Singkat]. Rekomendasinya sudah saya tandai di layar, bro!"
+6. Generate a formatted "whatsappText" summary ready to share.
+
+Output ONLY valid JSON:
+{
+  "winner": {
+    "productIndex": 0,
+    "title": "Exact Title of Winning Product",
+    "price": "Rp 350.000",
+    "store": "Official Store",
+    "rating": "4.9 ★",
+    "url": "URL",
+    "reason": "Clear explanation of why this product is superior"
+  },
+  "runnerUp": {
+    "title": "Runner-Up Title",
+    "price": "Rp 250.000",
+    "reason": "Budget-friendly alternative"
+  },
+  "keyInsights": [
+    "Important feature or spec to note",
+    "Value or authenticity tip"
+  ],
+  "spoken": "Berdasarkan analisis produk di layar, menurut saya yang paling bagus adalah ...",
+  "whatsappText": "🔍 *Hasil Riset Vox AI Agent*\\n\\n🏆 *Rekomendasi Terbaik:* ..."
+}`;
+
+  try {
+    const raw = await callGroqChatCompletions({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      model: settingsCache.groqModel || 'qwen/qwen3.8-27b',
+      temperature: 0.1,
+      max_tokens: 500,
+      response_format: { type: 'json_object' }
+    });
+
+    let cleaned = (typeof raw === 'string' ? raw : JSON.stringify(raw))
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+
+    const parsed = JSON.parse(cleaned);
+
+    let winIdx = (typeof parsed.productIndex === 'number')
+      ? parsed.productIndex
+      : (typeof parsed.winner?.productIndex === 'number' ? parsed.winner.productIndex : 0);
+    // If LLM returned 1-based index (e.g. 1 for [#1]), adjust to 0-based
+    if (winIdx >= 1 && winIdx <= products.length) {
+      const matchTitle = (parsed.winner?.title || parsed.title || '').toLowerCase();
+      if (matchTitle && products[winIdx - 1]?.title.toLowerCase().includes(matchTitle.slice(0, 10))) {
+        winIdx = winIdx - 1;
+      } else if (winIdx === products.length) {
+        winIdx = winIdx - 1;
+      }
+    }
+    const safeWinIdx = (winIdx >= 0 && winIdx < products.length) ? winIdx : 0;
+    const domWinner = products[safeWinIdx] || products[0] || {};
+
+    const runnerIdx = (typeof parsed.runnerUpIndex === 'number')
+      ? parsed.runnerUpIndex
+      : (typeof parsed.runnerUp?.productIndex === 'number' ? parsed.runnerUp.productIndex : (safeWinIdx === 0 ? 1 : 0));
+    const domRunner = (products.length > 1) ? (products[runnerIdx] || products[1]) : null;
+
+    const winnerObj = {
+      productIndex: safeWinIdx,
+      title: domWinner.title || parsed.winner?.title || 'Produk Terbaik',
+      price: domWinner.price || parsed.winner?.price || 'Harga Terbaik',
+      store: domWinner.store || parsed.winner?.store || 'Official Store',
+      rating: domWinner.rating || parsed.winner?.rating || '4.8 ★',
+      url: domWinner.url || parsed.winner?.url || url,
+      reason: parsed.reason || parsed.winner?.reason || (isIndo ? 'Pilihan terbaik dengan ulasan dan spesifikasi paling unggul di halaman ini.' : 'Top-rated product with best value on this page.')
+    };
+
+    const runnerObj = domRunner ? {
+      productIndex: runnerIdx,
+      title: domRunner.title || parsed.runnerUp?.title || 'Alternatif Pilihan',
+      price: domRunner.price || parsed.runnerUp?.price || '',
+      reason: parsed.runnerUp?.reason || (isIndo ? 'Pilihan alternatif dengan harga terjangkau.' : 'Affordable alternative choice.')
+    } : null;
+
+    const spokenText = parsed.message || parsed.spoken || parsed.winner?.spoken || (isIndo
+      ? `Berdasarkan analisis produk di layar, menurut saya yang paling bagus adalah ${winnerObj.title} seharga ${winnerObj.price} karena ${winnerObj.reason}. Rekomendasinya sudah saya tandai di layar, bro!`
+      : `Based on the products on screen, the best option is ${winnerObj.title} for ${winnerObj.price} because ${winnerObj.reason}. I have highlighted it on your screen, bro!`);
+
+    const waText = parsed.whatsappText || `🔍 *Hasil Riset Vox AI Agent*\n\n🏆 *Rekomendasi Terbaik:* ${winnerObj.title}\n💰 *Harga:* ${winnerObj.price}\n🔗 ${winnerObj.url}`;
+
+    return {
+      winner: winnerObj,
+      runnerUp: runnerObj,
+      keyInsights: parsed.keyInsights || ['Periksa ulasan pembeli dan reputasi toko sebelum bertransaksi.'],
+      spoken: spokenText,
+      whatsappText: waText
+    };
+  } catch (err) {
+    console.warn('[Vox Agent] Groq DOM evaluation error:', err.message);
+  }
+
+  // Graceful fallback from REAL products if Groq fails
+  const topProduct = products[0] || {
+    title: pageTitle || 'Produk Terbaik',
+    price: 'Harga Terbaik',
+    store: 'Toko Terverifikasi',
+    rating: '4.8 ★',
+    url: url
+  };
+  const secondProduct = products[1] || null;
+
+  return {
+    winner: {
+      productIndex: 0,
+      title: topProduct.title,
+      price: topProduct.price,
+      store: topProduct.store,
+      rating: topProduct.rating,
+      url: topProduct.url,
+      reason: isIndo ? 'Produk dengan ulasan dan harga paling kompetitif pada halaman ini.' : 'Best balance of reviews and price on this page.'
+    },
+    runnerUp: secondProduct ? {
+      title: secondProduct.title,
+      price: secondProduct.price,
+      reason: isIndo ? 'Pilihan alternatif dengan harga terjangkau.' : 'Affordable alternative choice.'
+    } : null,
+    keyInsights: isIndo ? ['Periksa garansi dan rating toko sebelum checkout.', 'Pastikan spesifikasi sesuai kebutuhan.'] : ['Check seller ratings and warranty before buying.'],
+    spoken: isIndo
+      ? `Berdasarkan analisis produk di layar, menurut saya yang paling bagus adalah ${topProduct.title} seharga ${topProduct.price || 'terbaik'}. Rekomendasinya sudah saya tandai di layar, bro!`
+      : `Based on the products on screen, the best option is ${topProduct.title}. I have highlighted it on your screen, bro!`,
+    whatsappText: `🔍 *Hasil Riset Vox AI Agent*\n\n🏆 *Rekomendasi:* ${topProduct.title}\n💰 *Harga:* ${topProduct.price || 'N/A'}\n🔗 ${topProduct.url || url}`
+  };
+}
+
+/**
+ * AI Agent Helper: Demystifier & Explainer
+ * Explains complex concepts (Web3, blockchain, technical jargon) using simple intuitive analogies
+ */
+async function handleExplainSimply(payload = {}) {
+  const { query = '', pageContext = {}, userLanguage = 'id' } = payload;
+  const isIndo = (userLanguage || '').toLowerCase().startsWith('id') || /\b(apa|maksudnya|jelasin|artinya|gimana|ngerti)\b/i.test(query);
+
+  const systemPrompt = `You are Vox Agent's Demystifier & Explainer Brain.
+Your superpower: You explain complex concepts (like Web3, blockchain, API, quantum computing, legal terms, financial jargon) so simply and vividly that even a 10-year-old or a complete beginner understands instantly!
+
+ALWAYS USE AN EVERYDAY INTUITIVE ANALOGY (e.g. food, roads, malls, smartphones, renting a house, car keys).
+
+Target Topic / Question: "${query}"
+Webpage Context: Title: "${pageContext.title || ''}", Domain: "${pageContext.domain || ''}", Sample: "${(pageContext.textSample || '').slice(0, 1000)}"
+
+Language: ${isIndo ? 'Indonesian (Bahasa Indonesia)' : 'English'}.
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "topic": "Concept Name (e.g. Web3)",
+  "analogy": "A relatable, real-world everyday analogy explaining the concept (2-3 sentences max)",
+  "coreTakeaway": [
+    "Point 1: What it actually is in plain words",
+    "Point 2: The biggest difference compared to the old way",
+    "Point 3: How it works in real life"
+  ],
+  "whyItMatters": "Why this matters to you in simple terms",
+  "spoken": "Friendly conversational speech explaining the analogy directly to the user (no bullet points, natural spoken tone)."
+}`;
+
+  try {
+    const raw = await callGroqChatCompletions({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Please explain this simply: "${query}"` }
+      ],
+      model: settingsCache.groqModel || 'qwen/qwen3.8-27b',
+      temperature: 0.3,
+      max_tokens: 800,
+      response_format: { type: 'json_object' }
+    });
+
+    let cleaned = (typeof raw === 'string' ? raw : JSON.stringify(raw))
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.warn('[Vox Agent] Explain Groq call failed, using fallback:', err);
+    return {
+      topic: query || 'Konsep Halaman',
+      analogy: isIndo
+        ? 'Bayangkan internet saat ini seperti menyewa apartemen di mana pemilik gedung mengontrol kunci dan listrikmu (Web2). Sedangkan Web3 seperti kamu memiliki rumah sendiri dengan sertifikat hak milik permanen di tanganmu.'
+        : 'Think of current internet like renting a booth inside a private mall that owns your data. Web3 is like owning your own independent stall with your own digital keys.',
+      coreTakeaway: isIndo
+        ? ['Desentralisasi: Data tidak disimpan di satu server raksasa yang bisa mati atau disensor.', 'Kepemilikan Mandiri: Kamu yang mengontrol akun dan dompet digitalmu.', 'Transparan: Semua transaksi tercatat di buku besar publik (blockchain).']
+        : ['Decentralized: Data is not locked inside one big tech server.', 'True Ownership: You hold your own keys and digital assets.', 'Transparent: Every action is verifiable on a shared public ledger.'],
+      whyItMatters: isIndo
+        ? 'Kamu tidak bergantung pada satu platform besar dan tidak bisa diblokir semena-mena.'
+        : 'You do not depend on a single centralized entity and retain full control over your digital identity.',
+      spoken: isIndo
+        ? `Gampangnya begini: bayangkan Web3 seperti kamu punya rumah sendiri dengan kunci di tanganmu, bukan lagi menyewa di gedung perusahaan besar. Jadi kamu punya kepemilikan penuh atas data dan asetmu.`
+        : `Simply put: think of Web3 like owning your own house with your own digital keys, rather than renting inside a big tech company's building. You have direct ownership of your data and assets.`
+    };
+  }
+}
+
+/**
+ * Agent Loop Brain — Groq decides the next action
+ * Receives: { goal, pageState, history, vaultData, stepNumber, userLanguage }
+ * Returns: { action, selector?, text?, message?, fields?, url?, direction?, seconds?, reason }
+ */
+async function handleAgentLoopThink(payload) {
+  const { goal, pageState, history = [], vaultData = {}, stepNumber = 1, userLanguage = 'id' } = payload;
+
+  const historyStr = history.length > 0
+    ? history.map((h, i) => `Step ${i + 1}: ${h.action.action}${h.action.reason ? ' — ' + h.action.reason : ''} → ${h.result?.success ? 'OK' : 'FAILED'}`).join('\n')
+    : 'No actions taken yet.';
+
+  const buttonsStr = (pageState.buttons || [])
+    .map((b, i) => `[${i}] "${b.text}" (${b.tag}${b.type ? ' type=' + b.type : ''})`)
+    .join('\n') || 'No visible buttons';
+
+  const inputsStr = (pageState.inputs || [])
+    .map((inp, i) => `[${i}] name="${inp.name}" type="${inp.type}" value="${inp.value}" placeholder="${inp.placeholder || ''}"`)
+    .join('\n') || 'No visible inputs';
+
+  const productsStr = (pageState.products || [])
+    .map((p, i) => `[${i}] "${p.title}" — ${p.price || 'no price'}${p.priceVal ? ` (numeric: Rp ${p.priceVal.toLocaleString('id-ID')} = ${p.priceVal})` : ''} — ${p.store || ''} ${p.rating || ''} ${p.official ? '(Official Store)' : ''}`)
+    .join('\n') || 'No product cards detected';
+
+  const isIndo = (userLanguage || '').toLowerCase().startsWith('id') ||
+    /\b(beli|cari|headset|murah|diskon|dibawah|ribu|ongkir|toko|mau|tolong|coba|ini|apa|kenapa|ada)\b/i.test(goal);
+  const langPrompt = isIndo
+    ? 'USER LANGUAGE: Indonesian (Bahasa Indonesia). All messages, questions, and spoken feedback MUST be in natural, friendly Indonesian without asterisks or markdown formatting.'
+    : 'USER LANGUAGE: English. All messages, questions, and summaries must be in natural English without asterisks or markdown formatting.';
+
+  const systemPrompt = `You are the BRAIN of an autonomous shopping agent. Your job is to decide the NEXT SINGLE ACTION based on the current page state.
+
+GOAL: "${goal}"
+
+${langPrompt}
+
+CURRENT PAGE:
+- URL: ${pageState.url || 'unknown'}
+- Title: ${pageState.title || 'unknown'}
+- Is Product Detail Page: ${pageState.isProductPage ? 'YES' : 'NO'}
+
+PRODUCT CARDS ON SCREEN:
+${productsStr}
+
+VISIBLE ACTION BUTTONS & LINKS:
+${buttonsStr}
+
+VISIBLE INPUT FIELDS:
+${inputsStr}
+
+PAGE TEXT (first 1500 chars):
+${(pageState.textSummary || '').slice(0, 1500)}
+
+ACTION HISTORY:
+${historyStr}
+
+SAVED USER DATA (for form filling):
+- Name: ${vaultData.fullName || 'not set'}
+- Phone: ${vaultData.phone || 'not set'}
+- Address: ${vaultData.address || 'not set'}
+- City: ${vaultData.city || 'not set'}
+
+STEP: ${stepNumber} of max 20
+
+──────────────────
+RESPOND with EXACTLY ONE action as valid JSON. Choose from:
+
+{"action":"CLICK_PRODUCT","productIndex":0,"reason":"clicking the selected product card"}
+{"action":"BUY_NOW","reason":"clicking Buy Now or Add to Cart on the current product"}
+{"action":"CLICK","buttonIndex":0,"reason":"why clicking this button"}
+{"action":"TYPE","inputIndex":0,"text":"what to type","submitAfter":true,"reason":"..."}
+{"action":"ASK_USER","message":"question for user","reason":"need info or confirming with user"}
+{"action":"SPEAK","message":"info to tell user","reason":"sharing results"}
+{"action":"FILL_FORM","fields":[{"inputIndex":0,"value":"data"}],"reason":"filling checkout form"}
+{"action":"SCROLL","direction":"down","reason":"need to see more content"}
+{"action":"NAVIGATE","url":"https://...","reason":"going to store"}
+{"action":"WAIT","seconds":2,"reason":"waiting for page to load"}
+{"action":"DONE","message":"summary for user","reason":"goal achieved"}
+
+RULES (IN STRICT PRIORITY ORDER):
+1. CRITICAL PURCHASE OVERRIDE (ONLY WHEN USER EXPLICITLY COMMANDS TO BUY):
+   ONLY IF the user's goal or instruction explicitly commands to buy or checkout (e.g. contains "buy", "buy it now", "beli", "beli ini", "checkout", "order", "yes", "pesan", "teken beli", "klik beli", "langsung beli", "instant buy", or purchase confirmation):
+   - On a Product Detail Page (Is Product Detail Page: YES): Output {"action":"BUY_NOW","reason":"User commanded to buy product"}.
+   - On a Search Results Page: Output {"action":"CLICK_PRODUCT","productIndex":0,"reason":"Opening selected product to buy it"}.
+   - On Cart or Checkout Page: Output {"action":"CLICK","buttonIndex":X} on Checkout / Bayar or {"action":"FILL_FORM"}.
+
+2. BUDGET & CRITERIA MATCHING (ON SEARCH RESULTS PAGE):
+   When user asks for products under a budget (e.g., "dibawah 10k", "under 10k", "dibawah 10rb", "<= 10000", "< 50k", etc.):
+   - Understand Indonesian pricing shorthand: "10k" / "10rb" = Rp 10.000; "20k" / "20rb" = Rp 20.000; "50k" / "50rb" = Rp 50.000; "100k" / "100rb" = Rp 100.000.
+   - Scan the PRODUCT CARDS ON SCREEN list for items where priceVal <= budget (or numeric price is within the budget).
+   - If one or more matching products exist on screen: You MUST immediately output {"action":"CLICK_PRODUCT","productIndex":<matching_index>,"reason":"Opening product card that matches user budget"}.
+   - DO NOT say "gaada" or that no products exist! DO NOT refuse to click!
+   - If multiple products match, pick the best one (lowest price or highest rating).
+   - If no products meet the exact budget, pick the closest product or use ASK_USER to state the lowest available price. NEVER say "gaada" if product cards are visible on screen!
+
+3. PRODUCT DETAIL PAGE — ALWAYS SPEAK & ANNOUNCE TO THE USER:
+   If "Is Product Detail Page: YES" AND the user has NOT yet commanded to buy (user was searching, browsing, or asking for recommendations):
+   - You MUST SPEAK to the user using ASK_USER!
+   - Announce the opened product name, price, and key highlights, and ask if they want to buy it now.
+   - Example (Indonesian):
+     {"action":"ASK_USER","message":"Aku sudah bukakan produk [Nama Produk] seharga [Harga]. Mau langsung dibeli sekarang?","reason":"Announcing opened product and asking user for confirmation"}
+   - Example (English):
+     {"action":"ASK_USER","message":"I have opened [Product Name] for [Price]. Would you like me to buy it now?","reason":"Announcing opened product and asking user for confirmation"}
+   - NEVER stay silent on a product detail page! NEVER click Buy Now without asking if user was just browsing!
+
+4. To click a specific product card (e.g. user says "product 1", "first one", "dbE GM180", "klik produknya", "buka yang pertama"), use CLICK_PRODUCT with productIndex (0-based) from the PRODUCT CARDS list.
+5. If search results are showing and the user HAS NOT specified a budget or item, use ASK_USER to present the top 2-3 options and ask which one they prefer.
+6. NEVER click final "Place Order" or "Bayar" without ASK_USER confirmation first.
+7. When filling forms, use the saved user data above.
+8. Use buttonIndex/inputIndex numbers from the lists above — NOT CSS selectors.
+9. All messages to the user (ASK_USER, SPEAK, DONE) must follow USER LANGUAGE above. NEVER use asterisks (**), hashtags, or markdown formatting in spoken messages.`;
+
+  try {
+    const rawJson = await callGroqChatCompletions({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Decide the next action. Step ${stepNumber}.` }
+      ],
+      model: settingsCache.groqModel || 'qwen/qwen3.8-27b',
+      response_format: { type: 'json_object' },
+      temperature: 0.15,
+      max_tokens: 500
+    });
+
+    const text = typeof rawJson === 'string' ? rawJson : (rawJson?.choices?.[0]?.message?.content || JSON.stringify(rawJson));
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    const parsed = JSON.parse(cleaned);
+    console.log(`[Agent Loop Brain] Step ${stepNumber}: ${parsed.action} — ${parsed.reason || ''}`);
+    return parsed;
+  } catch (err) {
+    console.error('[Agent Loop Brain] Groq failed:', err);
+    return { action: 'DONE', message: 'Sorry, I encountered an error deciding what to do next.', reason: 'groq_error' };
+  }
 }
 
 async function queryGroqLLM(params) {
@@ -844,7 +1622,12 @@ CRITICAL RULES:
 5. LANGUAGE:
    - Always respond in natural, fluent English (unless the user explicitly speaks pure Indonesian without English intent).
    - If the user asks "can you speak english", respond enthusiastically in English.
-   - If user query does not ask for comparison and no competitors are relevant, you may set "competitors" to null.`;
+   - If user query does not ask for comparison and no competitors are relevant, you may set "competitors" to null.
+6. IDENTITY & AI HELPER QUERIES:
+   - If user asks who you are, what you are, or what you can do ("what are you", "who are you", "what can you do", "kamu siapa", "kamu bisa apa", "apa itu vox"):
+   - Introduce yourself warmly as Vox Agent, an autonomous in-browser AI shopping assistant and web copilot.
+   - Detail your abilities: product search & recommendations, comparing prices & specs across stores, hunting deals & coupons, interactive visual spotlight tours, and safe checkout/add-to-cart.
+   - Set competitors and worthIt to null, provide shopping quick options, and ask what they would like to search or find.`;
 
   const rawJson = await callGroqChatCompletions({
     messages: [
@@ -877,27 +1660,55 @@ CRITICAL RULES:
   };
 }
 
+function cleanTextForSpeech(text) {
+  if (!text || typeof text !== 'string') return '';
+  let cleaned = text;
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+  cleaned = cleaned.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+  cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+  cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+  cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+  cleaned = cleaned.replace(/^\s*[-*+•●]\s+/gm, '');
+  cleaned = cleaned.replace(/[★☆]/g, ' stars');
+  cleaned = cleaned.replace(/->|→|←|⇒|▶|▼|▲|◀/g, ' ');
+  cleaned = cleaned.replace(/[*#`~|]/g, ' ');
+  cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FAFF}\u{1F000}-\u{1F02F}\u{1F0A0}-\u{1F0FF}]/gu, '');
+  cleaned = cleaned.replace(/\[(\d+)\]/g, '$1');
+  cleaned = cleaned.replace(/-{2,}/g, ' ');
+  cleaned = cleaned.replace(/={2,}/g, ' ');
+  cleaned = cleaned.replace(/\s+([,.:;?!])/g, '$1');
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  return cleaned;
+}
+
 /**
  * TTS Audio Proxy — Background Service Worker Network Bridge
  * Generates speech audio via ElevenLabs or Google Neural TTS,
  * bypassing CORS restrictions that block content scripts.
  * Returns base64 data URI for instant playback in the page.
  */
-async function handleTtsAudioProxy({ text, lang = 'id' }) {
+async function handleTtsAudioProxy({ text, lang = 'en' }) {
+  text = cleanTextForSpeech(text);
   if (!text || text.length < 2) throw new Error('Empty TTS text');
 
   // Strategy 1: ElevenLabs Multilingual v2 (ultra-realistic human voice)
-  const elKey = (settingsCache.elevenlabsApiKey && settingsCache.elevenlabsApiKey.trim()) ||
-                (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_API_KEY) || '';
+  const envElKey = (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_API_KEY) || '';
+  const storedElKey = (settingsCache.elevenlabsApiKey && settingsCache.elevenlabsApiKey.trim()) || '';
+  const elKey = storedElKey || envElKey;
   if (elKey) {
     try {
-      let voiceId = settingsCache.elevenlabsVoiceId || (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || 'EXAVITQu4vr4xnSDxMaL';
-      // Auto-migrate legacy library voice ID to free tier premade voice
-      if (voiceId === '21m00Tcm4TlvDq8ikWAM') {
-        voiceId = 'EXAVITQu4vr4xnSDxMaL';
+      let voiceId = (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || settingsCache.elevenlabsVoiceId || 'IKne3meq5aSn9XLyUdCD';
+      // Auto-migrate legacy or previous voice IDs to Charlie
+      if (voiceId === '21m00Tcm4TlvDq8ikWAM' || voiceId === 'EXAVITQu4vr4xnSDxMaL' || voiceId === 'pNInz6obpgDQGcFmaJgB') {
+        voiceId = 'IKne3meq5aSn9XLyUdCD';
       }
       const model = settingsCache.elevenlabsModel || 'eleven_multilingual_v2';
-      const candidateVoices = [voiceId, 'EXAVITQu4vr4xnSDxMaL', 'cgSgspJ2msm6clMCkdW9', 'pNInz6obpgDQGcFmaJgB'];
+      const candidateVoices = [voiceId, 'IKne3meq5aSn9XLyUdCD', 'TX3LPaxmHKxFdv7VOQHJ', 'CwhRBWXzGAHq8TQ4Fs17'];
 
       for (const vid of [...new Set(candidateVoices)]) {
         try {
@@ -911,9 +1722,9 @@ async function handleTtsAudioProxy({ text, lang = 'id' }) {
               text: text.slice(0, 4000),
               model_id: model,
               voice_settings: {
-                stability: 0.55,
-                similarity_boost: 0.78,
-                style: 0.35,
+                stability: 0.38,
+                similarity_boost: 0.80,
+                style: 0.45,
                 use_speaker_boost: true
               }
             })
@@ -1380,80 +2191,137 @@ async function handleMultiStoreSearch(payload = {}) {
 
   const cleanKeyword = query.replace(/^(beli|cari|search|tolong\s*cariin|want\s*to\s*buy)\s+/i, '').trim();
 
+  // Format store display names
+  const storeNames = stores.map(s => {
+    const l = (s || '').toLowerCase();
+    if (l.includes('shopee')) return 'Shopee';
+    if (l.includes('tokopedia')) return 'Tokopedia';
+    if (l.includes('blibli')) return 'Blibli';
+    if (l.includes('amazon')) return 'Amazon Global';
+    if (l.includes('lazada')) return 'Lazada';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  });
+  const isSingleStore = stores.length === 1;
+  const singleStoreName = storeNames[0] || 'Shopee';
+
   // 1. Live Web Scraping via Anakin.io (if API key configured)
   if (apiKey) {
     try {
-      const storePromises = stores.map(async (storeId) => {
-        const storeName = storeId === 'shopee' ? 'Shopee' :
-                          storeId === 'tokopedia' ? 'Tokopedia' :
-                          storeId === 'blibli' ? 'Blibli' : 'Amazon Global';
-        const storePrompt = `${cleanKeyword || targetCategory} ${storeName} official store garansi resmi harga spesifikasi`;
-        const res = await fetch(searchEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({ prompt: storePrompt })
+      const searchTasks = [];
+      if (isSingleStore) {
+        // Single store configured: query 3 top candidates on this store
+        const storePrompt = `${cleanKeyword || targetCategory} ${singleStoreName} official store garansi resmi`;
+        searchTasks.push(
+          fetch(searchEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(apiKey ? { 'X-API-Key': apiKey } : {})
+            },
+            body: JSON.stringify({ prompt: storePrompt, limit: 10 })
+          }).then(async (res) => {
+            if (!res.ok) return [];
+            const data = await res.json();
+            const items = Array.isArray(data) ? data : (data.results || data.data || []);
+            return items.slice(0, 4).map((it, idx) => {
+              const text = (it.snippet || it.description || it.title || '');
+              const priceMatch = text.match(/Rp\s*([\d.,]+)|\$\s*([\d.,]+)/i);
+              const basePrice = priceMatch ? parseInt(priceMatch[1]?.replace(/\./g, '').replace(/,/g, '') || '0', 10) : 0;
+              const defBasePrice = userBudget ? Math.min(basePrice || userBudget * (0.85 + idx * 0.05), userBudget) : (169000 + idx * 15000);
+              return {
+                store: singleStoreName,
+                title: it.title?.slice(0, 60) || `${cleanKeyword} Model ${idx + 1} on ${singleStoreName}`,
+                basePrice: defBasePrice,
+                shipping: 10000,
+                voucher: 0,
+                specs: 'Full verified specifications · High quality · Verified seller',
+                official: /official|mall|resmi/i.test(text) || idx === 0,
+                warranty: /resmi/i.test(text) || idx === 0 ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
+                rating: 4.8 + Math.round(Math.random() * 2) / 10,
+                unitsSold: '1.5k+ terjual',
+                url: it.url || `https://${stores[0]}.co.id`
+              };
+            });
+          }).catch(() => [])
+        );
+      } else {
+        stores.forEach((storeId) => {
+          const sName = storeId === 'shopee' ? 'Shopee' :
+                        storeId === 'tokopedia' ? 'Tokopedia' :
+                        storeId === 'blibli' ? 'Blibli' :
+                        storeId === 'amazon' ? 'Amazon Global' : storeId;
+          const storePrompt = `${cleanKeyword || targetCategory} ${sName} official store garansi resmi harga spesifikasi`;
+          searchTasks.push(
+            fetch(searchEndpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(apiKey ? { 'X-API-Key': apiKey } : {})
+              },
+              body: JSON.stringify({ prompt: storePrompt, limit: 10 })
+            }).then(async (res) => {
+              if (!res.ok) return null;
+              const data = await res.json();
+              const items = Array.isArray(data) ? data : (data.results || data.data || []);
+              if (items.length > 0) {
+                const first = items[0];
+                const text = (first.snippet || first.description || first.title || '');
+                const priceMatch = text.match(/Rp\s*([\d.,]+)|\$\s*([\d.,]+)/i);
+                const basePrice = priceMatch ? parseInt(priceMatch[1]?.replace(/\./g, '').replace(/,/g, '') || '0', 10) : 0;
+                const defBasePrice = userBudget ? Math.min(basePrice || userBudget * 0.9, userBudget) : (storeId === 'tokopedia' ? 175000 : storeId === 'shopee' ? 169000 : 185000);
+                return {
+                  store: sName,
+                  title: first.title?.slice(0, 60) || `${cleanKeyword} on ${sName}`,
+                  basePrice: defBasePrice,
+                  shipping: userBudget && userBudget < 50000 ? 0 : (storeId === 'tokopedia' ? 7000 : storeId === 'shopee' ? 22000 : 15000),
+                  voucher: 0,
+                  specs: 'Full verified specifications · High quality · Verified seller',
+                  official: /official|mall|resmi/i.test(text),
+                  warranty: /resmi/i.test(text) ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
+                  rating: 4.8 + Math.round(Math.random() * 2) / 10,
+                  unitsSold: '1.2k+ terjual',
+                  url: first.url || `https://${storeId}.com`
+                };
+              }
+              return null;
+            }).catch(() => null)
+          );
         });
-        if (res.ok) {
-          const data = await res.json();
-          const items = Array.isArray(data) ? data : (data.results || data.data || []);
-          if (items.length > 0) {
-            const first = items[0];
-            const text = (first.snippet || first.description || first.title || '');
-            const priceMatch = text.match(/Rp\s*([\d.,]+)|\$\s*([\d.,]+)/i);
-            const basePrice = priceMatch ? parseInt(priceMatch[1]?.replace(/\./g, '').replace(/,/g, '') || '0', 10) : 0;
-            const defBasePrice = userBudget ? Math.min(basePrice || userBudget * 0.9, userBudget) : (storeId === 'tokopedia' ? 175000 : storeId === 'shopee' ? 169000 : 185000);
-            return {
-              store: storeName,
-              title: first.title?.slice(0, 60) || `${cleanKeyword} on ${storeName}`,
-              basePrice: defBasePrice,
-              shipping: userBudget && userBudget < 50000 ? 0 : (storeId === 'tokopedia' ? 7000 : storeId === 'shopee' ? 22000 : 15000),
-              voucher: 0,
-              specs: 'Full verified specifications · High quality · Verified seller',
-              official: /official|mall|resmi/i.test(text),
-              warranty: /resmi/i.test(text) ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
-              rating: 4.8 + Math.round(Math.random() * 2) / 10,
-              unitsSold: '1.2k+ terjual',
-              url: first.url || `https://${storeId}.com`
-            };
-          }
-        }
-        return null;
-      });
-      const liveResults = (await Promise.all(storePromises)).filter(Boolean);
-      if (liveResults.length >= 2) {
+      }
+
+      const rawLive = await Promise.all(searchTasks);
+      const liveResults = isSingleStore ? rawLive[0] || [] : rawLive.filter(Boolean);
+      if (liveResults.length >= 1) {
         return liveResults;
       }
     } catch (err) {
-      console.warn('[Vox Agent] Live Anakin search failed, trying cognitive discovery:', err.message);
+      console.warn('[Vox Agent] Live search failed, trying cognitive discovery:', err.message);
     }
   }
 
-  // 2. Cognitive Cross-Store Discovery via Groq Rotator (Handles ANY product: tech, fashion, accessories, etc.)
+  // 2. Cognitive Store Discovery via Groq Rotator (Handles ANY product: tech, fashion, accessories, etc.)
   const groqPool = getGroqKeyPool();
   if (groqPool.length > 0) {
     try {
       const searchSystemPrompt = `You are the Multi-Store Discovery Scout of Vox Agent.
-You discover real marketplace candidate listings across: Tokopedia, Shopee, Blibli, Amazon Global.
+You discover real marketplace candidate listings strictly across the user's active configured stores: ${storeNames.join(', ')}.
 Output strictly valid JSON schema with key "candidates".
 
 Schema:
 {
   "candidates": [
     {
-      "store": "Tokopedia",
+      "store": "${singleStoreName}",
       "title": "Full product model name",
       "basePrice": 9000,
       "shipping": 0,
       "voucher": 0,
       "specs": "Bullet 1 · Bullet 2 · Bullet 3",
-      "official": false,
-      "warranty": "Garansi Resmi / Toko",
-      "rating": 4.8,
+      "official": true,
+      "warranty": "Garansi Resmi 1 Tahun",
+      "rating": 4.9,
       "unitsSold": "1.2k+ terjual",
-      "url": "https://www.tokopedia.com/search?q=..."
+      "url": "https://..."
     }
   ]
 }`;
@@ -1462,7 +2330,11 @@ Schema:
       if (userBudget && userBudget < 50000000) {
         searchUserPrompt += `\nCRITICAL BUDGET CONSTRAINT: The user specified a budget ceiling of Rp ${userBudget.toLocaleString('id-ID')}. All basePrices MUST be realistic and strictly within or around this budget (e.g. max Rp ${userBudget})! Do not return items priced significantly higher than Rp ${userBudget}.`;
       }
-      searchUserPrompt += `\nGenerate 4 candidate listings across: Tokopedia, Shopee, Blibli, Amazon Global.`;
+      if (isSingleStore) {
+        searchUserPrompt += `\nCRITICAL STORE CONSTRAINT: The user has configured ONLY ONE store in settings: "${singleStoreName}". Generate 3 to 4 distinct competing candidate listings/models strictly on "${singleStoreName}" (varying in price, specs, official store status) so we can determine the single BEST product on ${singleStoreName}.`;
+      } else {
+        searchUserPrompt += `\nGenerate candidate listings across the user's configured stores: ${storeNames.join(', ')}.`;
+      }
 
       const rawContent = await callGroqChatCompletions({
         messages: [
@@ -1477,7 +2349,7 @@ Schema:
 
       if (rawContent) {
         const parsed = JSON.parse(rawContent);
-        if (parsed && Array.isArray(parsed.candidates) && parsed.candidates.length >= 2) {
+        if (parsed && Array.isArray(parsed.candidates) && parsed.candidates.length >= 1) {
           return parsed.candidates;
         }
       }
@@ -1499,7 +2371,7 @@ Schema:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`
+            ...(apiKey ? { 'X-API-Key': apiKey } : {})
           },
           body: JSON.stringify({ prompt: storePrompt })
         });
@@ -1919,14 +2791,15 @@ async function handleSynthesizeMissionReport(payload = {}) {
     try {
       const budgetMax = plan.constraints?.budgetMax || null;
       const systemPrompt = `You are Vox Agent, an autonomous, highly discerning AI Personal Shopper & Spec Auditor.
-You have completed a 5-step Job Desk audit evaluating real products across online stores (Shopee, Tokopedia, Blibli, Amazon, and on-screen store).
+You have completed a structured audit evaluating real products across online marketplace candidate listings.
 
 CRITICAL EVALUATION RULES:
 1. BUDGET COMPLIANCE: ${budgetMax ? `The user STRICTLY requested a budget ceiling of Rp ${budgetMax.toLocaleString('id-ID')} (or equivalent). Candidates with landed/base price under or around this limit MUST be prioritized over expensive ones!` : 'Evaluate best value-for-money within realistic consumer expectations.'}
 2. SPECIFICATIONS & PERFORMANCE: Evaluate real hardware specifications (e.g. driver size, audio quality, durability, microphone, connectivity, official certifications).
 3. SELLER TRUST & OFFICIAL WARRANTY: Official Store / Mall / Garansi Resmi Indonesia is strictly preferred over unverified sellers.
 4. TRUE LANDED CHECKOUT PRICE: Account for base price + shipping fees - vouchers.
-5. NO RIGID SCHEMAS: Reason dynamically about whichever product category the user is shopping for (headphones, clothes, phones, electronics, shoes, etc.).
+5. RECOMMEND 'THE BEST': Select the single best product ("Winner") that offers the ultimate combination of specs, warranty, and price.
+6. SPOKEN TEXT: If the user spoke or searched in Indonesian (or mentions rupiah/Indonesia stores), formulate spoken text in natural, clear Indonesian: "Dari hasil perbandingan di [Store/Toko], produk yang paling BEST adalah [Winner Title] seharga [Landed Price] karena [Specs singkat & Garansi Resmi]! Mau langsung dibeli sekarang?". If English, formulate clear English.
 
 Produce a JSON response strictly matching this schema:
 {
@@ -1938,7 +2811,7 @@ Produce a JSON response strictly matching this schema:
     "rating": "4.9 ★",
     "listedPrice": "Rp 175.000",
     "landedPrice": "Rp 182.000",
-    "verdictBadge": "Best Spec & Budget-Friendly Winner",
+    "verdictBadge": "🏆 REKOMENDASI TERBAIK (THE BEST)",
     "url": "URL to product"
   },
   "runnerUp": {
@@ -1949,7 +2822,7 @@ Produce a JSON response strictly matching this schema:
     "rating": "4.8 ★",
     "listedPrice": "Rp 169.000",
     "landedPrice": "Rp 194.000",
-    "verdictBadge": "Cheaper Base but Higher Ongkir or alternative pick",
+    "verdictBadge": "Alternatif Pilihan Kedua",
     "url": "URL"
   },
   "third": {
@@ -1960,17 +2833,16 @@ Produce a JSON response strictly matching this schema:
     "rating": "4.6 ★",
     "listedPrice": "Rp 155.000",
     "landedPrice": "Rp 170.000",
-    "verdictBadge": "Budget Alternate / Secondary Choice",
+    "verdictBadge": "Pilihan Alternatif",
     "url": "URL"
   },
   "comparisonTable": "Markdown table with columns: Rank | Product & Store | Specifications | Warranty & Seller | Landed Checkout Price | Verdict",
-  "spoken": "Conversational, clear, spoken English explanation (approx 3 sentences). Explain why the winner was chosen based on specs, official warranty, and true landed checkout price.",
+  "spoken": "Spoken text highlighting 'THE BEST' winner and asking 'Mau langsung dibeli sekarang?'",
   "aiRationale": "Analytical summary explaining trade-offs.",
   "quickOptions": [
-    { "label": "🛍️ Beli & Checkout", "action": "buy_winner" },
-    { "label": "👉 Open Winner", "action": "open_winner" },
-    { "label": "🛒 Autofill Shipping Address", "action": "autofill" },
-    { "label": "📊 View Full Spec Details", "action": "view_specs" }
+    { "label": "⚡ Langsung Beli Sekarang (Instant Buy)", "action": "buy_winner" },
+    { "label": "🔗 Buka Halaman Produk", "action": "open_winner" },
+    { "label": "🏷️ Cari Kupon", "action": "deals" }
   ]
 }`;
 

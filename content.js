@@ -4,6 +4,8 @@
  */
 
 (function () {
+  if (window.location.hostname.includes('whatsapp.com')) return;
+  if (window.__VOX_SIMULATOR__ || document.getElementById('vox-simulator-root') || document.getElementById('vox-capsule') || document.querySelector('.vox-simulator-container') || document.title.includes('Vox Agent — In-Browser Living') || window.location.pathname.endsWith('index.html')) return;
   if (document.querySelector('vox-copilot-root')) return;
 
   console.log('[Vox Agent V3] Ambient Voice Copilot initialized on:', window.location.hostname);
@@ -66,6 +68,141 @@
         0% { transform: scale(0.9); opacity: 0.8; }
         50% { transform: scale(1.3); opacity: 1; }
         100% { transform: scale(0.9); opacity: 0.8; }
+      }
+
+      /* ===== VISUAL SPOTLIGHT TOUR ENGINE ===== */
+      .vox-tour-step-badge {
+        position: absolute !important;
+        z-index: 2147483641 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 6px 14px 6px 8px !important;
+        background: rgba(10, 15, 29, 0.96) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        border: 1.5px solid rgba(99, 102, 241, 0.7) !important;
+        border-radius: 12px !important;
+        color: #E0E7FF !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        line-height: 1.3 !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.3) !important;
+        pointer-events: none !important;
+        animation: voxTourBadgeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+        max-width: 320px !important;
+      }
+      .vox-tour-step-num {
+        width: 22px !important;
+        height: 22px !important;
+        border-radius: 7px !important;
+        background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+        color: #fff !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.5) !important;
+      }
+      .vox-tour-step-text {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1px !important;
+      }
+      .vox-tour-step-title {
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        color: #F8FAFC !important;
+      }
+      .vox-tour-step-desc {
+        font-size: 10px !important;
+        color: #94A3B8 !important;
+        font-weight: 400 !important;
+      }
+      @keyframes voxTourBadgeIn {
+        from { opacity: 0; transform: translateY(8px) scale(0.92); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      /* Tour highlight — indigo variant for tour steps (cyan stays for single focus) */
+      .vox-tour-highlight {
+        outline: 2.5px solid #818CF8 !important;
+        outline-offset: 8px !important;
+        box-shadow: 0 0 40px rgba(129, 140, 248, 0.45), inset 0 0 20px rgba(129, 140, 248, 0.08) !important;
+        border-radius: 10px !important;
+        transition: outline 0.4s ease, box-shadow 0.4s ease, outline-offset 0.4s ease !important;
+        animation: voxTourBreathe 2.8s infinite ease-in-out !important;
+        position: relative !important;
+      }
+      @keyframes voxTourBreathe {
+        0% { box-shadow: 0 0 28px rgba(129, 140, 248, 0.30); outline-color: rgba(129, 140, 248, 0.65); }
+        50% { box-shadow: 0 0 50px rgba(129, 140, 248, 0.65); outline-color: rgba(129, 140, 248, 1); }
+        100% { box-shadow: 0 0 28px rgba(129, 140, 248, 0.30); outline-color: rgba(129, 140, 248, 0.65); }
+      }
+
+      /* Tour progress bar — fixed bottom, shows step progress */
+      .vox-tour-progress {
+        position: fixed !important;
+        bottom: 110px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 2147483642 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 8px 16px !important;
+        background: rgba(10, 15, 29, 0.94) !important;
+        backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(99, 102, 241, 0.4) !important;
+        border-radius: 14px !important;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(99, 102, 241, 0.2) !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        animation: voxTourBadgeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+        pointer-events: auto !important;
+      }
+      .vox-tour-progress-label {
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        color: #A5B4FC !important;
+        white-space: nowrap !important;
+      }
+      .vox-tour-progress-dots {
+        display: flex !important;
+        gap: 5px !important;
+      }
+      .vox-tour-dot {
+        width: 8px !important;
+        height: 8px !important;
+        border-radius: 50% !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        transition: all 0.3s ease !important;
+      }
+      .vox-tour-dot.active {
+        background: #818CF8 !important;
+        box-shadow: 0 0 10px rgba(129, 140, 248, 0.7) !important;
+        transform: scale(1.3) !important;
+      }
+      .vox-tour-dot.done {
+        background: #34D399 !important;
+        box-shadow: 0 0 8px rgba(52, 211, 153, 0.5) !important;
+      }
+      .vox-tour-skip-btn {
+        background: transparent !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        color: #94A3B8 !important;
+        border-radius: 6px !important;
+        padding: 3px 10px !important;
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+      }
+      .vox-tour-skip-btn:hover {
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
       }
     `;
     (document.head || document.documentElement).appendChild(s);
@@ -136,58 +273,84 @@
       pointer-events: auto !important;
     }
 
-    /* ===== MINIMALIST FLOATING CAPSULE (DOCK) ===== */
-    /* ===== NEXT-GEN FLOATING STAGE & MORPHING CAPSULE (FROM IRRHAMMCODE/FLOAT) ===== */
+    /* ===== MINIMALIST FLOATING CAPSULE (CENTER-BOTTOM) ===== */
     .floating-stage {
-      --edge: 28px;
       position: fixed;
-      right: var(--edge);
+      left: 50%;
       bottom: 24px;
+      transform: translateX(-50%);
       z-index: 2147483647;
       width: 330px;
       height: 270px;
       pointer-events: none !important;
-      transition: right 0.75s cubic-bezier(.22, 1, .36, 1), left 0.75s cubic-bezier(.22, 1, .36, 1);
+      transition: transform 0.5s cubic-bezier(.22, 1, .36, 1);
       user-select: none;
-    }
-    .floating-stage.dock-left {
-      left: var(--edge);
-      right: auto;
     }
     .floating-stage * {
       box-sizing: border-box;
     }
 
-    /* Morphing Capsule */
+    /* Morphing Capsule — transparent mic orb centered */
     .capsule {
       pointer-events: auto !important;
       position: absolute;
-      right: 0;
+      left: 50%;
       bottom: 12px;
-      width: 290px;
+      transform: translateX(-50%);
+      width: 66px;
       height: 66px;
-      padding: 8px 10px 8px 10px;
-      border-radius: 24px;
-      background: linear-gradient(112deg, rgba(18, 24, 38, 0.94), rgba(26, 34, 56, 0.85));
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.22), 0 20px 45px rgba(10, 13, 24, 0.35), 0 4px 12px rgba(10, 13, 24, 0.2);
-      backdrop-filter: blur(28px) saturate(1.4);
-      -webkit-backdrop-filter: blur(28px) saturate(1.4);
+      padding: 8px;
+      border-radius: 50%;
+      background: rgba(18, 24, 38, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 12px 30px rgba(10, 13, 24, 0.25);
+      backdrop-filter: blur(32px) saturate(1.5);
+      -webkit-backdrop-filter: blur(32px) saturate(1.5);
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      gap: 0;
       color: #ffffff;
       isolation: isolate;
       cursor: default;
-      transition: width 0.7s cubic-bezier(.2, 1.35, .35, 1), height 0.65s cubic-bezier(.2, 1.35, .35, 1), border-radius 0.65s cubic-bezier(.2, 1.35, .35, 1), transform 0.65s cubic-bezier(.2, 1.35, .35, 1), border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-    .floating-stage.dock-left .capsule {
-      right: auto;
-      left: 0;
+      transition: width 0.5s cubic-bezier(.2, 1.35, .35, 1), height 0.5s cubic-bezier(.2, 1.35, .35, 1), border-radius 0.5s cubic-bezier(.2, 1.35, .35, 1), transform 0.5s cubic-bezier(.2, 1.35, .35, 1), border-color 0.3s ease, box-shadow 0.3s ease, padding 0.4s ease;
     }
     .capsule:hover {
-      border-color: rgba(99, 102, 241, 0.6);
-      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 0 24px 50px rgba(10, 13, 24, 0.45), 0 0 22px rgba(99, 102, 241, 0.3);
+      border-color: rgba(99, 102, 241, 0.5);
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 16px 36px rgba(10, 13, 24, 0.35), 0 0 18px rgba(99, 102, 241, 0.25);
+    }
+    /* Expanded capsule (when showing transcript, state, or question) */
+    .capsule.expanded {
+      min-width: 280px;
+      max-width: 440px;
+      width: max-content;
+      height: 66px;
+      border-radius: 24px;
+      padding: 8px 14px;
+      gap: 12px;
+      justify-content: flex-start;
+      border-color: rgba(99, 102, 241, 0.65);
+      box-shadow: 0 16px 40px rgba(10, 13, 24, 0.45), 0 0 22px rgba(99, 102, 241, 0.35);
+    }
+    .capsule[data-state="observing"] {
+      border-color: rgba(6, 182, 212, 0.7) !important;
+      box-shadow: 0 16px 40px rgba(10, 13, 24, 0.45), 0 0 26px rgba(6, 182, 212, 0.4) !important;
+    }
+    .capsule[data-state="reasoning"], .capsule[data-state="thinking"] {
+      border-color: rgba(129, 140, 248, 0.7) !important;
+      box-shadow: 0 16px 40px rgba(10, 13, 24, 0.45), 0 0 26px rgba(129, 140, 248, 0.4) !important;
+    }
+    .capsule[data-state="acting"], .capsule[data-state="navigating"] {
+      border-color: rgba(245, 158, 11, 0.7) !important;
+      box-shadow: 0 16px 40px rgba(10, 13, 24, 0.45), 0 0 26px rgba(245, 158, 11, 0.4) !important;
+    }
+    .capsule[data-state="speaking"] {
+      border-color: rgba(16, 185, 129, 0.7) !important;
+      box-shadow: 0 16px 40px rgba(10, 13, 24, 0.45), 0 0 26px rgba(16, 185, 129, 0.4) !important;
+    }
+    .capsule[data-state="listening"] {
+      border-color: rgba(56, 189, 248, 0.7) !important;
+      box-shadow: 0 16px 40px rgba(10, 13, 24, 0.45), 0 0 26px rgba(56, 189, 248, 0.4) !important;
     }
 
     /* Specular Reflection Highlight with gentle shimmer sweep */
@@ -249,23 +412,34 @@
       to { transform: scale(1.08) rotate(4deg); opacity: 1; filter: drop-shadow(0 0 8px #fff); }
     }
 
-    /* Capsule Copy */
+    /* Capsule Copy — hidden in orb mode, visible when expanded */
     .capsule-copy {
       min-width: 0;
-      display: flex;
+      display: none;
       flex-direction: column;
       gap: 2px;
       flex: 1;
       cursor: pointer;
     }
+    .capsule.expanded .capsule-copy {
+      display: flex;
+    }
     .capsule-overline {
       font-family: var(--font-mono, monospace);
-      font-size: 8.5px;
-      letter-spacing: 0.08em;
-      color: #aab5de;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: #818cf8;
       text-transform: uppercase;
-      font-weight: 600;
+      font-weight: 700;
+      transition: color 0.3s ease;
     }
+    .capsule[data-state="observing"] .capsule-overline { color: #22d3ee; }
+    .capsule[data-state="reasoning"] .capsule-overline,
+    .capsule[data-state="thinking"] .capsule-overline { color: #a78bfa; }
+    .capsule[data-state="acting"] .capsule-overline,
+    .capsule[data-state="navigating"] .capsule-overline { color: #fbbf24; }
+    .capsule[data-state="speaking"] .capsule-overline { color: #34d399; }
+    .capsule[data-state="listening"] .capsule-overline { color: #38bdf8; }
     .capsule-copy strong {
       font-size: 11.5px;
       letter-spacing: -0.02em;
@@ -276,8 +450,12 @@
       font-weight: 600;
     }
 
-    /* Inline Capsule Input */
+    /* Inline Capsule Input — hidden in orb mode */
     .vox-capsule-input {
+      display: none;
+    }
+    .capsule.expanded .vox-capsule-input {
+      display: block;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 999px;
@@ -298,7 +476,14 @@
       border-color: #6366f1;
     }
 
-    /* Capsule Toggle Button */
+    /* Capsule Action / Reset Buttons */
+    .capsule-button {
+      display: none;
+    }
+    .capsule.expanded .capsule-button,
+    .capsule:hover .capsule-button {
+      display: grid;
+    }
     .capsule-button {
       width: 32px;
       height: 32px;
@@ -307,7 +492,6 @@
       color: #ffffff;
       background: rgba(255, 255, 255, 0.12);
       font-size: 14px;
-      display: grid;
       place-items: center;
       cursor: pointer !important;
       flex: none;
@@ -320,82 +504,68 @@
     .capsule-button:active {
       transform: scale(0.94);
     }
+    .capsule-btn-reset:hover {
+      background: rgba(239, 68, 68, 0.32) !important;
+      border-color: rgba(239, 68, 68, 0.65) !important;
+      color: #fca5a5 !important;
+    }
+    .capsule-btn-reset.is-resetting span {
+      display: inline-block;
+      animation: spinReset 0.7s linear infinite;
+    }
+    @keyframes spinReset {
+      100% { transform: rotate(-360deg); }
+    }
 
-    /* Capsule Ambient Shadow */
+    /* Capsule Ambient Shadow — centered */
     .capsule-shadow {
       position: absolute;
       bottom: 4px;
-      right: 15px;
-      width: 260px;
-      height: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 14px;
       border-radius: 50%;
-      filter: blur(14px);
-      background: rgba(15, 23, 42, 0.45);
+      filter: blur(10px);
+      background: rgba(15, 23, 42, 0.3);
       transition: 0.6s;
     }
-    .floating-stage.dock-left .capsule-shadow {
-      right: auto;
-      left: 15px;
+    .capsule.expanded ~ .capsule-shadow {
+      width: 260px;
+      height: 18px;
     }
 
-    /* Dock Flipping Handle */
-    .dock-handle {
+    /* Dock handle — hidden (centered capsule, no dock) */
+    .dock-handle { display: none; }
+
+    /* Avoidance line — hidden (centered capsule) */
+    .avoidance-line { display: none; }
+
+    /* Settings gear button — sits below the orb */
+    .orb-settings-btn {
       pointer-events: auto !important;
       position: absolute;
-      right: -24px;
-      bottom: 27px;
-      border: 0;
-      border-radius: 9px;
-      color: #94a3b8;
-      background: rgba(255, 255, 255, 0.75);
-      opacity: 0;
-      transform: translateX(-6px);
-      transition: all 0.25s ease;
-      padding: 4px 6px;
-      font-size: 11px;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: -8px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(30, 36, 54, 0.6);
+      backdrop-filter: blur(12px);
+      color: rgba(255, 255, 255, 0.5);
+      display: grid;
+      place-items: center;
       cursor: pointer !important;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .dock-handle span { letter-spacing: 2px; }
-    .floating-stage:hover .dock-handle {
-      opacity: 1;
-      transform: none;
-    }
-    .floating-stage.dock-left .dock-handle {
-      right: auto;
-      left: -24px;
-      transform: translateX(6px);
-    }
-    .floating-stage.dock-left:hover .dock-handle {
-      transform: none;
-    }
-
-    /* Collision Vector Avoidance Line */
-    .avoidance-line {
-      position: absolute;
-      right: 126px;
-      bottom: 99px;
-      width: 95px;
-      color: #4f46e5;
-      font-family: var(--font-mono, monospace);
-      font-size: 8px;
       opacity: 0;
-      transition: 0.4s;
+      transition: opacity 0.25s ease, color 0.2s ease, background 0.2s ease;
     }
-    .avoidance-line i {
-      height: 1px;
-      width: 100%;
-      display: block;
-      margin-top: 6px;
-      background: linear-gradient(90deg, transparent, #4f46e5);
-    }
-    .is-aware .avoidance-line { opacity: 0.8; }
-    .floating-stage.dock-left .avoidance-line {
-      right: auto;
-      left: 126px;
-    }
-    .floating-stage.dock-left .avoidance-line i {
-      transform: scaleX(-1);
+    .floating-stage:hover .orb-settings-btn { opacity: 1; }
+    .orb-settings-btn:hover {
+      color: #a5b4fc;
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.5);
     }
 
     /* Voice Waves 7-bar equalizer animation */
@@ -419,28 +589,28 @@
       to { transform: scaleY(0.28); }
     }
 
-    /* Thinking Field 5 orbiting particles */
+    /* Thinking Field — 3 clean pulsing dots instead of orbiting particles */
     .thinking-field {
-      position: relative;
-      width: 30px;
-      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      height: 24px;
     }
     .thinking-field i {
-      position: absolute;
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #ffffff;
-      animation: orbit 1.8s linear infinite;
+      animation: thinkPulse 1.2s ease-in-out infinite;
     }
-    .thinking-field i:nth-child(2) { animation-delay: -0.36s; }
-    .thinking-field i:nth-child(3) { animation-delay: -0.72s; }
-    .thinking-field i:nth-child(4) { animation-delay: -1.08s; }
-    .thinking-field i:nth-child(5) { animation-delay: -1.44s; }
-    @keyframes orbit {
-      from { transform: rotate(0deg) translateX(12px) rotate(0deg); opacity: 0.45; }
-      50% { opacity: 1; }
-      to { transform: rotate(360deg) translateX(12px) rotate(-360deg); opacity: 0.45; }
+    .thinking-field i:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-field i:nth-child(3) { animation-delay: 0.4s; }
+    .thinking-field i:nth-child(4) { display: none; }
+    .thinking-field i:nth-child(5) { display: none; }
+    @keyframes thinkPulse {
+      0%, 100% { transform: scale(0.6); opacity: 0.3; }
+      50% { transform: scale(1.2); opacity: 1; }
     }
 
     /* Success checkmark */
@@ -463,49 +633,42 @@
       line-height: 1;
     }
 
-    /* ===== MORPHING MODES ===== */
-    /* 1. Listening Mode */
+    /* ===== MORPHING MODES (Orb-centric) ===== */
+    /* 1. Listening Mode — orb pulses, shows transcript */
     .mode-listening .capsule {
-      width: 325px;
-      height: 76px;
-      border-radius: 28px;
-      transform: translateY(-4px);
-      box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 24px 50px rgba(10,13,24,0.4), 0 0 32px rgba(79, 70, 229, 0.45);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 12px 30px rgba(10,13,24,0.3), 0 0 28px rgba(79, 70, 229, 0.4);
     }
     .mode-listening .capsule-core {
-      width: 58px;
-      height: 58px;
-      border-radius: 20px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
       background: radial-gradient(circle, #a5b4fc 0%, #4f46e5 60%, #1e1b4b 100%);
     }
 
-    /* 2. Thinking Mode */
+    /* 2. Thinking Mode — orb shows particles */
     .mode-thinking .capsule {
-      width: 315px;
-      border-radius: 26px;
-      box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 24px 50px rgba(10,13,24,0.4), 0 0 30px rgba(168, 85, 247, 0.4);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 12px 30px rgba(10,13,24,0.3), 0 0 24px rgba(168, 85, 247, 0.35);
     }
     .mode-thinking .capsule-core {
       background: linear-gradient(140deg, #9333ea, #3b82f6);
     }
 
-    /* 3. Success Mode */
+    /* 3. Success Mode — orb glows green */
     .mode-success .capsule {
-      width: 295px;
-      transform: translateY(-3px) scale(1.02);
-      border-color: rgba(52, 211, 153, 0.6);
-      box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 24px 50px rgba(10,13,24,0.4), 0 0 35px rgba(16, 185, 129, 0.45);
+      border-color: rgba(52, 211, 153, 0.5);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 12px 30px rgba(10,13,24,0.3), 0 0 28px rgba(16, 185, 129, 0.4);
     }
     .mode-success .capsule-core {
       background: linear-gradient(140deg, #10b981, #059669);
       border-radius: 50%;
     }
 
-    /* Micro Victory Success Card */
+    /* Micro Victory Success Card — centered above orb */
     .success-card {
       position: absolute;
       pointer-events: auto !important;
-      right: 0;
+      left: 50%;
+      transform: translateX(-50%);
       bottom: 95px;
       width: 215px;
       border-radius: 16px;
@@ -517,10 +680,6 @@
       -webkit-backdrop-filter: blur(24px);
       animation: cardIn 0.65s cubic-bezier(.2, 1.35, .3, 1);
       color: #0f172a;
-    }
-    .floating-stage.dock-left .success-card {
-      right: auto;
-      left: 0;
     }
     .success-card span {
       font-family: var(--font-mono, monospace);
@@ -550,10 +709,11 @@
       to { opacity: 1; transform: none; }
     }
 
-    /* Micro Toast notification */
+    /* Micro Toast notification — centered */
     .toast {
       position: absolute;
-      right: 0;
+      left: 50%;
+      transform: translateX(-50%);
       bottom: -20px;
       font-size: 9.5px;
       font-family: var(--font-mono, monospace);
@@ -561,20 +721,17 @@
       white-space: nowrap;
       animation: fadeUp 0.5s;
     }
-    .floating-stage.dock-left .toast {
-      right: auto;
-      left: 0;
-    }
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: none; }
     }
 
-    /* ===== ACTION ORBIT (FAN-OUT CURVED LAYOUT) ===== */
+    /* ===== ACTION ORBIT (FAN-OUT — CENTERED) ===== */
     .action-orbit {
       pointer-events: none !important;
       position: absolute;
-      right: -5px;
+      left: 50%;
+      transform: translateX(-50%);
       bottom: 22px;
       width: 330px;
       height: 220px;
@@ -583,7 +740,7 @@
     .orbit-action {
       pointer-events: auto !important;
       position: absolute;
-      right: 10px;
+      left: 50%;
       bottom: 20px;
       display: flex;
       align-items: center;
@@ -597,8 +754,8 @@
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       opacity: 0;
-      transform: translate(0, 0) scale(0.6);
-      transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease, border-color 0.2s, box-shadow 0.2s;
+      transform: translate(-50%, 0) scale(0.6);
+      transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
       text-align: left;
       color: #0f172a;
       cursor: pointer !important;
@@ -608,96 +765,20 @@
       box-shadow: 0 16px 36px rgba(79, 70, 229, 0.35);
       background: #ffffff;
     }
-    .orbit-action:active {
-      transform: scale(0.96) !important;
-    }
     .orbit-action b {
-      width: 30px;
-      height: 30px;
-      display: grid;
-      place-items: center;
-      border-radius: 11px;
-      background: #e0e7ff;
-      color: #4338ca;
-      font-size: 16px;
-      flex: none;
+      width: 30px; height: 30px; display: grid; place-items: center;
+      border-radius: 11px; background: #e0e7ff; color: #4338ca; font-size: 16px; flex: none;
     }
-    .orbit-action span {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-    .orbit-action strong {
-      font-size: 11px;
-      font-weight: 700;
-      white-space: nowrap;
-      color: #0f172a;
-    }
-    .orbit-action small {
-      font-size: 8.5px;
-      color: #64748b;
-      white-space: nowrap;
-    }
+    .orbit-action span { display: flex; flex-direction: column; gap: 1px; }
+    .orbit-action strong { font-size: 11px; font-weight: 700; white-space: nowrap; color: #0f172a; }
+    .orbit-action small { font-size: 8.5px; color: #64748b; white-space: nowrap; }
 
-    /* 4. Actions Mode: Morph Capsule into Anchor & Fan-Out Orbit Buttons */
-    .mode-actions .capsule {
-      width: 250px;
-      height: 72px;
-      bottom: 8px;
-      border-radius: 28px;
-      transform: translateX(-36px);
-      box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 24px 50px rgba(10,13,24,0.4), 0 0 25px rgba(99, 102, 241, 0.35);
-    }
-    .mode-actions .capsule-copy {
-      display: none;
-    }
-    .mode-actions .vox-capsule-input {
-      display: none;
-    }
-    .mode-actions .capsule-core {
-      width: 56px;
-      height: 56px;
-      border-radius: 20px;
-    }
-    .mode-actions .capsule-button {
-      margin-left: auto;
-      background: rgba(255, 255, 255, 0.28);
-    }
-
-    /* Fan-out transform offsets with spring overshoot */
-    .mode-actions .action-0 {
-      transform: translate(-188px, -143px) scale(1);
-      opacity: 1;
-      transition-delay: 0.05s;
-    }
-    .mode-actions .action-1 {
-      transform: translate(-237px, -83px) scale(1);
-      opacity: 1;
-      transition-delay: 0.11s;
-    }
-    .mode-actions .action-2 {
-      transform: translate(-237px, -11px) scale(1);
-      opacity: 1;
-      transition-delay: 0.17s;
-    }
-    .mode-actions .action-3 {
-      transform: translate(-184px, 48px) scale(1);
-      opacity: 1;
-      transition-delay: 0.23s;
-    }
-
-    /* Dock Left adjustments for Action Orbit */
-    .floating-stage.dock-left .action-orbit {
-      right: auto;
-      left: -5px;
-      transform: scaleX(-1);
-    }
-    .floating-stage.dock-left .orbit-action > * {
-      transform: scaleX(-1);
-    }
-    .floating-stage.dock-left.mode-actions .capsule {
-      transform: translateX(36px);
-    }
+    /* 4. Actions Mode: Fan-Out centered */
+    .mode-actions .capsule-core { width: 56px; height: 56px; border-radius: 20px; }
+    .mode-actions .action-0 { transform: translate(-50%, -160px) scale(1); opacity: 1; transition-delay: 0.05s; }
+    .mode-actions .action-1 { transform: translate(-150%, -100px) scale(1); opacity: 1; transition-delay: 0.11s; }
+    .mode-actions .action-2 { transform: translate(50%, -100px) scale(1); opacity: 1; transition-delay: 0.17s; }
+    .mode-actions .action-3 { transform: translate(-50%, -50px) scale(1); opacity: 1; transition-delay: 0.23s; }
     .vox-shop-dialog-bar {
       display: flex;
       gap: 6px;
@@ -906,6 +987,123 @@
       border-color: var(--voice);
       color: var(--voice);
       background: var(--card-hover);
+    }
+
+    /* Segmented Navigation Tab Bar */
+    .vox-nav-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 6px 12px;
+      background: rgba(0, 0, 0, 0.16);
+      border-bottom: 1px solid var(--border);
+    }
+    .vox-nav-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 6px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-sec);
+      cursor: pointer !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+      user-select: none;
+    }
+    .vox-nav-tab:hover {
+      color: var(--ink-pri);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .vox-nav-tab.active {
+      background: var(--chip-bg);
+      border-color: var(--voice);
+      color: var(--voice);
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0, 242, 254, 0.15);
+    }
+
+    /* Address Preview Card */
+    .vox-preview-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 3.5px solid #10b981;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11.5px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+    .vox-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--ink-sec);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Web Presets Grid */
+    .vox-presets-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .vox-preset-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--ink-pri);
+      cursor: pointer !important;
+      transition: all 0.15s ease;
+      text-align: left;
+    }
+    .vox-preset-btn:hover {
+      border-color: var(--voice);
+      background: var(--card-hover);
+      transform: translateY(-1px);
+    }
+    .vox-preset-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* API Accordion Details */
+    .vox-api-accordion {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      transition: all 0.2s ease;
+    }
+    .vox-api-accordion[open] {
+      border-color: rgba(34, 211, 238, 0.35);
+    }
+    .vox-api-summary {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--ink-pri);
+      cursor: pointer !important;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      list-style: none;
+    }
+    .vox-api-summary::-webkit-details-marker {
+      display: none;
     }
 
     /* Live Voice Waveform */
@@ -1287,6 +1485,119 @@
       align-items: center;
       gap: 8px;
     }
+
+    /* ===== WORD CORRECTION BAR ===== */
+    .vox-word-bar {
+      position: fixed;
+      left: 50%;
+      bottom: 100px;
+      transform: translateX(-50%);
+      z-index: 2147483646;
+      pointer-events: auto !important;
+      min-width: 280px;
+      max-width: 520px;
+      background: var(--hud-bg, rgba(9, 13, 24, 0.92));
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.10));
+      border-radius: 16px;
+      padding: 10px 14px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45), 0 0 20px rgba(99, 102, 241, 0.2);
+      animation: wordBarIn 0.35s cubic-bezier(.2, 1.35, .35, 1);
+      color: var(--ink-pri, #F8FAFC);
+    }
+    @keyframes wordBarIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.95); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    }
+    .vox-word-bar-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .vox-word-bar-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--ink-sec, #94A3B8);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex: 1;
+    }
+    .vox-word-bar-btn {
+      pointer-events: auto !important;
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer !important;
+      transition: all 0.2s ease;
+    }
+    .vox-word-bar-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
+    }
+    .vox-word-bar-dismiss {
+      pointer-events: auto !important;
+      background: transparent;
+      border: 1px solid var(--border, rgba(255,255,255,0.1));
+      color: var(--ink-sec, #94A3B8);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 12px;
+      cursor: pointer !important;
+      transition: all 0.15s ease;
+    }
+    .vox-word-bar-dismiss:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+    .vox-word-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .vox-word-chip {
+      pointer-events: auto !important;
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--ink-pri, #F8FAFC);
+      cursor: pointer !important;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .vox-word-chip:hover {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.6);
+      transform: translateY(-1px);
+    }
+    .vox-word-chip.editing {
+      background: rgba(99, 102, 241, 0.3);
+      border-color: #6366f1;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+    }
+    .vox-word-chip-input {
+      pointer-events: auto !important;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1.5px solid #6366f1;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #fff;
+      outline: none;
+      min-width: 50px;
+      max-width: 140px;
+      font-family: inherit;
+    }
   `;
   shadow.appendChild(style);
 
@@ -1309,39 +1620,16 @@
 
   // 4. Injected Markup (Minimalist Capsule + Ambient Dialog)
   rootWrapper.innerHTML = `
-    <!-- Floating Stage: Morphing Capsule + Action Orbit (IrrhammCode/float) -->
-    <aside id="vox-floating-stage" class="floating-stage dock-right mode-ambient" aria-label="Vox Agent floating capsule">
-      <div class="avoidance-line"><span>collision vector</span><i></i></div>
-      <button id="vox-dock-handle" class="dock-handle" type="button" title="Pindah posisi dock (Kiri / Kanan)" aria-label="Move capsule to opposite edge"><span>···</span></button>
-      
-      <!-- Action Orbit -->
-      <div class="action-orbit" id="vox-action-orbit">
-        <button class="orbit-action action-0" id="orbit-act-buy" type="button" title="Instant Buy & Autonomous Checkout">
-          <b>↯</b>
-          <span><strong>Instant Buy</strong><small>Buy when ready</small></span>
-        </button>
-        <button class="orbit-action action-1" id="orbit-act-deals" type="button" title="Search Promo Codes & Discounts">
-          <b>%</b>
-          <span><strong>Coupon Hunt</strong><small>Find promo codes</small></span>
-        </button>
-        <button class="orbit-action action-2" id="orbit-act-compare" type="button" title="Compare Prices & Specifications">
-          <b>≋</b>
-          <span><strong>Compare</strong><small>Check best price</small></span>
-        </button>
-        <button class="orbit-action action-3" id="orbit-act-vault" type="button" title="Identity Vault & Custom Stores">
-          <b>◇</b>
-          <span><strong>Identity Vault</strong><small>Data & Stores</small></span>
-        </button>
-      </div>
-
+    <!-- Floating Stage: Central Command Island (Center-Bottom) -->
+    <aside id="vox-floating-stage" class="floating-stage mode-ambient" aria-label="Vox Agent floating island">
       <div class="capsule-shadow"></div>
       
-      <!-- The Morphing Capsule -->
+      <!-- The Morphing Capsule / Central Island -->
       <div class="capsule" id="vox-capsule" data-state="idle">
         <div class="capsule-specular"></div>
         
         <!-- Interactive Core (Audio waves, thinking particles, success checkmark, sparkle) -->
-        <div class="capsule-core" id="vox-capsule-core" title="Click to speak (Voice) or choose an action">
+        <div class="capsule-core" id="vox-capsule-core" title="Click to speak or type a command">
           <div class="ambient-core" id="core-icon-ambient">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor">
               <path d="M12 2.8c.85 5.5 2.85 7.5 8.35 8.35-5.5.85-7.5 2.85-8.35 8.35-.85-5.5-2.85-7.5-8.35-8.35 5.5-.85 7.5-2.85 8.35-8.35Z"/>
@@ -1362,16 +1650,21 @@
         </div>
 
         <!-- Capsule Copy / Speech Status -->
-        <div class="capsule-copy" id="vox-capsule-copy" title="Click to open Copilot Dialog">
+        <div class="capsule-copy" id="vox-capsule-copy" title="Click to expand">
           <span class="capsule-overline" id="capsule-overline-text">VOX IS READY</span>
-          <strong id="capsule-main-text">Ask anything or shop…</strong>
+          <strong id="capsule-main-text">Hey Vox or type…</strong>
         </div>
 
-        <!-- Inline Quick Input (for typing directly without opening big dialog) -->
-        <input id="vox-quick-input" class="vox-capsule-input" type="text" placeholder="Type a command…" autocomplete="off" />
+        <!-- Inline Quick Input (for typing directly) -->
+        <input id="vox-quick-input" class="vox-capsule-input" type="text" placeholder="Type or correct…" autocomplete="off" />
 
-        <!-- Capsule Action / Orbit Toggle Button -->
-        <button class="capsule-button" id="vox-capsule-btn-toggle" type="button" title="Open Action Orbit (↯, %, ≋, ◇) or Copilot">
+        <!-- Capsule Reset Button (attached directly to Vox) -->
+        <button class="capsule-button capsule-btn-reset" id="vox-capsule-btn-reset-inline" type="button" title="Reset Data & Lupa Memori (Restart Mic)">
+          <span>↺</span>
+        </button>
+
+        <!-- Capsule Action Button -->
+        <button class="capsule-button" id="vox-capsule-btn-toggle" type="button" title="Open Chat Panel">
           <span id="capsule-btn-icon">⌘</span>
         </button>
       </div>
@@ -1379,43 +1672,44 @@
       <!-- Micro Victory Success Card -->
       <div class="success-card" id="vox-success-card" style="display:none;">
         <span>Autonomous Action</span>
-        <strong id="success-card-title">$150 saved</strong>
-        <p id="success-card-desc">Vox found and applied <b>SAVE150</b></p>
+        <strong id="success-card-title">Done</strong>
+        <p id="success-card-desc">Action completed successfully</p>
       </div>
 
       <div class="toast" id="vox-floating-toast" style="display:none;"></div>
     </aside>
 
-    <!-- Floating Conversational Glass Dialog -->
+    <!-- Word Correction Bar (shown when transcript has editable words) -->
+    <div id="vox-word-correction-bar" class="vox-word-bar" style="display:none;">
+      <div class="vox-word-bar-header">
+        <span class="vox-word-bar-label">✏️ Tap a word to correct:</span>
+        <button id="vox-word-bar-run" class="vox-word-bar-btn" type="button">▶ Run</button>
+        <button id="vox-word-bar-close" class="vox-word-bar-dismiss" type="button">✕</button>
+      </div>
+      <div id="vox-word-chips" class="vox-word-chips"></div>
+    </div>
+
+    <!-- Floating Chat Panel (replaces old dialog) -->
     <div id="vox-dialog" class="vox-dialog">
+      <!-- Top Bar: Logo & Close -->
       <div class="vox-dialog-header">
         <div class="vox-dialog-title">
-          <span>Vox Copilot</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="font-size: 15px;">⚡</span>
+            <span>Vox Agent</span>
+          </span>
           <span class="vox-tag-domain" id="dialog-domain">Domain</span>
         </div>
         <div class="vox-dialog-tools">
           <button id="btn-chat-new" class="vox-icon-btn" title="Start New Conversation" style="color: var(--voice); border-color: var(--voice); font-weight: 700;">+ New</button>
-          <button id="btn-theme-toggle" class="vox-icon-btn" title="Toggle Light/Dark Glass">Theme</button>
-          <button id="btn-voice-persona" class="vox-icon-btn" title="Voice Mode & Speed: 1.0x Natural / 1.15x Fast / Native">Voice: 1.0x</button>
-          <button id="btn-audio-mute" class="vox-icon-btn" title="Toggle Audio Voice">Mute</button>
-          <button id="btn-history-toggle" class="vox-icon-btn" title="View Audit History">History</button>
-          <button id="btn-vault-toggle" class="vox-icon-btn" title="Identity Vault & Profiles">Vault</button>
-          <button id="btn-settings-toggle" class="vox-icon-btn" title="Anakin.io API Key & Settings">API</button>
-          <button id="btn-dialog-close" class="vox-icon-btn" style="padding: 5px 8px;">✕</button>
+          <button id="btn-theme-toggle" class="vox-icon-btn" title="Toggle Light/Dark Glass">🌓</button>
+          <button id="btn-dialog-close" class="vox-icon-btn" style="padding: 5px 8px; font-weight: 700;" title="Close Dialog">✕</button>
         </div>
       </div>
 
+      <!-- Chat Body -->
       <div class="vox-dialog-body" id="dialog-body-main">
-        <!-- Shopping Quick Action Chips inside Dialog -->
-        <div class="vox-shop-dialog-bar">
-          <button class="vox-shop-chip" id="dlg-chip-checkout">🛒 Instant Buy</button>
-          <button class="vox-shop-chip" id="dlg-chip-deals">🏷️ Coupon Hunt</button>
-          <button class="vox-shop-chip" id="dlg-chip-compare">⚖️ Compare Prices</button>
-          <button class="vox-shop-chip" id="dlg-chip-autofill">📦 Autofill Address</button>
-          <button class="vox-shop-chip" id="dlg-chip-vault" style="border-color: var(--voice); color: var(--voice); font-weight: 700;">🔐 Vault</button>
-        </div>
-
-        <!-- Multi-Turn Scrollable Chat Stream (Persisted across pages) -->
+        <!-- Multi-Turn Scrollable Chat Stream -->
         <div id="vox-chat-stream" class="vox-chat-stream"></div>
 
         <!-- Legacy DOM elements retained for backward compatibility -->
@@ -1424,42 +1718,29 @@
             <div class="vox-query-meta" id="query-meta-label">Live Query</div>
             <div id="dialog-transcript" style="font-size: 13.5px;">Click the mic or say "Hey Vox" to ask anything.</div>
           </div>
-
           <div class="vox-response-box" id="dialog-response-box" style="display: none;">
             <div id="response-answer-text" style="line-height: 1.6;"></div>
-
             <div id="response-table-wrap" style="display: none;">
-              <div style="font-size: 11px; font-weight: 600; color: var(--ink-sec); margin-bottom: 6px;" id="response-table-title">Market Alternatives (Anakin.io Scrape)</div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--ink-sec); margin-bottom: 6px;" id="response-table-title">Market Alternatives</div>
               <div style="overflow-x: auto;">
                 <table class="vox-table">
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Cost</th>
-                      <th>Perf / Specs</th>
-                      <th>Lock-in</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Product</th><th>Cost</th><th>Perf / Specs</th><th>Lock-in</th></tr></thead>
                   <tbody id="response-tbody"></tbody>
                 </table>
               </div>
             </div>
-
             <div id="response-worthit-wrap" class="vox-worthit-panel" style="display: none;">
               <div class="vox-worthit-row">
-                <div id="dialog-gauge" class="vox-gauge" style="--pct: 80;">
-                  <div id="dialog-score-num" class="score">80</div>
-                </div>
+                <div id="dialog-gauge" class="vox-gauge" style="--pct: 80;"><div id="dialog-score-num" class="score">80</div></div>
                 <div style="flex: 1;">
                   <div id="dialog-verdict-tag" style="font-size: 13px; font-weight: 700;">Worth It</div>
                   <div id="dialog-verdict-note" style="font-size: 11px; color: var(--ink-sec); margin-top: 3px;"></div>
                 </div>
               </div>
             </div>
-
             <div id="response-deals-wrap" class="vox-deals-panel" style="display: none; margin-top: 10px;">
               <div style="font-size: 11.5px; font-weight: 700; color: var(--voice); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-                <span style="display: flex; align-items: center; gap: 6px;">🏷️ Coupons & Deals Discovered</span>
+                <span style="display: flex; align-items: center; gap: 6px;">Coupons & Deals Discovered</span>
                 <span id="deals-count-badge" class="vox-tag-domain" style="font-size: 9.5px;">0 Coupons</span>
               </div>
               <div id="deals-list-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
@@ -1472,161 +1753,20 @@
           <button id="btn-copy-answer" class="vox-icon-btn">Copy Brief</button>
           <button id="btn-export-answer" class="vox-icon-btn">Download Cheatsheet</button>
         </div>
-      </div>
-
-      <!-- History Drawer (Toggled) -->
-      <div class="vox-dialog-body" id="dialog-body-history" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <span style="font-size: 11px; font-weight: 700; color: var(--ink-sec); text-transform: uppercase;">Past Audits</span>
-          <button id="btn-clear-history" class="vox-icon-btn" style="color: var(--bad);">Clear History</button>
-        </div>
-        <div class="vox-history-list" id="dialog-history-list"></div>
-      </div>
-
-      <!-- Settings Drawer (Toggled) -->
-      <div class="vox-dialog-body" id="dialog-body-settings" style="display: none; flex-direction: column; gap: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 11px; font-weight: 700; color: var(--ink-sec); text-transform: uppercase;">Engine & API Settings</span>
-          <span id="settings-status-badge" style="font-size: 10px; font-family: var(--font-mono); color: var(--voice); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px;">Local Heuristics</span>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <label style="font-size: 11.5px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 4px;">
-            <span style="display: flex; justify-content: space-between;">
-              <span>Groq API Key (Opsional - Llama 3.3 LLM Bebas)</span>
-              <a href="https://console.groq.com" target="_blank" style="color: var(--voice); text-decoration: none; font-size: 11px;">Dapatkan Gratis ↗</a>
-            </span>
-            <input id="input-groq-key" type="password" placeholder="gsk_... (opsional, untuk tanya jawab bebas)" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" />
-          </label>
-
-          <label style="font-size: 11.5px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 4px;">
-            <span>Anakin API Key (Forge Hackathon Scraper)</span>
-            <input id="input-anakin-key" type="password" placeholder="ask_... atau ak_live_..." class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" />
-          </label>
-
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-pri); cursor: pointer;">
-            <input id="chk-live-scrape" type="checkbox" />
-            <span>Enable Live Ghost Scraping via api.anakin.io</span>
-          </label>
-
-          <div style="border-top: 1px solid var(--border); margin-top: 4px; padding-top: 8px;">
-            <label style="font-size: 11.5px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 4px;">
-              <span style="display: flex; justify-content: space-between;">
-                <span>ElevenLabs API Key (Suara Manusia Ultra-Realistis)</span>
-                <a href="https://elevenlabs.io" target="_blank" style="color: var(--voice); text-decoration: none; font-size: 11px;">Daftar Gratis ↗</a>
-              </span>
-              <input id="input-elevenlabs-key" type="password" placeholder="Opsional — untuk suara setara manusia asli" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" />
-            </label>
-          </div>
-
-          <p style="font-size: 11px; color: var(--ink-sec); margin: 0; line-height: 1.45;">
-            *Jika dibiarkan kosong, Vox tetap aktif 100% menggunakan engine heuristik lokal & DOM scout gratis tanpa API key apa pun.
-          </p>
-        </div>
-
-        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
-          <button id="btn-save-settings" class="vox-icon-btn" style="border-color: var(--voice); color: var(--voice);">Save Settings</button>
-          <span id="lbl-settings-saved" style="font-size: 11px; color: var(--ok); display: none;">Saved!</span>
         </div>
       </div>
 
-      <!-- Identity Vault Drawer (Toggled) -->
-      <div class="vox-dialog-body" id="dialog-body-vault" style="display: none; flex-direction: column; gap: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 11px; font-weight: 700; color: var(--ink-sec); text-transform: uppercase;">Identity Vault</span>
-          <span id="vault-active-badge" style="font-size: 10px; font-family: var(--font-mono); color: var(--voice); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px;">Home</span>
-        </div>
-
-        <div style="display: flex; gap: 8px; margin-bottom: 4px;">
-          <button id="btn-vault-home" class="vox-icon-btn" style="flex: 1; border-color: var(--voice); color: var(--voice);">Home / Rumah</button>
-          <button id="btn-vault-office" class="vox-icon-btn" style="flex: 1;">Office / Kantor</button>
-        </div>
-
-        <div id="vault-profile-fields" style="display: flex; flex-direction: column; gap: 8px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-              <span>Full Name</span>
-              <input id="vault-fullname" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="Full Name" />
-            </label>
-            <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-              <span>Email</span>
-              <input id="vault-email" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="Email" />
-            </label>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-              <span>Phone</span>
-              <input id="vault-phone" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="Phone" />
-            </label>
-            <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-              <span>Username</span>
-              <input id="vault-username" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="Username" />
-            </label>
-          </div>
-          <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-            <span>Street Address</span>
-            <input id="vault-street" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="Street Address" />
-          </label>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-            <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-              <span>City</span>
-              <input id="vault-city" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="City" />
-            </label>
-            <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-              <span>Province</span>
-              <input id="vault-province" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="Province" />
-            </label>
-            <label style="font-size: 11px; color: var(--ink-sec); display: flex; flex-direction: column; gap: 3px;">
-              <span>Postal Code</span>
-              <input id="vault-postalcode" class="vox-quick-input" style="width: 100%; border: 1px solid var(--border);" placeholder="Postal" />
-            </label>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
-          <button id="btn-vault-save" class="vox-icon-btn" style="border-color: var(--voice); color: var(--voice);">Save Profile</button>
-          <button id="btn-vault-autofill" class="vox-icon-btn" style="border-color: #10b981; color: #10b981;">Autofill Page</button>
-          <span id="lbl-vault-saved" style="font-size: 11px; color: var(--ok); display: none;">Saved!</span>
-        </div>
-
-        <!-- Connected Stores & Custom Websites Hub -->
-        <div style="border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 11px; font-weight: 700; color: var(--ink-sec); text-transform: uppercase;">Custom Store Websites</span>
-            <span style="font-size: 9.5px; font-family: var(--font-mono); color: var(--voice);" id="vault-store-count">0 Websites</span>
-          </div>
-
-          <!-- Quick Add Current Site Button -->
-          <button id="btn-vault-add-current-site" class="vox-icon-btn" style="width: 100%; justify-content: center; margin-bottom: 8px; border-color: var(--voice); color: var(--voice); font-size: 11px;">
-            + Add Current Website
-          </button>
-
-          <!-- Add Store Form -->
-          <div id="vault-add-store-form" style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-              <input id="input-store-name" class="vox-quick-input" placeholder="Store Name (e.g. Amazon)" style="border: 1px solid var(--border); font-size: 11px; padding: 4px 6px;" />
-              <input id="input-store-domain" class="vox-quick-input" placeholder="Domain (e.g. amazon.com)" style="border: 1px solid var(--border); font-size: 11px; padding: 4px 6px;" />
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center;">
-              <input id="input-store-user" class="vox-quick-input" placeholder="Username (optional)" style="border: 1px solid var(--border); font-size: 11px; padding: 4px 6px;" />
-              <select id="select-store-profile" style="background: var(--card-bg); color: var(--ink-pri); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; padding: 4px;">
-                <option value="home">Profile: Home</option>
-                <option value="office">Profile: Office</option>
-              </select>
-              <button id="btn-vault-submit-store" class="vox-icon-btn" style="border-color: #10b981; color: #10b981; font-weight: 700; padding: 4px 10px;">Save</button>
-            </div>
-          </div>
-
-          <!-- Dynamic Custom Stores List -->
-          <div id="vault-connected-stores-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
-        </div>
-      </div>
+      <!-- Hidden backward-compatible drawers (empty stubs so JS refs don't crash) -->
+      <div id="dialog-body-history" style="display:none !important;"><div class="vox-history-list" id="dialog-history-list"></div></div>
+      <div id="dialog-body-settings" style="display:none !important;"></div>
+      <div id="dialog-body-vault" style="display:none !important;"></div>
+      <div id="dialog-body-web" style="display:none !important;"></div>
     </div>
   `;
 
   // 5. DOM References
   const floatingStage = shadow.getElementById('vox-floating-stage');
-  const dockHandle = shadow.getElementById('vox-dock-handle');
+  const dockHandle = null; // Removed — no dock handle in Central Island
   const capsule = shadow.getElementById('vox-capsule');
   const capsuleCore = shadow.getElementById('vox-capsule-core');
   const capsuleCopy = shadow.getElementById('vox-capsule-copy');
@@ -1634,6 +1774,7 @@
   const capsuleMainText = shadow.getElementById('capsule-main-text');
   const capsuleBtnToggle = shadow.getElementById('vox-capsule-btn-toggle');
   const capsuleBtnIcon = shadow.getElementById('capsule-btn-icon');
+  const capsuleBtnResetInline = shadow.getElementById('vox-capsule-btn-reset-inline');
   const successCard = shadow.getElementById('vox-success-card');
   const successCardTitle = shadow.getElementById('success-card-title');
   const successCardDesc = shadow.getElementById('success-card-desc');
@@ -1646,11 +1787,18 @@
   const iconSuccess = shadow.getElementById('core-icon-success');
   const iconActions = shadow.getElementById('core-icon-actions');
 
-  // Orbit action buttons
-  const orbitActBuy = shadow.getElementById('orbit-act-buy');
-  const orbitActDeals = shadow.getElementById('orbit-act-deals');
-  const orbitActCompare = shadow.getElementById('orbit-act-compare');
-  const orbitActVault = shadow.getElementById('orbit-act-vault');
+  // Orbit action buttons — removed in Central Island architecture
+  const orbitActBuy = null;
+  const orbitActDeals = null;
+  const orbitActCompare = null;
+  const orbitActVault = null;
+
+  // Word Correction Bar
+  const wordCorrectionBar = shadow.getElementById('vox-word-correction-bar');
+  const wordChipsContainer = shadow.getElementById('vox-word-chips');
+  const wordBarRunBtn = shadow.getElementById('vox-word-bar-run');
+  const wordBarCloseBtn = shadow.getElementById('vox-word-bar-close');
+  let wordCorrectionWords = []; // Current word chips state
 
   const micBtn = shadow.getElementById('vox-mic-trigger') || capsuleCore;
   const capsuleInfo = shadow.getElementById('vox-capsule-info') || capsuleCopy || capsuleMainText;
@@ -1662,47 +1810,65 @@
   const dialogDomain = shadow.getElementById('dialog-domain');
   const dialogCloseBtn = shadow.getElementById('btn-dialog-close');
   const themeToggleBtn = shadow.getElementById('btn-theme-toggle');
-  const voicePersonaBtn = shadow.getElementById('btn-voice-persona');
-  const muteBtn = shadow.getElementById('btn-audio-mute');
-  const historyToggleBtn = shadow.getElementById('btn-history-toggle');
-  const settingsToggleBtn = shadow.getElementById('btn-settings-toggle');
+  const voicePersonaBtn = null; // Removed — no settings panel
+  const muteBtn = null;
+  const historyToggleBtn = null;
+  const settingsToggleBtn = null;
 
   const bodyMain = shadow.getElementById('dialog-body-main');
   const bodyHistory = shadow.getElementById('dialog-body-history');
   const bodySettings = shadow.getElementById('dialog-body-settings');
-  const inputAnakinKey = shadow.getElementById('input-anakin-key');
-  const inputGroqKey = shadow.getElementById('input-groq-key');
-  const inputElevenlabsKey = shadow.getElementById('input-elevenlabs-key');
-  const chkLiveScrape = shadow.getElementById('chk-live-scrape');
-  const btnSaveSettings = shadow.getElementById('btn-save-settings');
-  const lblSettingsSaved = shadow.getElementById('lbl-settings-saved');
-  const settingsStatusBadge = shadow.getElementById('settings-status-badge');
+  const bodyWeb = shadow.getElementById('dialog-body-web');
+  const webCurrentDomainText = null; // Removed — no web tab
 
-  // Vault DOM refs
+  // Navigation Tabs — removed in Central Island architecture
+  const tabNavChat = null;
+  const tabNavAddress = null;
+  const tabNavWeb = null;
+  const tabNavSettings = null;
+
+  // Settings DOM refs — removed from UI, keys come from config.js / chrome.storage
+  const inputAnakinKey = null;
+  const inputGroqKey = null;
+  const inputElevenlabsKey = null;
+  const chkLiveScrape = null;
+  const selectVoxLanguage = null;
+  const btnSaveSettings = null;
+  const lblSettingsSaved = null;
+  const settingsStatusBadge = null;
+  const btnResetVoxState = null;
+  const lblResetVoxStatus = null;
+  const badgeMicState = null;
+
+  // Vault DOM refs — removed from UI, data comes from chrome.storage
   const bodyVault = shadow.getElementById('dialog-body-vault');
-  const btnVaultToggle = shadow.getElementById('btn-vault-toggle');
-  const btnVaultHome = shadow.getElementById('btn-vault-home');
-  const btnVaultOffice = shadow.getElementById('btn-vault-office');
-  const vaultActiveBadge = shadow.getElementById('vault-active-badge');
-  const vaultFullname = shadow.getElementById('vault-fullname');
-  const vaultEmail = shadow.getElementById('vault-email');
-  const vaultPhone = shadow.getElementById('vault-phone');
-  const vaultUsername = shadow.getElementById('vault-username');
-  const vaultStreet = shadow.getElementById('vault-street');
-  const vaultCity = shadow.getElementById('vault-city');
-  const vaultProvince = shadow.getElementById('vault-province');
-  const vaultPostalcode = shadow.getElementById('vault-postalcode');
-  const btnVaultSave = shadow.getElementById('btn-vault-save');
-  const btnVaultAutofill = shadow.getElementById('btn-vault-autofill');
-  const lblVaultSaved = shadow.getElementById('lbl-vault-saved');
-  const vaultConnectedStoresList = shadow.getElementById('vault-connected-stores-list');
-  const vaultStoreCount = shadow.getElementById('vault-store-count');
-  const btnVaultAddCurrentSite = shadow.getElementById('btn-vault-add-current-site');
-  const inputStoreName = shadow.getElementById('input-store-name');
-  const inputStoreDomain = shadow.getElementById('input-store-domain');
-  const inputStoreUser = shadow.getElementById('input-store-user');
-  const selectStoreProfile = shadow.getElementById('select-store-profile');
-  const btnVaultSubmitStore = shadow.getElementById('btn-vault-submit-store');
+  const btnVaultToggle = null;
+  const btnVaultHome = null;
+  const btnVaultOffice = null;
+  const vaultActiveBadge = null;
+  const vaultPreviewProfile = null;
+  const vaultPreviewNamePhone = null;
+  const vaultPreviewAddress = null;
+  const vaultPreviewCityProv = null;
+  const vaultFullname = null;
+  const vaultEmail = null;
+  const vaultPhone = null;
+  const vaultUsername = null;
+  const vaultStreet = null;
+  const vaultCity = null;
+  const vaultProvince = null;
+  const vaultPostalcode = null;
+  const btnVaultSave = null;
+  const btnVaultAutofill = null;
+  const lblVaultSaved = null;
+  const vaultConnectedStoresList = null;
+  const vaultStoreCount = null;
+  const btnVaultAddCurrentSite = null;
+  const inputStoreName = null;
+  const inputStoreDomain = null;
+  const inputStoreUser = null;
+  const selectStoreProfile = null;
+  const btnVaultSubmitStore = null;
   let currentVaultProfile = 'home';
 
   // Multi-Turn Chat Stream & Header Controls
@@ -1734,17 +1900,31 @@
   let isListening = false;
   let isMuted = false;
   let isSpeaking = false;          // Lock: true while Vox is speaking (prevents mic echo)
-  let isHandsFreeMode = true;      // Persistent hands-free mic — auto-restart after speech
+  let speechStartTime = 0;         // Timestamp when current speech started for freeze watchdogs
+  let isHandsFreeMode = false;     // Will be restored from storage on boot
   let isPageIngested = false;      // Pre-scraping loading state tracker
   let ingestedPageContext = null;   // Cached DOM context from proactive ingestion
+  let silentMode = false;          // When true: no TTS, no chat popup, no dialog auto-open
+  let voxLanguage = 'en-US';       // Speech recognition language (persisted in settings, default English)
   let currentVoiceEngine = 'neural'; // 'neural' | 'native' | 'elevenlabs'
   let voiceSpeed = 1.0;
   let currentAudio = null;
   let recognition = null;
   let currentHighlightEl = null;
   let currentFocusBadge = null;
+  let micPermissionGranted = false; // Tracks if mic permission was already granted
   const STORAGE_KEY = 'vox_audit_history';
   const CHAT_SESSION_KEY = 'vox_active_chat_session';
+  const VOX_MIC_STATE_KEY = 'vox_mic_state';
+
+  // Guard against orphaned content scripts when extension is reloaded in chrome://extensions
+  function isExtensionContextValid() {
+    try {
+      return typeof chrome !== 'undefined' && Boolean(chrome?.runtime?.id);
+    } catch (_) {
+      return false;
+    }
+  }
 
   // Active Multi-Turn Chat Session State
   let activeChatSession = {
@@ -1756,6 +1936,38 @@
     lastActiveAt: Date.now(),
     isOpen: false
   };
+
+  let pendingProductClarification = null;
+  let pendingModeContext = null;
+
+  // Load persisted language setting
+  if (chrome.storage?.local) {
+    chrome.storage.local.get({ voxLanguage: 'en-US' }, (s) => {
+      voxLanguage = s.voxLanguage || 'en-US';
+      if (selectVoxLanguage) selectVoxLanguage.value = voxLanguage;
+    });
+  }
+
+  // ─── Capsule Expand / Collapse Helpers ───
+  let capsuleCollapseTimer = null;
+  function expandCapsule(text, duration = 0, overline = null) {
+    if (!capsule) return;
+    capsule.classList.add('expanded');
+    if (capsuleMainText && text) capsuleMainText.textContent = text;
+    if (capsuleOverline && overline) capsuleOverline.textContent = overline;
+    clearTimeout(capsuleCollapseTimer);
+    if (duration > 0) {
+      capsuleCollapseTimer = setTimeout(() => collapseCapsule(), duration);
+    }
+  }
+  function collapseCapsule() {
+    if (!capsule) return;
+    // Keep expanded if agent loop is actively executing
+    if (typeof activeAgentLoop !== 'undefined' && activeAgentLoop && activeAgentLoop.isActive) return;
+    if (floatingMode === 'listening' || floatingMode === 'thinking') return;
+    capsule.classList.remove('expanded');
+    clearTimeout(capsuleCollapseTimer);
+  }
 
   // Text formatting & sanitization helpers
   function escapeHtml(str) {
@@ -1867,27 +2079,36 @@
             <span class="vox-bubble-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <div class="vox-bubble-text" style="font-size: 13px; line-height: 1.6;">
-            Hello! I'm Vox, your autonomous AI shopping copilot. This session is automatically synced and persists seamlessly as you browse products, view your cart, or proceed to checkout.
+            Halo! Saya Vox, asisten belanja pintar Anda. Apa yang ingin Anda lakukan hari ini? Pilih salah satu layanan utama kami di bawah atau langsung ucapkan kebutuhan Anda:
           </div>
           <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;">
-            <button class="vox-shop-chip" id="welcome-chip-deals" style="font-size: 11px; padding: 4px 8px;">🏷️ Hunt Deals</button>
-            <button class="vox-shop-chip" id="welcome-chip-compare" style="font-size: 11px; padding: 4px 8px;">⚖️ Compare Prices</button>
-            <button class="vox-shop-chip" id="welcome-chip-autofill" style="font-size: 11px; padding: 4px 8px;">📦 Autofill Address</button>
+            <button class="vox-shop-chip" id="welcome-chip-instant" style="font-size: 11px; padding: 5px 10px; border-color: #10b981; color: #10b981; font-weight: 600;">⚡ Instant Buy</button>
+            <button class="vox-shop-chip" id="welcome-chip-compare" style="font-size: 11px; padding: 5px 10px; border-color: var(--voice); color: var(--voice); font-weight: 600;">📊 Compare Prices</button>
+            <button class="vox-shop-chip" id="welcome-chip-deals" style="font-size: 11px; padding: 5px 10px; border-color: #f59e0b; color: #f59e0b; font-weight: 600;">🏷️ Coupon Hunt</button>
+            <button class="vox-shop-chip" id="welcome-chip-autofill" style="font-size: 11px; padding: 5px 10px; border-color: #8b5cf6; color: #8b5cf6; font-weight: 600;">📍 Identity Vault</button>
           </div>
         </div>
       </div>
     `;
-    container.querySelector('#welcome-chip-deals')?.addEventListener('click', () => {
-      appendChatMessage('user', '🏷️ Hunt Deals & Coupons');
-      executeAutonomousDealHunter('deals');
+    container.querySelector('#welcome-chip-instant')?.addEventListener('click', () => {
+      appendChatMessage('user', '⚡ Instant Buy');
+      initiateInstantBuyForProduct();
     });
     container.querySelector('#welcome-chip-compare')?.addEventListener('click', () => {
-      appendChatMessage('user', '⚖️ Compare Prices & Specs');
-      executeAutonomousCompare('compare');
+      appendChatMessage('user', '📊 Bandingkan Harga & Spesifikasi (Compare)');
+      pendingModeContext = 'compare';
+      const promptTxt = 'Produk apa yang ingin dibandingkan harga dan spesifikasinya? Sebutkan nama produk dan budget Anda (contoh: *headset gaming under 200rb*).';
+      appendChatMessage('agent', `**Mode Compare Aktif**\n\n${promptTxt}`);
+      speak('Mau bandingkan produk apa? Sebutkan produk dan budget Anda.');
+    });
+    container.querySelector('#welcome-chip-deals')?.addEventListener('click', () => {
+      appendChatMessage('user', '🏷️ Cari Kupon & Diskon (Coupon Hunt)');
+      executeAutonomousDealHunter('deals');
     });
     container.querySelector('#welcome-chip-autofill')?.addEventListener('click', () => {
-      appendChatMessage('user', '📦 Autofill Shipping Address');
-      executeAutonomousAutofill('autofill');
+      appendChatMessage('user', '📍 Buka Identity Vault');
+      switchDialogTab('address');
+      speak('Membuka Identity Vault untuk memeriksa profil alamat pengiriman Anda.');
     });
   }
 
@@ -1922,10 +2143,10 @@
       if (msg.extra?.isProactiveCheckout || msg.isProactiveCheckout) {
         extraHtml += `
           <div class="vox-proactive-card" style="margin-top: 8px;">
-            <div style="font-size: 11px; font-weight: 700; color: #10b981; margin-bottom: 4px;">⚡ Quick Checkout Actions</div>
+            <div style="font-size: 11px; font-weight: 700; color: #10b981; margin-bottom: 4px;">Quick Checkout Actions</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              <button class="vox-icon-btn btn-msg-autofill" style="border-color: #10b981; color: #10b981; font-weight: 700;">📦 Autofill Vault Address</button>
-              <button class="vox-icon-btn btn-msg-deals" style="border-color: var(--voice); color: var(--voice);">🏷️ Check Promo Coupons</button>
+              <button class="vox-icon-btn btn-msg-autofill" style="border-color: #10b981; color: #10b981; font-weight: 700;">Autofill Vault Address</button>
+              <button class="vox-icon-btn btn-msg-deals" style="border-color: var(--voice); color: var(--voice);">Check Promo Coupons</button>
             </div>
           </div>
         `;
@@ -1944,7 +2165,7 @@
         const codes = msg.extra.dealResult.promoCodes;
         extraHtml += `
           <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
-            <div style="font-size: 10.5px; font-weight: 700; color: var(--voice);">🏷️ Promo Coupons Found:</div>
+            <div style="font-size: 10.5px; font-weight: 700; color: var(--voice);">Promo Coupons Found:</div>
             ${codes.map(c => `
               <div class="vox-deal-card" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: var(--card-hover); border: 1px solid var(--border); border-radius: 6px;">
                 <div>
@@ -1998,7 +2219,7 @@
             </div>
             <div class="vox-quick-options-grid">
               ${msg.extra.quickOptions.map(opt => `
-                <button class="vox-quick-option-chip" data-query="${escapeHtml(opt.query || opt.label)}" data-action="${escapeHtml(opt.action || '')}" data-url="${escapeHtml(opt.url || '')}">
+                <button class="vox-quick-option-chip" data-query="${escapeHtml(opt.query || opt.label)}" data-action="${escapeHtml(opt.action || '')}" data-url="${escapeHtml(opt.url || opt.targetUrl || '')}" data-product="${escapeHtml(opt.targetProduct || '')}">
                   ${escapeHtml(opt.label)}
                 </button>
               `).join('')}
@@ -2012,7 +2233,7 @@
           <div class="vox-bubble-meta">
             <span style="display: flex; align-items: center; gap: 5px;">
               <span class="vox-avatar" style="color: var(--voice); font-size: 12px;">⚡</span>
-              <strong>Vox Copilot</strong>
+              <strong>Vox Agent</strong>
             </span>
             <div style="display: flex; align-items: center; gap: 6px;">
               <span class="vox-bubble-time">${escapeHtml(msg.time || '')}</span>
@@ -2043,14 +2264,64 @@
         chip.addEventListener('click', () => {
           const action = chip.getAttribute('data-action');
           const targetUrl = chip.getAttribute('data-url');
+          const targetProduct = chip.getAttribute('data-product');
           const q = chip.getAttribute('data-query');
+
+          if (action === 'run_tour') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = 'var(--voice)';
+            processNaturalQuery('tour');
+            return;
+          }
+
+          if (action === 'research_page') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = 'var(--voice)';
+            executeDeepPageResearch(q || document.title);
+            return;
+          }
+
+          if (action === 'explain_simple') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = 'var(--voice)';
+            executeExplainSimply(q || document.title);
+            return;
+          }
+
+          if (action === 'open_youtube') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = '#ef4444';
+            handleYouTubeMediaControl('open');
+            return;
+          }
+
+          if (action === 'wa_pinned_contact' || action === 'wa_my_contact' || action === 'open_whatsapp_web' || action === 'send_whatsapp') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = '#10b981';
+            const textToSend = targetUrl || q || lastResearchReportText || '';
+            triggerAutonomousWhatsAppAction(action === 'wa_my_contact' ? 'my_contact' : 'pinned', textToSend);
+            return;
+          }
+
+          if (action === 'copy_summary') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = 'var(--voice)';
+            const textToCopy = targetProduct || targetUrl || q || '';
+            navigator.clipboard.writeText(textToCopy).then(() => {
+              expandCapsule('Teks berhasil disalin ke clipboard!', 3000);
+              speak('Ringkasan riset berhasil disalin.');
+            }).catch(() => {
+              speak('Gagal menyalin teks.');
+            });
+            return;
+          }
 
           if (action === 'open_winner') {
             const destUrl = targetUrl || currentAnalysis?.winner?.url || 'https://www.tokopedia.com';
             chip.style.transform = 'scale(0.95)';
             chip.style.borderColor = 'var(--voice)';
             chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
-            speak('Opening the best deal store for you in a new tab.');
+            speak('Membuka toko produk pemenang di tab baru.');
             return;
           }
           if (action === 'buy_winner') {
@@ -2059,10 +2330,41 @@
             executeBuyAndCheckoutWinner(currentAnalysis?.winner || lastMissionWinner);
             return;
           }
-          if (action === 'autofill') {
+          if (action === 'deals') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = '#f59e0b';
+            executeAutonomousDealHunter('deals');
+            return;
+          }
+          if (action === 'autofill' || action === 'clarify_vault') {
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = '#8b5cf6';
+            switchDialogTab('address');
+            speak('Membuka Identity Vault untuk profil alamat Anda.');
+            return;
+          }
+          if (action === 'clarify_compare') {
+            const prod = targetProduct || pendingProductClarification?.product || q;
+            pendingProductClarification = null;
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = 'var(--voice)';
+            executeAutonomousLiveCompare(prod);
+            return;
+          }
+          if (action === 'clarify_instant_buy') {
+            const prod = targetProduct || pendingProductClarification?.product || q;
+            pendingProductClarification = null;
             chip.style.transform = 'scale(0.95)';
             chip.style.borderColor = '#10b981';
-            executeAutonomousAutofill('autofill');
+            initiateInstantBuyForProduct(prod);
+            return;
+          }
+          if (action === 'clarify_coupons') {
+            const prod = targetProduct || pendingProductClarification?.product || q;
+            pendingProductClarification = null;
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = '#f59e0b';
+            executeAutonomousDealHunter(prod || 'deals');
             return;
           }
           if (q) {
@@ -2142,7 +2444,7 @@
             item.querySelector('.vox-chat-bubble')?.appendChild(optContainer);
           }
           optContainer.innerHTML = newExtra.quickOptions.map(opt => `
-            <button class="vox-quick-chip vox-quick-option-chip" data-action="${opt.action || ''}" data-url="${opt.targetUrl || ''}" data-query="${opt.query || ''}">
+            <button class="vox-quick-chip vox-quick-option-chip" data-action="${opt.action || ''}" data-url="${opt.targetUrl || opt.url || ''}" data-query="${opt.query || ''}" data-product="${escapeHtml(opt.targetProduct || '')}">
               ${escapeHtml(opt.label)}
             </button>
           `).join('');
@@ -2151,20 +2453,58 @@
             chip.addEventListener('click', () => {
               const action = chip.getAttribute('data-action');
               const targetUrl = chip.getAttribute('data-url');
+              const targetProduct = chip.getAttribute('data-product');
               const q = chip.getAttribute('data-query');
 
               if (action === 'open_winner') {
-                const destUrl = targetUrl || 'https://www.tokopedia.com';
+                const destUrl = targetUrl || currentAnalysis?.winner?.url || 'https://www.tokopedia.com';
                 chip.style.transform = 'scale(0.95)';
                 chip.style.borderColor = 'var(--voice)';
                 chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
-                speak('Opening the best deal store for you in a new tab.');
+                speak('Membuka toko produk pemenang di tab baru.');
                 return;
               }
               if (action === 'buy_winner') {
                 chip.style.transform = 'scale(0.95)';
                 chip.style.borderColor = '#10b981';
                 executeBuyAndCheckoutWinner(currentAnalysis?.winner || lastMissionWinner);
+                return;
+              }
+              if (action === 'deals') {
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = '#f59e0b';
+                executeAutonomousDealHunter('deals');
+                return;
+              }
+              if (action === 'autofill' || action === 'clarify_vault') {
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = '#8b5cf6';
+                switchDialogTab('address');
+                speak('Membuka Identity Vault untuk profil alamat Anda.');
+                return;
+              }
+              if (action === 'clarify_compare') {
+                const prod = targetProduct || pendingProductClarification?.product || q;
+                pendingProductClarification = null;
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = 'var(--voice)';
+                executeAutonomousLiveCompare(prod);
+                return;
+              }
+              if (action === 'clarify_instant_buy') {
+                const prod = targetProduct || pendingProductClarification?.product || q;
+                pendingProductClarification = null;
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = '#10b981';
+                initiateInstantBuyForProduct(prod);
+                return;
+              }
+              if (action === 'clarify_coupons') {
+                const prod = targetProduct || pendingProductClarification?.product || q;
+                pendingProductClarification = null;
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = '#f59e0b';
+                executeAutonomousDealHunter(prod || 'deals');
                 return;
               }
               if (q) {
@@ -2194,6 +2534,9 @@
       chrome.storage.local.remove([CHAT_SESSION_KEY]);
     } else {
       localStorage.removeItem(CHAT_SESSION_KEY);
+    }
+    if (typeof clearActiveMission === 'function') {
+      clearActiveMission();
     }
     const stream = shadow.getElementById('vox-chat-stream');
     if (stream) {
@@ -2370,12 +2713,20 @@
     const cleanName = name || cleanDomain.split('.')[0].toUpperCase();
     const id = 'store_' + Date.now();
 
+    let icon = '🌐';
+    if (cleanDomain.includes('shopee')) icon = '🛍️';
+    else if (cleanDomain.includes('tokopedia')) icon = '🟢';
+    else if (cleanDomain.includes('blibli')) icon = '🔵';
+    else if (cleanDomain.includes('lazada')) icon = '🔴';
+    else if (cleanDomain.includes('amazon')) icon = '📦';
+    else if (cleanDomain.includes('tiktok')) icon = '🎵';
+
     const existingIdx = customStores.findIndex(s => s.domain === cleanDomain);
     const storeObj = {
       id,
       name: cleanName,
       domain: cleanDomain,
-      icon: '🌐',
+      icon: icon,
       accountUser: user || 'user',
       defaultProfile: profile || 'home',
       status: 'connected',
@@ -2398,6 +2749,336 @@
     renderConnectedStores();
   }
 
+  function getConfiguredStoreTargets() {
+    if (Array.isArray(customStores) && customStores.length > 0) {
+      return customStores.map(s => {
+        const d = ((s.domain || '') + ' ' + (s.name || '')).toLowerCase();
+        let key = 'shopee';
+        if (d.includes('tokopedia')) key = 'tokopedia';
+        else if (d.includes('blibli')) key = 'blibli';
+        else if (d.includes('amazon')) key = 'amazon';
+        else if (d.includes('lazada')) key = 'lazada';
+        else if (d.includes('tiktok')) key = 'tiktok';
+        else if (d.includes('shopee')) key = 'shopee';
+        else key = (s.name || 'store').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return {
+          key,
+          name: s.name || key,
+          domain: s.domain || `${key}.com`,
+          icon: s.icon || '🛍️'
+        };
+      });
+    }
+    const host = (window.location.hostname || '').toLowerCase();
+    if (host.includes('tokopedia')) {
+      return [{ key: 'tokopedia', name: 'Tokopedia', domain: 'tokopedia.com', icon: '🟢' }];
+    } else if (host.includes('blibli')) {
+      return [{ key: 'blibli', name: 'Blibli', domain: 'blibli.com', icon: '🔵' }];
+    } else if (host.includes('amazon')) {
+      return [{ key: 'amazon', name: 'Amazon Global', domain: 'amazon.com', icon: '📦' }];
+    }
+    return [{ key: 'shopee', name: 'Shopee', domain: 'shopee.co.id', icon: '🛍️' }];
+  }
+
+  function isElementVisible(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    try {
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+        return false;
+      }
+    } catch (_) {}
+    return true;
+  }
+
+  function robustClick(targetEl) {
+    if (!targetEl) return false;
+    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    targetEl.classList.add('vox-halo-highlight');
+
+    const rect = targetEl.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+
+    const eventOpts = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      screenX: x,
+      screenY: y,
+      button: 0,
+      buttons: 1
+    };
+
+    try { targetEl.dispatchEvent(new PointerEvent('pointerover', eventOpts)); } catch (_) {}
+    try { targetEl.dispatchEvent(new MouseEvent('mouseover', eventOpts)); } catch (_) {}
+    try { targetEl.dispatchEvent(new PointerEvent('pointerdown', eventOpts)); } catch (_) {}
+    try { targetEl.dispatchEvent(new MouseEvent('mousedown', eventOpts)); } catch (_) {}
+    try { targetEl.focus(); } catch (_) {}
+    try { targetEl.dispatchEvent(new PointerEvent('pointerup', eventOpts)); } catch (_) {}
+    try { targetEl.dispatchEvent(new MouseEvent('mouseup', eventOpts)); } catch (_) {}
+    try { targetEl.dispatchEvent(new MouseEvent('click', eventOpts)); } catch (_) {}
+    try { targetEl.click(); } catch (_) {}
+
+    setTimeout(() => targetEl.classList.remove('vox-halo-highlight'), 2500);
+    return true;
+  }
+
+  function isSearchPage() {
+    const url = (window.location.href || '').toLowerCase();
+    // Query string indicators
+    if (/[?&](q|keyword|query|search|keywords)=/i.test(url)) return true;
+    // URL path indicators for search/discovery
+    if (/tokopedia\.com\/(search|find|p|hot|promo|discovery)/i.test(url)) return true;
+    if (/shopee\.co\.id\/(search|find|daily_discover)/i.test(url)) return true;
+    if (/blibli\.com\/(cari|backend\/search)/i.test(url)) return true;
+    if (/lazada\.co\.id\/catalog/i.test(url)) return true;
+    if (/amazon\.[a-z.]+\/s(\?|\/)/i.test(url)) return true;
+    if (/\/(search|find|cari|catalog|discovery)\b/i.test(url)) return true;
+
+    // DOM containers strictly present on search result pages
+    if (document.querySelector(
+      '.shopee-search-item-result, ul.shopee-search-item-result__items, ' +
+      'div[data-testid="divSRPContentItem"], div[data-testid="spListContainer"], ' +
+      'div[data-testid="master-product-card"], div[data-component-type="s-search-result"]'
+    )) {
+      return true;
+    }
+    return false;
+  }
+
+  const CARD_CONTAINER_SELECTOR = '.shopee-search-item-result__item, div[data-sqi], [data-testid="divSRPContentItem"], [data-testid*="ProductCard" i], .product-card, div[class*="ProductCard"], article';
+
+  function findProductPageBuyNowButton() {
+    if (isSearchPage()) return null;
+
+    // 1. Direct platform selectors specifically for BUY NOW / BELI SEKARANG (NOT add to cart)
+    const buyNowSelectors = [
+      // Shopee: "Beli Sekarang"
+      'button.btn-solid-primary',
+      'button[class*="btn-solid-primary"]',
+      '.shopee-button-solid--primary',
+      'button.btn--l[class*="primary"]',
+      // Tokopedia: "Beli Langsung"
+      'button[data-testid="pdpBtnNormalPrimary"]',
+      'button[data-testid="pdpBtnFloatingPrimary"]',
+      // Blibli: "Beli Sekarang"
+      'button[data-testid*="buyNow" i]',
+      'button.buy-now__button',
+      // Lazada & TikTok Shop: "Beli Sekarang" / "Buy Now"
+      'button.pdp-button_theme_orange',
+      'button[class*="buy-now" i]',
+      'button[class*="buyNow" i]',
+      'button[data-e2e="pdp-buy-now"]',
+      // Amazon / Shopify / Generic
+      '#buy-now-button',
+      '#btn-buy-now',
+      '#cs-buy-now',
+      'button[name="buy_now"]',
+      '.buy-now',
+      '.btn-buy-now',
+      '[data-testid*="buy-now" i]:not([data-testid*="cart" i])',
+      '[aria-label*="beli sekarang" i]',
+      '[aria-label*="beli langsung" i]',
+      '[aria-label*="buy now" i]'
+    ];
+
+    for (const sel of buyNowSelectors) {
+      try {
+        const candidates = Array.from(document.querySelectorAll(sel));
+        for (const el of candidates) {
+          if (el.closest(CARD_CONTAINER_SELECTOR)) continue;
+          if (isElementVisible(el)) {
+            return el;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Scan visible buttons by strict "Beli Sekarang" / "Beli Langsung" / "Buy Now" text
+    const buyNowTextPattern = /\b(beli\s*sekarang|beli\s*langsung|buy\s*now|buy\s*it\s*now|beli\s*dengan\s*voucher)\b/i;
+    const allButtons = Array.from(document.querySelectorAll('button, a, [role="button"], input[type="submit"], input[type="button"]'))
+      .filter(el => !el.closest(CARD_CONTAINER_SELECTOR) && isElementVisible(el));
+
+    for (const el of allButtons) {
+      const txt = (el.innerText || el.textContent || el.getAttribute('aria-label') || el.value || '').trim();
+      if (/keranjang|cart|bag/i.test(txt)) continue;
+      if (buyNowTextPattern.test(txt)) {
+        return el;
+      }
+    }
+
+    return null;
+  }
+
+  function findProductPageAddToCartButton() {
+    if (isSearchPage()) return null;
+
+    const cartSelectors = [
+      // Shopee: "Masukkan Keranjang"
+      'button.btn-tinted',
+      'button[class*="btn-tinted"]',
+      // Tokopedia: "+ Keranjang"
+      'button[data-testid="pdpBtnNormalSecondary"]',
+      'button[data-testid="pdpBtnFloatingSecondary"]',
+      // Blibli / Lazada / TikTok
+      'button[data-testid*="addToCart" i]',
+      'button[class*="add-to-cart" i]',
+      'button[class*="cart-button" i]',
+      '#add-to-cart-button',
+      '#btn-add-cart',
+      '#cs-add-to-cart',
+      '.add-to-cart',
+      '.btn-add-to-cart',
+      '[aria-label*="tambah ke keranjang" i]',
+      '[aria-label*="masukkan keranjang" i]',
+      '[aria-label*="add to cart" i]'
+    ];
+
+    for (const sel of cartSelectors) {
+      try {
+        const candidates = Array.from(document.querySelectorAll(sel));
+        for (const el of candidates) {
+          if (el.closest(CARD_CONTAINER_SELECTOR)) continue;
+          if (isElementVisible(el)) return el;
+        }
+      } catch (_) {}
+    }
+
+    const cartTextPattern = /\b(tambah(kan)?\s*ke\s*keranjang|masuk(kan)?\s*ke?\s*keranjang|\+?\s*keranjang|add\s*to\s*cart|add\s*to\s*bag)\b/i;
+    const allButtons = Array.from(document.querySelectorAll('button, a, [role="button"], input[type="submit"], input[type="button"]'))
+      .filter(el => !el.closest(CARD_CONTAINER_SELECTOR) && isElementVisible(el));
+
+    for (const el of allButtons) {
+      const txt = (el.innerText || el.textContent || el.getAttribute('aria-label') || el.value || '').trim();
+      if (cartTextPattern.test(txt)) return el;
+    }
+
+    return null;
+  }
+
+  function findProductPageBuyButton() {
+    // 1. Strictly prioritize the BUY NOW / Beli Sekarang button
+    const buyNow = findProductPageBuyNowButton();
+    if (buyNow) return buyNow;
+
+    // 2. Fallback to Add to Cart button if no dedicated Buy Now button exists on page
+    return findProductPageAddToCartButton();
+  }
+
+  function isProductDetailPage() {
+    if (isSearchPage()) return false;
+    const url = (window.location.href || '').toLowerCase();
+    if (/shopee\.co\.id\/.*-i\.\d+\.\d+/i.test(url) || /shopee\.co\.id\/product\//i.test(url)) return true;
+    if (/tokopedia\.com\/[^\/]+\/[^\/]+/i.test(url) && !/tokopedia\.com\/(search|find|p|hot|promo|discovery)/i.test(url)) return true;
+    if (/blibli\.com\/p\//i.test(url)) return true;
+    if (/lazada\.co\.id\/products\//i.test(url)) return true;
+    if (/amazon\.[a-z.]+\/(dp|gp\/product)\//i.test(url)) return true;
+    if (document.querySelector('.product-briefing, div[data-testid="pdpMainImage"], #productTitle, .pdp-block, [data-testid="pdpBtnNormalPrimary"]')) return true;
+    if (findProductPageBuyButton()) return true;
+    return false;
+  }
+
+  async function autoSelectProductVariantsIfRequired() {
+    try {
+      // 1. Shopee variant options
+      const shopeeVariantButtons = Array.from(document.querySelectorAll('button.product-variation, .product-variation, button[class*="product-variation"]'));
+      if (shopeeVariantButtons.length > 0) {
+        const groups = [];
+        const seenParents = new Set();
+        for (const btn of shopeeVariantButtons) {
+          const parent = btn.parentElement?.parentElement || btn.parentElement;
+          if (parent && !seenParents.has(parent)) {
+            seenParents.add(parent);
+            groups.push(parent);
+          }
+        }
+        for (const grp of groups) {
+          const isSelected = grp.querySelector('.product-variation--selected, [class*="selected"], [aria-selected="true"]');
+          if (!isSelected) {
+            const availableBtn = grp.querySelector('button.product-variation:not(.product-variation--disabled):not([disabled])') ||
+                                 grp.querySelector('.product-variation:not([class*="disabled"]):not([disabled])');
+            if (availableBtn) {
+              console.log('[Vox Agent] Auto-selecting product variant on Shopee:', availableBtn.innerText);
+              availableBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              robustClick(availableBtn);
+              await new Promise(r => setTimeout(r, 350));
+            }
+          }
+        }
+      }
+
+      // 2. Tokopedia variant options
+      const tkpdVariantButtons = Array.from(document.querySelectorAll('button[data-testid*="pdpVariantChip"], [data-testid*="pdpVariant" i] button, [data-testid*="VariantLevel"] button'));
+      if (tkpdVariantButtons.length > 0) {
+        const groups = [];
+        const seenParents = new Set();
+        for (const btn of tkpdVariantButtons) {
+          const parent = btn.closest('[data-testid*="pdpVariantLevel"]') || btn.parentElement;
+          if (parent && !seenParents.has(parent)) {
+            seenParents.add(parent);
+            groups.push(parent);
+          }
+        }
+        for (const grp of groups) {
+          const isSelected = grp.querySelector('[aria-selected="true"], [data-selected="true"], [class*="active"], [class*="selected"]');
+          if (!isSelected) {
+            const availableBtn = grp.querySelector('button:not([disabled])');
+            if (availableBtn) {
+              console.log('[Vox Agent] Auto-selecting product variant on Tokopedia:', availableBtn.innerText);
+              availableBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              robustClick(availableBtn);
+              await new Promise(r => setTimeout(r, 350));
+            }
+          }
+        }
+      }
+
+      // 3. Generic variant chips
+      const genericVariants = Array.from(document.querySelectorAll('[class*="variant"] button:not([disabled]), [class*="option-item"] button:not([disabled])'));
+      if (genericVariants.length > 0) {
+        const unselected = genericVariants.filter(b => !/selected|active/i.test(b.className));
+        if (unselected.length > 0 && genericVariants.every(b => !/selected|active/i.test(b.className))) {
+          unselected[0].click();
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+    } catch (e) {
+      console.warn('[Vox Agent] Variant selection notice:', e);
+    }
+  }
+
+  async function initiateInstantBuyForProduct(productTerm = '') {
+    openDialog();
+    switchDialogTab('chat');
+
+    // 1. Check if current page is already a Product Detail Page (PDP)
+    const pdpButton = findProductPageBuyButton();
+    if (pdpButton || isProductDetailPage()) {
+      appendChatMessage('agent', `**Instant Buy Diaktifkan**\n\nMenambahkan produk halaman ini ke keranjang dan memproses checkout otomatis…`);
+      speak('Menjalankan Instant Buy untuk produk ini.');
+      await executeAutonomousCheckout('checkout');
+      return;
+    }
+
+    if (productTerm && productTerm.trim().length >= 2) {
+      appendChatMessage('agent', `**Instant Buy: "${escapeHtml(productTerm)}"**\n\nMencari produk terbaik di toko dan langsung memproses checkout…`);
+      speak(`Mencari ${productTerm} untuk Instant Buy.`);
+      await physicallyTypeAndClickStoreSearch(productTerm);
+      await new Promise(r => setTimeout(r, 1500));
+      await executeBuyAndCheckoutWinner({ title: productTerm });
+      return;
+    }
+
+    pendingModeContext = 'instant_buy';
+    appendChatMessage('agent', `**Mode Instant Buy Aktif**\n\nProduk apa yang ingin langsung Anda beli dan checkout sekarang? Sebutkan nama produknya.`);
+    speak('Mau beli produk apa? Sebutkan nama produknya.');
+  }
+
   function renderConnectedStores() {
     const listEl = shadow.getElementById('vault-connected-stores-list');
     if (!listEl) return;
@@ -2409,8 +3090,8 @@
     if (!customStores.length) {
       listEl.innerHTML = `
         <div style="font-size: 11px; color: var(--ink-sec); text-align: center; padding: 14px; background: var(--card-bg); border: 1px dashed var(--border); border-radius: 8px;">
-          No custom stores saved yet.<br>
-          Use the button above to add your favorite online stores.
+          Belum ada alamat web tersimpan.<br>
+          Gunakan tombol di atas atau klik preset untuk menambahkan toko favoritmu.
         </div>
       `;
       return;
@@ -2426,15 +3107,18 @@
               <div style="font-size: 11.5px; font-weight: 650; color: var(--ink-pri); display: flex; align-items: center; gap: 5px;">
                 <span>${escapeHtml(store.name)}</span>
                 <span style="font-size: 9.5px; color: var(--ink-sec); font-family: var(--font-mono);">(${escapeHtml(store.domain)})</span>
-                ${isCurrentPage ? '<span style="font-size: 8.5px; background: var(--chip-bg); color: var(--voice); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border);">Active</span>' : ''}
+                ${isCurrentPage ? '<span style="font-size: 8.5px; background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 1px 5px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 Aktif</span>' : ''}
               </div>
               <div style="font-size: 10px; color: var(--ink-sec); font-family: var(--font-mono);">
-                User: @${escapeHtml(store.accountUser)} · Profile: ${store.defaultProfile === 'office' ? 'Office' : 'Home'}
+                Profil Alamat: ${store.defaultProfile === 'office' ? '🏢 Kantor' : '🏠 Rumah'}
               </div>
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="vox-icon-btn btn-delete-custom-store" data-id="${store.id}" title="Remove this website" style="color: var(--bad); border-color: var(--border); padding: 3px 6px; font-size: 11px;">
+            <a href="https://${escapeHtml(store.domain)}" target="_blank" class="vox-icon-btn" style="text-decoration: none; padding: 3px 8px; font-size: 10px; color: var(--voice); border-color: var(--voice);" title="Buka website toko ini">
+              ↗ Buka
+            </a>
+            <button class="vox-icon-btn btn-delete-custom-store" data-id="${store.id}" title="Hapus website ini" style="color: var(--bad); border-color: var(--border); padding: 3px 6px; font-size: 11px;">
               🗑️
             </button>
           </div>
@@ -2473,12 +3157,25 @@
 
   if (btnVaultAddCurrentSite) {
     const currentHost = window.location.hostname;
-    btnVaultAddCurrentSite.textContent = `+ Add This Website (${currentHost})`;
+    btnVaultAddCurrentSite.textContent = `+ Tambahkan Web Ini (${currentHost})`;
     btnVaultAddCurrentSite.addEventListener('click', () => {
       addCustomStore(document.title.split(/[-|–—]/)[0].trim() || currentHost, currentHost, 'user', currentVaultProfile);
       playUiChime('ready');
     });
   }
+
+  // E-Commerce Marketplace Presets Click Handlers
+  shadow.querySelectorAll('.vox-preset-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const name = btn.getAttribute('data-name') || '';
+      const domain = btn.getAttribute('data-domain') || '';
+      const url = btn.getAttribute('data-url') || ('https://' + domain);
+      addCustomStore(name, domain, 'user', currentVaultProfile);
+      playUiChime('ready');
+      window.open(url, '_blank');
+    });
+  });
 
   if (btnChatNew) {
     btnChatNew.addEventListener('click', resetChatSession);
@@ -2641,25 +3338,25 @@
 
     if (nextMode === 'ambient') {
       if (iconAmbient) iconAmbient.style.display = 'grid';
-      if (capsuleOverline) capsuleOverline.textContent = 'VOX IS READY';
+      if (capsuleOverline) capsuleOverline.textContent = options.overline || 'VOX IS READY';
       if (capsuleMainText) capsuleMainText.textContent = options.text || 'Ask anything or shop…';
       if (capsuleBtnIcon) capsuleBtnIcon.textContent = '⌘';
       if (successCard) successCard.style.display = 'none';
     } else if (nextMode === 'listening') {
       if (iconListening) iconListening.style.display = 'flex';
-      if (capsuleOverline) capsuleOverline.textContent = 'I’M LISTENING';
+      if (capsuleOverline) capsuleOverline.textContent = options.overline || 'VOX IS LISTENING';
       if (capsuleMainText) capsuleMainText.textContent = options.text || 'Tell me what you need…';
       if (capsuleBtnIcon) capsuleBtnIcon.textContent = '×';
       if (successCard) successCard.style.display = 'none';
     } else if (nextMode === 'thinking') {
       if (iconThinking) iconThinking.style.display = 'block';
-      if (capsuleOverline) capsuleOverline.textContent = 'AGENTS AT WORK';
+      if (capsuleOverline) capsuleOverline.textContent = options.overline || 'VOX IS THINKING';
       if (capsuleMainText) capsuleMainText.textContent = options.text || 'Analyzing page & prices…';
       if (capsuleBtnIcon) capsuleBtnIcon.textContent = '×';
       if (successCard) successCard.style.display = 'none';
     } else if (nextMode === 'success') {
       if (iconSuccess) iconSuccess.style.display = 'block';
-      if (capsuleOverline) capsuleOverline.textContent = 'ACTION COMPLETED';
+      if (capsuleOverline) capsuleOverline.textContent = options.overline || 'VOX COMPLETED';
       if (capsuleMainText) capsuleMainText.textContent = options.text || 'Action completed successfully!';
       if (capsuleBtnIcon) capsuleBtnIcon.textContent = '✓';
       if (successCard) {
@@ -2669,8 +3366,8 @@
       }
     } else if (nextMode === 'actions') {
       if (iconActions) iconActions.style.display = 'block';
-      if (capsuleOverline) capsuleOverline.textContent = 'WHAT CAN I DO?';
-      if (capsuleMainText) capsuleMainText.textContent = 'Select shopping action';
+      if (capsuleOverline) capsuleOverline.textContent = options.overline || 'WHAT CAN I DO?';
+      if (capsuleMainText) capsuleMainText.textContent = options.text || 'Select shopping action';
       if (capsuleBtnIcon) capsuleBtnIcon.textContent = '×';
       if (successCard) successCard.style.display = 'none';
     }
@@ -2685,24 +3382,63 @@
     showFloatingToast(floatingDock === 'left' ? 'Dock: Left' : 'Dock: Right');
   }
 
-  function setCapsuleState(state, subtext) {
-    if (capsule) capsule.dataset.state = state;
-    if (statusSub) statusSub.textContent = subtext;
+  function setCapsuleState(state, subtext, overline) {
+    if (capsule) {
+      capsule.dataset.state = state;
+      // Keep capsule expanded when active so user can always see what Vox is doing
+      if (state !== 'idle') {
+        capsule.classList.add('expanded');
+      }
+    }
+    if (statusSub) statusSub.textContent = subtext || '';
+    if (capsuleOverline && overline) capsuleOverline.textContent = overline;
+    if (capsuleMainText && subtext) capsuleMainText.textContent = subtext;
+
     if (state === 'listening' || state === 'speaking') {
       if (waveform) waveform.style.display = 'inline-flex';
     } else {
       if (waveform) waveform.style.display = 'none';
     }
 
-    // Sync with modern floating stage mode
+    // Dynamic gradient on capsule core based on state
+    if (capsuleCore) {
+      if (state === 'observing') {
+        capsuleCore.style.background = 'linear-gradient(135deg, #0891b2, #06b6d4)';
+      } else if (state === 'reasoning' || state === 'thinking') {
+        capsuleCore.style.background = 'linear-gradient(135deg, #4f46e5, #818cf8)';
+      } else if (state === 'acting' || state === 'navigating') {
+        capsuleCore.style.background = 'linear-gradient(135deg, #d97706, #f59e0b)';
+      } else if (state === 'speaking') {
+        capsuleCore.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+      } else if (state === 'listening') {
+        capsuleCore.style.background = 'linear-gradient(135deg, #0284c7, #38bdf8)';
+      } else {
+        capsuleCore.style.background = 'linear-gradient(135deg, #4666ff, #849cff)';
+      }
+    }
+
+    // Sync with modern floating stage mode & update labels
     if (state === 'listening') {
-      setFloatingMode('listening', { text: subtext || 'Listening to voice…' });
-    } else if (state === 'reasoning') {
-      setFloatingMode('thinking', { text: subtext || 'Processing request…' });
+      setFloatingMode('listening', { text: subtext || 'Listening to your voice…', overline: overline || 'VOX IS LISTENING' });
+      expandCapsule(subtext || 'Listening…', 0, overline || 'VOX IS LISTENING');
+    } else if (state === 'reasoning' || state === 'thinking') {
+      setFloatingMode('thinking', { text: subtext || 'Thinking…', overline: overline || 'VOX IS THINKING' });
+      expandCapsule(subtext || 'Thinking…', 0, overline || 'VOX IS THINKING');
+    } else if (state === 'observing') {
+      setFloatingMode('thinking', { text: subtext || 'Observing page content…', overline: overline || 'VOX IS OBSERVING' });
+      expandCapsule(subtext || 'Observing page…', 0, overline || 'VOX IS OBSERVING');
+    } else if (state === 'navigating') {
+      setFloatingMode('thinking', { text: subtext || 'Navigating page…', overline: overline || 'VOX IS NAVIGATING' });
+      expandCapsule(subtext || 'Navigating…', 0, overline || 'VOX IS NAVIGATING');
+    } else if (state === 'acting') {
+      setFloatingMode('thinking', { text: subtext || 'Executing action…', overline: overline || 'VOX IS ACTING' });
+      expandCapsule(subtext || 'Executing…', 0, overline || 'VOX IS ACTING');
     } else if (state === 'speaking') {
-      setFloatingMode('listening', { text: subtext || 'Vox is speaking…' });
+      setFloatingMode('listening', { text: subtext || 'Speaking…', overline: overline || 'VOX IS SPEAKING' });
+      expandCapsule(subtext || 'Speaking…', 0, overline || 'VOX IS SPEAKING');
     } else if (state === 'idle') {
-      setFloatingMode('ambient', { text: subtext || 'Ask anything or shop…' });
+      setFloatingMode('ambient', { text: subtext || 'Ask anything or shop…', overline: overline || 'VOX IS READY' });
+      expandCapsule(subtext || 'Ask anything or shop…', 4000, overline || 'VOX IS READY');
     }
   }
 
@@ -2715,12 +3451,22 @@
   }
 
   if (capsuleCore) {
-    capsuleCore.addEventListener('click', (e) => {
+    capsuleCore.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (floatingMode === 'listening') {
         stopListening();
         setFloatingMode('ambient');
       } else {
+        // First click: ensure getUserMedia permission is granted (user gesture context)
+        if (!micPermissionGranted && navigator.mediaDevices?.getUserMedia) {
+          try {
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            micPermissionGranted = true;
+            console.log('[Vox Agent] Mic permission granted via user click.');
+          } catch (err) {
+            console.warn('[Vox Agent] Mic permission denied:', err.message);
+          }
+        }
         startListening();
         setFloatingMode('listening');
       }
@@ -2762,7 +3508,7 @@
     orbitActDeals.addEventListener('click', (e) => {
       e.stopPropagation();
       setFloatingMode('thinking', { text: 'Scanning coupons & promo deals…' });
-      appendChatMessage('user', '🏷️ Coupon Hunt: Scan Promo Codes');
+      appendChatMessage('user', 'Coupon Hunt: Scan Promo Codes');
       executeAutonomousDealHunter('deals');
     });
   }
@@ -2924,9 +3670,9 @@
     if (bestCandidate) {
       const targetEl = bestCandidate.el;
       const targetLabel = bestCandidate.txt || 'Target';
-      const toastMsg = `⚡ Autonomous Action: Clicking "${targetLabel.slice(0, 30)}"…`;
+      const toastMsg = `Autonomous Action: Clicking "${targetLabel.slice(0, 30)}"…`;
       console.log('[Vox Agent]', toastMsg);
-      setCapsuleState('reasoning', `⚡ Clicking "${targetLabel.slice(0, 18)}"…`);
+      setCapsuleState('reasoning', `Clicking "${targetLabel.slice(0, 18)}"…`);
 
       // Scroll smoothly into view and apply glowing cyan halo
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2999,7 +3745,7 @@
             return {
               source: candidate.text,
               content: el.closest('section, article, details')?.innerText?.slice(0, 1500) || '',
-              toast: `⚡ Autonomous Agent: Clicking "${candidate.text.slice(0, 25)}"…`
+              toast: `Autonomous Agent: Clicking "${candidate.text.slice(0, 25)}"…`
             };
           }
         } catch (_) {}
@@ -3354,18 +4100,18 @@
 
       if (!isSilent) {
         const spoken = `I found ${parsedItems.length} listings for ${cleanTerm} on ${currentStore}. Prices start from ${minPriceStr} up to ${maxPriceStr}. I've scrolled down and highlighted the lowest price deal for you at ${minPriceStr}!`;
-        const content = `🔍 **Live Market Scan: "${escapeHtml(cleanTerm)}" on ${currentStore}**\n\n` +
+        const content = `**Live Market Scan: "${escapeHtml(cleanTerm)}" on ${currentStore}**\n\n` +
           `I've scrolled through the search results and analyzed **${parsedItems.length} listings**:\n\n` +
-          `• **🏷️ Lowest Price Deal**: **${minPriceStr}** *(Highlighted with cyan halo on screen)*\n` +
+          `• **Lowest Price Deal**: **${minPriceStr}** *(Highlighted with cyan halo on screen)*\n` +
           `• **📈 Market Range**: ${minPriceStr} — ${maxPriceStr}\n` +
-          `• **📦 Best Deal**: *${escapeHtml(minItem.title)}*\n\n` +
+          `• **Best Deal**: *${escapeHtml(minItem.title)}*\n\n` +
           `*Would you like me to filter for Official Store only, or check product specifications?*`;
 
         const quickOptions = [
-          { label: `⚡ Lowest Price (${minPriceStr})`, query: `${cleanTerm} termurah` },
-          { label: "⭐ Official Store Only", query: `${cleanTerm} official store` },
+          { label: `Lowest Price (${minPriceStr})`, query: `${cleanTerm} termurah` },
+          { label: "Official Store Only", query: `${cleanTerm} official store` },
           { label: "🔥 Top Rated & Terlaris", query: `${cleanTerm} terlaris` },
-          { label: "🎯 Under " + maxPriceStr, query: `${cleanTerm} diskon promo` }
+          { label: "Under " + maxPriceStr, query: `${cleanTerm} diskon promo` }
         ];
 
         appendChatMessage('agent', content, { quickOptions, spoken });
@@ -3401,12 +4147,12 @@
       return {
         spoken: `I've searched for ${cleanTerm} on ${storeName}! What is your target budget, and are you looking for the budget LOQ series or the high-performance Legion?`,
         followUpQuestion: `What is your target budget, and are you looking for the budget LOQ series or the high-performance Legion?`,
-        content: `🔍 **Searching for "${cleanTerm}" on ${storeName}**\n\nI have typed your query and clicked the search button! To help you pick the right model:\n\n• **Budget Entry (~Rp 12M – 16M)**: Lenovo LOQ (RTX 3050 / RTX 4050)\n• **Sweet Spot (~Rp 18M – 24M)**: Lenovo Legion 5 / Slim 5 (RTX 4060)\n• **Flagship Beast (~Rp 28M+)**: Lenovo Legion Pro 7 / 9 (RTX 4080 / 4090)\n\n*What is your price range or preferred spec? Tap an option below to narrow down:*`,
+        content: `**Searching for "${cleanTerm}" on ${storeName}**\n\nI have typed your query and clicked the search button! To help you pick the right model:\n\n• **Budget Entry (~Rp 12M – 16M)**: Lenovo LOQ (RTX 3050 / RTX 4050)\n• **Sweet Spot (~Rp 18M – 24M)**: Lenovo Legion 5 / Slim 5 (RTX 4060)\n• **Flagship Beast (~Rp 28M+)**: Lenovo Legion Pro 7 / 9 (RTX 4080 / 4090)\n\n*What is your price range or preferred spec? Tap an option below to narrow down:*`,
         quickOptions: [
           { label: "💰 Budget LOQ (Rp 12-16M)", query: `${cleanTerm} LOQ RTX 4050` },
-          { label: "⚡ Sweet Spot Legion 5 (Rp 18-24M)", query: `${cleanTerm} Legion 5 RTX 4060` },
+          { label: "Sweet Spot Legion 5 (Rp 18-24M)", query: `${cleanTerm} Legion 5 RTX 4060` },
           { label: "🔥 Flagship Legion Pro (Rp 28M+)", query: `${cleanTerm} Legion Pro 7` },
-          { label: "🎯 Under Rp 15 Million", query: `${cleanTerm} under 15 juta` },
+          { label: "Under Rp 15 Million", query: `${cleanTerm} under 15 juta` },
           { label: "🚀 RTX 4060 Spec", query: `${cleanTerm} RTX 4060` }
         ]
       };
@@ -3417,12 +4163,12 @@
       return {
         spoken: `I've searched for ${cleanTerm} on ${storeName}! What is your target budget, and what storage capacity do you need?`,
         followUpQuestion: `What is your target budget, and what storage capacity do you need?`,
-        content: `🔍 **Searching for "${cleanTerm}" on ${storeName}**\n\nI've submitted the search! What price range or storage size fits what you are looking for?`,
+        content: `**Searching for "${cleanTerm}" on ${storeName}**\n\nI've submitted the search! What price range or storage size fits what you are looking for?`,
         quickOptions: [
           { label: "💰 Budget Tier (< Rp 5M)", query: `${cleanTerm} under 5 juta garansi resmi` },
-          { label: "⚡ Mid-Range (Rp 6-10M)", query: `${cleanTerm} 256GB garansi resmi` },
+          { label: "Mid-Range (Rp 6-10M)", query: `${cleanTerm} 256GB garansi resmi` },
           { label: "🔥 Flagship Pro Model", query: `${cleanTerm} Pro garansi resmi` },
-          { label: "🏷️ Official Store Only", query: `${cleanTerm} official store` }
+          { label: "Official Store Only", query: `${cleanTerm} official store` }
         ]
       };
     }
@@ -3432,11 +4178,11 @@
       return {
         spoken: `I've searched for ${cleanTerm} on ${storeName}! Are you looking for budget-friendly wireless options or premium gear?`,
         followUpQuestion: `Are you looking for budget-friendly wireless options or premium gear?`,
-        content: `🔍 **Searching for "${cleanTerm}" on ${storeName}**\n\nSearch executed! What style or price tier are you aiming for?`,
+        content: `**Searching for "${cleanTerm}" on ${storeName}**\n\nSearch executed! What style or price tier are you aiming for?`,
         quickOptions: [
           { label: "💰 Budget Value Pick", query: `${cleanTerm} murah berkualitas` },
-          { label: "⚡ Wireless & Bluetooth", query: `${cleanTerm} wireless bluetooth` },
-          { label: "⭐ Top Rated & Popular", query: `${cleanTerm} terlaris official store` },
+          { label: "Wireless & Bluetooth", query: `${cleanTerm} wireless bluetooth` },
+          { label: "Top Rated & Popular", query: `${cleanTerm} terlaris official store` },
           { label: "🔥 Pro Esports Grade", query: `${cleanTerm} pro gaming` }
         ]
       };
@@ -3446,11 +4192,11 @@
     return {
       spoken: `I've searched for ${cleanTerm} on ${storeName}! What is your target budget, and do you prefer budget options or official store listings?`,
       followUpQuestion: `What is your target budget, and do you prefer budget options or official store listings?`,
-      content: `🔍 **Searching for "${cleanTerm}" on ${storeName}**\n\nI've typed the query and clicked the search button! What price tier or brand preference would you like to filter?`,
+      content: `**Searching for "${cleanTerm}" on ${storeName}**\n\nI've typed the query and clicked the search button! What price tier or brand preference would you like to filter?`,
       quickOptions: [
         { label: "💰 Best Budget Option", query: `${cleanTerm} murah terbaik` },
-        { label: "⭐ Top Rated & Popular", query: `${cleanTerm} terlaris` },
-        { label: "🏷️ Official Store Only", query: `${cleanTerm} official store` },
+        { label: "Top Rated & Popular", query: `${cleanTerm} terlaris` },
+        { label: "Official Store Only", query: `${cleanTerm} official store` },
         { label: "🔥 Latest 2026 Edition", query: `${cleanTerm} terbaru 2026` }
       ]
     };
@@ -3809,72 +4555,90 @@
   async function executeAutonomousCheckout(intent) {
     setCapsuleState('reasoning', 'Starting checkout…');
 
-    // Step 1: Click "Add to Cart" / "Buy Now"
-    const addToCartSelectors = [
-      '#add-to-cart-button', '#buy-now-button', '#btn-add-cart', '#btn-buy-now', '#cs-add-to-cart', '#cs-buy-now',
-      '[data-testid*="add-to-cart" i]', '[data-testid*="buy-now" i]', '[data-testid*="pdp-buy-button" i]',
-      'button[name="add"]', 'form[action*="/cart/add"] button', '[aria-label*="add to cart" i]',
-      '[aria-label*="tambah ke keranjang" i]', '[aria-label*="beli sekarang" i]', '.add-to-cart', '.buy-now'
-    ];
-    let addCartBtn = document.querySelector(addToCartSelectors.join(', '));
-    if (!addCartBtn) {
-      const addToCartPatterns = /\b(add\s*to\s*cart|buy\s*now|beli\s*sekarang|beli\s*langsung|\+\s*keranjang|tambah\s*ke\s*keranjang|masukkan\s*keranjang|add\s*to\s*bag|order\s*now)\b/i;
-      const allButtons = document.querySelectorAll('a, button, [role="button"], input[type="submit"], input[type="button"]');
-      for (const el of allButtons) {
-        const txt = (el.textContent || el.value || el.getAttribute('aria-label') || '').trim();
-        const isVisible = el.offsetParent !== null || el.offsetWidth > 0;
-        if (!isVisible) continue;
-        if (addToCartPatterns.test(txt)) {
-          addCartBtn = el;
-          break;
-        }
+    // Step 0: Auto-select product variants if required (e.g. Shopee / Tokopedia color/size)
+    await autoSelectProductVariantsIfRequired();
+    await new Promise(r => setTimeout(r, 400));
+
+    // Step 1: Specifically prioritize "Beli Sekarang" / "Beli Langsung" (Buy Now)
+    let buyNowBtn = findProductPageBuyNowButton();
+
+    if (buyNowBtn) {
+      const btnText = (buyNowBtn.innerText || buyNowBtn.textContent || buyNowBtn.getAttribute('aria-label') || 'Beli Sekarang').trim();
+      console.log('[Vox Agent] Clicking direct Buy Now button:', btnText, buyNowBtn);
+      setCapsuleState('acting', `Menekan ${btnText.slice(0, 30)}…`, 'VOX IS BUYING');
+      speak(`Menekan ${btnText}…`);
+
+      // If button is currently disabled, ensure variant options are clicked first
+      if (buyNowBtn.disabled || buyNowBtn.getAttribute('aria-disabled') === 'true' || buyNowBtn.className.includes('disabled')) {
+        await autoSelectProductVariantsIfRequired();
+        await new Promise(r => setTimeout(r, 400));
+      }
+
+      robustClick(buyNowBtn);
+      setCapsuleState('reasoning', `Tombol ${btnText.slice(0, 20)} ditekan…`);
+      await new Promise(r => setTimeout(r, 1500));
+
+      // If direct Buy Now already navigated to checkout page
+      if (/checkout/i.test(window.location.href)) {
+        console.log('[Vox Agent] Direct Buy Now navigated to checkout page.');
+        await new Promise(r => setTimeout(r, 800));
+        await executeAutonomousAutofill(intent);
+        return;
       }
     }
 
-    if (addCartBtn) {
-      addCartBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      addCartBtn.classList.add('vox-halo-highlight');
-      await new Promise(r => setTimeout(r, 300));
-      addCartBtn.click();
-      try {
-        const rect = addCartBtn.getBoundingClientRect();
-        addCartBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }));
-      } catch (_) {}
-      setCapsuleState('reasoning', 'Added to cart…');
-      await new Promise(r => setTimeout(r, 1000));
-      setTimeout(() => addCartBtn.classList.remove('vox-halo-highlight'), 2000);
-    }
+    // Step 2: Fallback to Add to Cart if no direct Buy Now button exists on this platform
+    let addCartBtn = buyNowBtn ? null : (findProductPageAddToCartButton() || findProductPageBuyButton());
 
-    // Step 2: Click "Proceed to Checkout" / "View Bag" / "Checkout"
-    await new Promise(r => setTimeout(r, 500));
-    const checkoutSelectors = [
-      '#btn-checkout', '#cs-btn-checkout', '#proceed-to-checkout-action', '[name="proceedToRetailCheckout"]',
-      'button[name="checkout"]', 'a[href*="/checkout"]', '[data-testid*="checkout" i]',
-      '[data-testid*="btn-checkout" i]', '.checkout-btn', '.btn-checkout'
-    ];
-    let checkoutBtn = document.querySelector(checkoutSelectors.join(', '));
-    if (!checkoutBtn) {
-      const checkoutPatterns = /\b(checkout|proceed\s*to\s*checkout|view\s*bag|view\s*cart|lihat\s*keranjang|bayar|lanjut\s*bayar|pilih\s*pembayaran|go\s*to\s*checkout)\b/i;
-      const allButtons2 = document.querySelectorAll('a, button, [role="button"], input[type="submit"], input[type="button"]');
-      for (const el of allButtons2) {
-        const txt = (el.textContent || el.value || el.getAttribute('aria-label') || '').trim();
-        const isVisible = el.offsetParent !== null || el.offsetWidth > 0;
-        if (!isVisible) continue;
-        if (checkoutPatterns.test(txt)) {
-          checkoutBtn = el;
-          break;
+    // Fallback: If on search results page (NOT already on a product detail page), open top product first to proceed to buy
+    if (!buyNowBtn && !addCartBtn && !isProductDetailPage()) {
+      const obs = observeCurrentPage();
+      if ((obs.products || []).length > 0) {
+        console.log('[Vox Agent] Currently on search page during buy intent, opening top product card to buy.');
+        const topProd = obs.products[0];
+        setCapsuleState('acting', `Opening ${topProd.title.slice(0, 30)} to buy…`, 'VOX IS OPENING PRODUCT');
+        if (typeof activeAgentLoop !== 'undefined' && activeAgentLoop) {
+          activeAgentLoop.goal = `Buy ${topProd.title}`;
+          activeAgentLoop.history.push({
+            action: { action: 'CLICK_PRODUCT', productIndex: 0, reason: 'Opening product to purchase' },
+            result: { success: true, clicked: topProd.title }
+          });
+          if (typeof saveActiveMission === 'function') {
+            await saveActiveMission(activeAgentLoop);
+          }
         }
+        if (topProd._linkEl && topProd._linkEl.href) {
+          window.location.href = topProd._linkEl.href;
+          await new Promise(r => setTimeout(r, 4000));
+        } else {
+          (topProd._linkEl || topProd._el).click();
+        }
+        return;
       }
     }
 
-    if (checkoutBtn) {
-      checkoutBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      checkoutBtn.classList.add('vox-halo-highlight');
-      await new Promise(r => setTimeout(r, 300));
-      checkoutBtn.click();
-      setCapsuleState('reasoning', 'Proceeding to checkout…');
+    if (!buyNowBtn && addCartBtn) {
+      setCapsuleState('acting', 'Menambahkan ke keranjang…', 'VOX IS BUYING');
+      robustClick(addCartBtn);
+      setCapsuleState('reasoning', 'Produk ditambahkan ke keranjang…');
       await new Promise(r => setTimeout(r, 1200));
-      setTimeout(() => checkoutBtn.classList.remove('vox-halo-highlight'), 2000);
+
+      // After adding to cart, click Proceed to Checkout
+      const checkoutSelectors = [
+        '#btn-checkout', '#cs-btn-checkout', '#proceed-to-checkout-action', '[name="proceedToRetailCheckout"]',
+        'button[name="checkout"]', 'a[href*="/checkout"]', '[data-testid*="checkout" i]',
+        '[data-testid*="btn-checkout" i]', '.checkout-btn', '.btn-checkout'
+      ];
+      let checkoutBtn = null;
+      for (const sel of checkoutSelectors) {
+        const match = Array.from(document.querySelectorAll(sel)).find(isElementVisible);
+        if (match) { checkoutBtn = match; break; }
+      }
+      if (checkoutBtn) {
+        setCapsuleState('reasoning', 'Proceeding to checkout…');
+        robustClick(checkoutBtn);
+        await new Promise(r => setTimeout(r, 1200));
+      }
     }
 
     // Step 3: Auto-fill shipping address
@@ -4055,16 +4819,10 @@
     openDialog();
 
     // 1. Check if current page is already a Product Detail Page (PDP)
-    const pdpButton = document.querySelector(
-      '#add-to-cart-button, #buy-now-button, #btn-add-cart, #btn-buy-now, #cs-add-to-cart, #cs-buy-now, ' +
-      '[data-testid*="add-to-cart" i], [data-testid*="buy-now" i], [data-testid*="pdp-buy-button" i], ' +
-      'button[name="add"], form[action*="/cart/add"] button, [aria-label*="add to cart" i], ' +
-      '[aria-label*="tambah ke keranjang" i], [aria-label*="beli sekarang" i], .add-to-cart, .buy-now'
-    );
-
-    if (pdpButton) {
+    const pdpButton = findProductPageBuyButton();
+    if (pdpButton || isProductDetailPage()) {
       speak(`Mengeksekusi pembelian dan checkout otomatis untuk produk pemenang.`);
-      appendChatMessage('agent', `🛒 **Autonomous Checkout Started**\n\nInitiating 1-Click purchase for **${escapeHtml(winnerTitle || document.title)}**. Adding to cart, autofilling shipping address, and checking coupons…`);
+      appendChatMessage('agent', `**Autonomous Checkout Started**\n\nInitiating 1-Click purchase for **${escapeHtml(winnerTitle || document.title)}**. Adding to cart, autofilling shipping address, and checking coupons…`);
       await executeAutonomousCheckout('checkout');
       return;
     }
@@ -4097,7 +4855,7 @@
       winnerCard.classList.add('vox-halo-highlight');
 
       speak(`Membuka produk pemenang di layar untuk checkout otomatis.`);
-      appendChatMessage('agent', `👆 **Winner Located On Screen: ${escapeHtml(winnerTitle || 'Product')}**\n\nOpening product detail page and initiating automated checkout pipeline…`);
+      appendChatMessage('agent', `**Winner Located On Screen: ${escapeHtml(winnerTitle || 'Product')}**\n\nOpening product detail page and initiating automated checkout pipeline…`);
 
       try {
         sessionStorage.setItem('vox_pending_auto_checkout', JSON.stringify({
@@ -4134,7 +4892,7 @@
 
     // 4. External store: open in new tab
     speak(`Membuka toko ${winner?.store || 'marketplace'} pemenang untuk checkout.`);
-    appendChatMessage('agent', `🛍️ **Opening Winner Store (${escapeHtml(winner?.store || 'Marketplace')})**\n\nNavigating to **${escapeHtml(winner?.title || 'Winner Product')}** on ${escapeHtml(winner?.store || 'Store')}…`);
+    appendChatMessage('agent', `**Opening Winner Store (${escapeHtml(winner?.store || 'Marketplace')})**\n\nNavigating to **${escapeHtml(winner?.title || 'Winner Product')}** on ${escapeHtml(winner?.store || 'Store')}…`);
     chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
   }
 
@@ -4274,6 +5032,348 @@
       return true;
     }
     return false;
+  }
+
+  // =========================================================================
+  // AI AGENT HELPER: DEEP RESEARCH, CONCEPT EXPLAINER, MEDIA CONTROL
+  // =========================================================================
+
+  /**
+   * AI Agent Helper: Deep Page Product Research & WhatsApp Integration
+   * Audits live items from DOM (Shopee, Tokopedia, etc.), consults Groq Lead Product Researcher,
+   * highlights winner candidate, and provides 1-click WhatsApp share & copy.
+   */
+  async function executeDeepPageResearch(targetTerm = '') {
+    setCapsuleState('reasoning', 'Mengumpulkan data produk… 🔍', 'VOX IS RESEARCHING');
+    expandCapsule('Membaca semua produk di layar…', 2500);
+
+    const isIndo = (voxLanguage || '').startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id';
+
+    // 1. Gather live DOM product cards using comprehensive page observer
+    let pageObs = observeCurrentPage();
+    let rawProducts = pageObs._products || [];
+
+    // If zero products found, try waiting briefly for dynamic rendering / lazy loading
+    if (rawProducts.length === 0) {
+      await new Promise(r => setTimeout(r, 600));
+      pageObs = observeCurrentPage();
+      rawProducts = pageObs._products || [];
+    }
+
+    const liveProducts = rawProducts.slice(0, 20).map((p, idx) => ({
+      index: idx,
+      title: p.title || `Produk #${idx + 1}`,
+      price: p.price || 'N/A',
+      priceVal: p.priceVal || 0,
+      store: p.store || (p.official ? 'Official Store' : 'Seller'),
+      rating: p.rating || '4.8 ★',
+      url: p.href || window.location.href,
+      _el: p._el
+    }));
+
+    // 2. Visual state: Groq is evaluating
+    setCapsuleState('thinking', 'Groq menganalisis produk terbaik… 💭', 'VOX IS EVALUATING');
+    expandCapsule('Menentukan pilihan terbaik menurut Groq AI…', 3500);
+
+    try {
+      const researchData = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          action: 'RESEARCH_PAGE_PRODUCTS',
+          payload: {
+            query: targetTerm || document.title,
+            products: liveProducts.map(p => ({ title: p.title, price: p.price, store: p.store, rating: p.rating, url: p.url })),
+            url: window.location.href,
+            domain: window.location.hostname,
+            pageTitle: document.title,
+            textSummary: pageObs.textSummary,
+            userLanguage: isIndo ? 'id' : 'en'
+          }
+        }, (res) => {
+          if (chrome.runtime.lastError || !res?.success) {
+            reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Research failed'));
+          } else {
+            resolve(res.data);
+          }
+        });
+      });
+
+      const winner = researchData.winner || {};
+      const runnerUp = researchData.runnerUp || {};
+      const insights = researchData.keyInsights || [];
+      const waText = researchData.whatsappText || `*Riset Vox Agent:* Rekomendasi: ${winner.title} (${winner.price})`;
+      lastResearchReportText = waText;
+      if (chrome?.storage?.local) {
+        chrome.storage.local.set({ vox_last_research_text: waText });
+      }
+
+      // 3. Highlight winning product card directly on the page
+      if (liveProducts.length > 0) {
+        const winIdx = (typeof winner.productIndex === 'number' && winner.productIndex >= 0 && winner.productIndex < liveProducts.length)
+          ? winner.productIndex
+          : 0;
+        const topProduct = liveProducts[winIdx] || liveProducts[0];
+        const topCard = topProduct?._el;
+        if (topCard) {
+          topCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          topCard.classList.add('vox-halo-highlight');
+          setTimeout(() => topCard.classList.remove('vox-halo-highlight'), 8000);
+        }
+      }
+
+      let markdown = `### 🔍 Hasil Analisis Otonom Vox AI Agent\n\n`;
+      markdown += `🏆 **Rekomendasi Utama: ${winner.title || 'Produk Terbaik'}**\n`;
+      if (winner.price) markdown += `💰 **Harga:** ${winner.price} | 🏪 **Toko:** ${winner.store || 'Official Store'}\n`;
+      if (winner.reason) markdown += `✅ **Alasan Pilihan Groq:** ${winner.reason}\n\n`;
+
+      if (runnerUp && runnerUp.title) {
+        markdown += `🥈 **Alternatif Pilihan: ${runnerUp.title}**\n`;
+        if (runnerUp.price) markdown += `💰 **Harga:** ${runnerUp.price}\n`;
+        if (runnerUp.reason) markdown += `💡 ${runnerUp.reason}\n\n`;
+      }
+
+      if (insights.length > 0) {
+        markdown += `🛡️ **Poin Penting Sebelum Membeli:**\n`;
+        insights.forEach(ins => { markdown += `• ${ins}\n`; });
+        markdown += `\n`;
+      }
+
+      markdown += `_Dianalisis secara otonom dari data layar (DOM) menggunakan Groq Cognitive Intelligence._`;
+
+      const spoken = researchData.spoken || (isIndo
+        ? `Berdasarkan analisis produk di layar, menurut saya yang paling bagus adalah ${winner.title} seharga ${winner.price || 'terbaik'}. Rekomendasinya sudah saya tandai di layar, bro!`
+        : `Based on the products on screen, the best option is ${winner.title} for ${winner.price}. I have highlighted it on your screen, bro!`);
+
+      // 4. Update UI & ONLY NOW speak to user with the finalized choice!
+      setCapsuleState('idle', 'Riset Selesai', 'VOX IS READY');
+      expandCapsule(`🏆 Pilihan: ${(winner.title || 'Selesai').slice(0, 30)}…`, 4000);
+      playUiChime('ready');
+      speak(spoken);
+
+      appendChatMessage('agent', markdown, {
+        spoken,
+        quickOptions: [
+          winner.url ? { label: '🛒 Buka Produk Ini', action: 'open_winner', url: winner.url } : null,
+          { label: '⚡ Beli Sekarang', action: 'buy_winner', targetProduct: winner.title },
+          { label: '📲 Kirim ke WhatsApp (Pin)', action: 'wa_pinned_contact', url: waText },
+          { label: '📋 Salin Ringkasan', action: 'copy_summary', targetProduct: waText }
+        ].filter(Boolean)
+      });
+    } catch (err) {
+      console.warn('[Vox Agent] Deep research error:', err);
+      setCapsuleState('idle', 'Riset Selesai', 'VOX IS READY');
+      const fallbackMsg = isIndo
+        ? 'Maaf, terjadi kendala saat menganalisis produk di halaman ini. Silakan coba lagi.'
+        : 'Sorry, could not complete product evaluation on this page.';
+      speak(fallbackMsg);
+      appendChatMessage('agent', fallbackMsg);
+    }
+  }
+
+  let lastResearchReportText = '';
+
+  /**
+   * AI Agent Helper: WhatsApp Web Share
+   * Opens WhatsApp Web directly with pre-filled research report using standard URL parameters.
+   * WhatsApp Web handles its own native interface and sending.
+   */
+  async function triggerAutonomousWhatsAppAction(targetContact = 'pinned', customText = null) {
+    let reportText = customText || lastResearchReportText;
+
+    if (!reportText && currentAnalysis?.winner) {
+      const w = currentAnalysis.winner;
+      reportText = `*Rekomendasi Vox Agent:* ${w.title}\n💰 Harga: ${w.price || 'N/A'}\n🏪 Toko: ${w.store || 'Official Store'}\n✅ Alasan: ${w.reason || 'Pilihan terbaik berdasarkan riset otonom'}\n🔗 Link: ${w.url || window.location.href}`;
+    }
+
+    if (!reportText) {
+      try {
+        const stored = await chrome.storage?.local?.get('vox_last_research_text');
+        if (stored?.vox_last_research_text) {
+          reportText = stored.vox_last_research_text;
+        }
+      } catch (_) {}
+    }
+
+    if (!reportText) {
+      reportText = `*Hasil Riset Vox Agent:*\n${document.title}\n🔗 Link: ${window.location.href}`;
+    }
+
+    lastResearchReportText = reportText;
+
+    setCapsuleState('acting', 'Membuka WhatsApp Web… 📲', 'VOX IS ACTING');
+    expandCapsule('Membuka WhatsApp Web…', 3000);
+    const isIndo = (voxLanguage || '').startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id';
+    speak(isIndo ? 'Membuka WhatsApp Web dengan hasil riset.' : 'Opening WhatsApp Web with research summary.');
+
+    const waWebUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(reportText)}`;
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: waWebUrl }, (res) => {
+        if (chrome.runtime?.lastError || !res?.success) {
+          window.open(waWebUrl, '_blank');
+        }
+      });
+    } else {
+      window.open(waWebUrl, '_blank');
+    }
+  }
+
+  /**
+   * AI Agent Helper: Demystifier & Explainer
+   * Explains complex topics (Web3, blockchain, technical concepts) using simple intuitive analogies.
+   */
+  async function executeExplainSimply(concept = '') {
+    const isIndo = (voxLanguage || '').startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id';
+    const cleanConcept = (concept || document.title).replace(/[-|–—].*$/, '').trim();
+
+    setCapsuleState('reasoning', 'Menjelaskan konsep…', 'VOX IS THINKING');
+    expandCapsule(`Membedah "${cleanConcept.slice(0, 24)}"… 💡`, 3500);
+
+    try {
+      const explainData = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          action: 'EXPLAIN_SIMPLY',
+          payload: {
+            query: cleanConcept,
+            pageContext: {
+              title: document.title,
+              domain: window.location.hostname,
+              textSample: document.body?.innerText?.slice(0, 1500) || ''
+            },
+            userLanguage: isIndo ? 'id' : 'en'
+          }
+        }, (res) => {
+          if (chrome.runtime.lastError || !res?.success) {
+            reject(new Error(res?.error || chrome.runtime.lastError?.message || 'Explain failed'));
+          } else {
+            resolve(res.data);
+          }
+        });
+      });
+
+      const topic = explainData.topic || cleanConcept;
+      const analogy = explainData.analogy || '';
+      const takeaways = explainData.coreTakeaway || [];
+      const whyItMatters = explainData.whyItMatters || '';
+
+      let markdown = `### 💡 Penjelasan Sederhana: ${topic}\n\n`;
+      if (analogy) {
+        markdown += `🥪 **Analogi Sehari-hari:**\n> ${analogy}\n\n`;
+      }
+      if (takeaways.length > 0) {
+        markdown += `📌 **Poin Inti:**\n`;
+        takeaways.forEach(pt => { markdown += `• ${pt}\n`; });
+        markdown += `\n`;
+      }
+      if (whyItMatters) {
+        markdown += `🚀 **Kenapa Ini Penting:**\n${whyItMatters}\n\n`;
+      }
+      markdown += `_Dijelaskan oleh Vox AI Agent Helper Brain._`;
+
+      const spoken = explainData.spoken || (isIndo
+        ? `Berikut penjelasan sederhananya: ${analogy}`
+        : `Here is the simple explanation: ${analogy}`);
+
+      setCapsuleState('idle', 'Konsep Dijelaskan', 'VOX IS READY');
+      expandCapsule(`💡 ${topic}: ${analogy.slice(0, 35)}…`, 4000);
+      speak(spoken);
+
+      appendChatMessage('agent', markdown, {
+        spoken,
+        quickOptions: [
+          { label: '📋 Salin Penjelasan', action: 'copy_summary', targetProduct: markdown },
+          { label: '🔦 Spotlight Tour', action: 'run_tour' },
+          { label: '🔍 Riset Halaman Ini', action: 'research_page' }
+        ]
+      });
+    } catch (err) {
+      console.warn('[Vox Agent] Explain simply error:', err);
+      setCapsuleState('idle', 'Vox Ready', 'VOX IS READY');
+      const fallbackMsg = isIndo
+        ? `Konsep "${cleanConcept}" intinya adalah teknologi atau sistem baru yang dirancang untuk mempermudah kontrol pengguna.`
+        : `The concept "${cleanConcept}" essentially gives users greater direct control.`;
+      speak(fallbackMsg);
+      appendChatMessage('agent', fallbackMsg);
+    }
+  }
+
+  /**
+   * AI Agent Helper: YouTube & Media Playback Control
+   * Handles "play this song", "pause", "resume", or searching and playing music on YouTube.
+   */
+  async function handleYouTubeMediaControl(action = 'play', rawQuery = '') {
+    const isYT = window.location.hostname.includes('youtube.com');
+    const isIndo = (voxLanguage || '').startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id';
+
+    // 1. If pause/stop requested:
+    if (action === 'pause' || /\b(pause|jeda|stop|berhenti)\b/i.test(rawQuery)) {
+      const video = document.querySelector('video');
+      if (video) {
+        video.pause();
+        speak(isIndo ? 'Video dijeda.' : 'Video paused.');
+        expandCapsule('Video Paused ⏸️', 3000);
+        setCapsuleState('idle', 'Video Paused', 'VOX IS READY');
+      } else {
+        speak(isIndo ? 'Tidak ada video aktif di halaman ini.' : 'No active video found.');
+      }
+      return;
+    }
+
+    // 2. Extract song title if user specified one (e.g. "play bohemian rhapsody", "putar lagu tulus")
+    let songQuery = (rawQuery || '')
+      .replace(/^(hey|halo|hai)?\s*(vox|fox)?\s*[,.]?\s*/i, '')
+      .replace(/\b(can\s*you|could\s*you|please|tolong|coba|bisa)?\s*(play\s*(this\s*)?song|putar\s*(lagu|video)|play|putar)\b/gi, '')
+      .replace(/\b(di|on)\s+youtube\b/gi, '')
+      .trim();
+
+    // 3. If currently on YouTube:
+    if (isYT) {
+      const video = document.querySelector('video');
+      // If no specific song name was given, just resume existing video
+      if (!songQuery || /^(this|song|lagu|video|ini)$/i.test(songQuery)) {
+        if (video) {
+          video.play();
+          speak(isIndo ? 'Melanjutkan pemutaran video.' : 'Resuming video playback.');
+          expandCapsule('Playing Video ▶️', 3000);
+          setCapsuleState('idle', 'Playing', 'VOX IS READY');
+          return;
+        }
+      }
+
+      // If user specified a song/video to play on YouTube:
+      expandCapsule(`Mencari "${songQuery}" di YouTube… 🎵`, 3000);
+      setCapsuleState('reasoning', `Mencari: ${songQuery}`, 'SEARCHING YOUTUBE');
+
+      const searchInput = document.querySelector('input#search, input[name="search_query"]');
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.value = songQuery;
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+        searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+        const searchForm = searchInput.closest('form');
+        if (searchForm) {
+          searchForm.submit();
+        } else {
+          searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+        }
+        speak(isIndo ? `Mencari ${songQuery} di YouTube.` : `Searching for ${songQuery} on YouTube.`);
+        return;
+      }
+
+      // Fallback on YouTube: navigate directly to search
+      window.location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(songQuery)}`;
+      return;
+    }
+
+    // 4. If not on YouTube:
+    const targetUrl = songQuery && !/^(this|song|lagu|video|ini)$/i.test(songQuery)
+      ? `https://www.youtube.com/results?search_query=${encodeURIComponent(songQuery)}`
+      : 'https://www.youtube.com';
+
+    chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: targetUrl });
+    const msg = isIndo
+      ? `Membuka YouTube untuk memutar ${songQuery || 'musik'}.`
+      : `Opening YouTube to play ${songQuery || 'music'}.`;
+    speak(msg);
+    expandCapsule('Opening YouTube 🎵', 3500);
   }
 
   /**
@@ -4482,7 +5582,7 @@
       <div class="vox-mission-card">
         <div class="vox-mission-header">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <span>⚡ COGNITIVE JOB DESK EXECUTION</span>
+            <span>COGNITIVE JOB DESK EXECUTION</span>
             <span style="font-size: 9.5px; opacity: 0.8; font-family: var(--font-mono);">(${escapeHtml(plan.category || 'Shopping Mission')})</span>
           </div>
           <span style="font-size: 10px; color: var(--voice); font-family: var(--font-mono);">${currentStatus === 'DONE' ? '100% COMPLETE' : currentStep + '/5 ACTIVE'}</span>
@@ -4624,19 +5724,19 @@
         official: candidate.official
       });
 
-      const currentHudContent = `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(targetKeyword)}"**\n\n` +
+      const currentHudContent = `**Initiating Autonomous Shopping Mission: "${escapeHtml(targetKeyword)}"**\n\n` +
         renderJobDeskProgressHtml(plan, 1, `INSPECTING ${i + 1}/${candidateSubset.length}`) + '\n\n' +
         `<div style="background: rgba(0,242,254,0.08); border: 1px solid rgba(0,242,254,0.3); border-radius: 8px; padding: 8px 12px; margin-top: 8px;">` +
         `<div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:650; color:var(--voice);">` +
-        `<span>🔍 Examining Listing ${i + 1}/${candidateSubset.length} (${escapeHtml(storeDisplayName)})</span>` +
-        `<span style="font-family:var(--font-mono); font-size:10px; color:${fitsBudget ? '#10B981' : '#F87171'};">${fitsBudget ? '✓ FITS BUDGET' : '⚠️ OVER BUDGET'}</span>` +
+        `<span>Examining Listing ${i + 1}/${candidateSubset.length} (${escapeHtml(storeDisplayName)})</span>` +
+        `<span style="font-family:var(--font-mono); font-size:10px; color:${fitsBudget ? '#10B981' : '#F87171'};">${fitsBudget ? 'FITS BUDGET' : 'OVER BUDGET'}</span>` +
         `</div>` +
         `<div style="font-size:11.5px; font-weight:600; color:var(--ink-pri); margin:4px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">` +
         `${escapeHtml(candidate.title)}` +
         `</div>` +
         `<div style="display:flex; gap:12px; font-size:10.5px; color:var(--ink-sec);">` +
         `<span>Harga: <b style="color:var(--ink-pri);">${priceFormatted}</b></span>` +
-        `<span>Toko: <b>${candidate.official ? '🏷️ Official Store' : 'Reseller / Toko'}</b></span>` +
+        `<span>Toko: <b>${candidate.official ? 'Official Store' : 'Reseller / Toko'}</b></span>` +
         `<span>Budget: <b>${userBudgetCeiling ? '<= ' + formatDomPrice(userBudgetCeiling) : 'Fleksibel'}</b></span>` +
         `</div>` +
         `</div>` +
@@ -4751,6 +5851,15 @@
 
     const displaySubject = targetSubject.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
+    const activeTargets = getConfiguredStoreTargets();
+    const targetStoreKeys = activeTargets.map(t => t.key);
+    const targetStoreNames = activeTargets.map(t => t.name);
+    const isSingleStore = activeTargets.length === 1;
+    const singleStoreName = targetStoreNames[0] || 'Shopee';
+
+    const step2Title = isSingleStore ? `Discovery Toko: ${singleStoreName}` : `${activeTargets.length}-Store Discovery`;
+    const step2Desc = isSingleStore ? `Cari kandidat produk terbaik di ${singleStoreName} sesuai konfigurasi setting` : `Search candidate listings across ${targetStoreNames.join(', ')}`;
+
     if (!plan) {
       plan = {
         missionId: 'mission_' + Date.now(),
@@ -4763,7 +5872,7 @@
         },
         jobDesks: [
           { step: 1, id: 'job_intel', title: 'Market Specs Benchmark', desc: 'Identify top recommended models meeting user spec criteria' },
-          { step: 2, id: 'job_cross_search', title: '4-Store Discovery', desc: 'Search Shopee, Tokopedia, Blibli, Amazon for candidate listings' },
+          { step: 2, id: 'job_cross_search', title: step2Title, desc: step2Desc },
           { step: 3, id: 'job_multi_factor', title: 'Specs & Trust Audit', desc: 'Audit hardware specs, official warranty status, and star ratings' },
           { step: 4, id: 'job_landed_checkout', title: 'Checkout Landed Price Audit', desc: 'Audit true landed price up to checkout summary (ongkir + fees - vouchers)' },
           { step: 5, id: 'job_synthesis', title: 'Multi-Factor Synthesis', desc: 'Rank by value-to-performance and present decision matrix' }
@@ -4779,7 +5888,7 @@
                              /amazon/i.test(window.location.hostname) ? 'Amazon' : 'Active Store';
 
     // Append Live Progress Message to Chat Stream (Step 1 Active: Market Specs Benchmark & On-Screen Scout)
-    const missionMsgId = appendChatMessage('agent', `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 1, 'IN PROGRESS')}`);
+    const missionMsgId = appendChatMessage('agent', `**Initiating Autonomous Shopping Mission: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 1, 'IN PROGRESS')}`);
 
     speak(`Initiating shopping mission for ${displaySubject}. Scanning active store and benchmark specifications.`);
 
@@ -4822,18 +5931,27 @@
     if (bestOnScreen) {
       const bestPriceStr = formatDomPrice(bestOnScreen.price.value);
       step1SummaryBox = `\n\n<div style="font-size: 11px; background: rgba(0,0,0,0.25); border: 1px solid rgba(0,242,254,0.2); border-radius: 6px; padding: 6px 10px; margin-top: 6px;">` +
-        `🔍 <b>Top Candidate On Screen:</b> ${escapeHtml(bestOnScreen.title)} (${bestPriceStr}) · ${bestOnScreen.official ? '🏷️ Official Store' : 'Toko'}` +
+        `Top Candidate On Screen: ${escapeHtml(bestOnScreen.title)} (${bestPriceStr}) · ${bestOnScreen.official ? 'Official Store' : 'Toko'}` +
         `</div>`;
     }
 
-    updateChatMessage(missionMsgId, `📋 **Market Specs Benchmark & On-Screen Scout Complete**\n\n${renderJobDeskProgressHtml(plan, 1, 'AUDITED')}${step1SummaryBox}`);
-    speak(`Selesai memeriksa produk di layar. Melanjutkan ke Step 2: pencarian 4 toko online.`);
+    updateChatMessage(missionMsgId, `**Market Specs Benchmark & On-Screen Scout Complete**\n\n${renderJobDeskProgressHtml(plan, 1, 'AUDITED')}${step1SummaryBox}`);
+    const step2TransitionSpeech = isSingleStore
+      ? `Selesai memeriksa produk di layar. Melanjutkan ke Step 2: pencarian produk terbaik di ${singleStoreName} sesuai konfigurasi setting.`
+      : `Selesai memeriksa produk di layar. Melanjutkan ke Step 2: pencarian ${activeTargets.length} toko online (${targetStoreNames.join(', ')}).`;
+    speak(step2TransitionSpeech);
     await new Promise(r => setTimeout(r, 1200));
 
-    // ─── STEP 2: Multi-Store Cross Search via Anakin.io API (Shopee, Tokopedia, Blibli, Amazon) ───
-    setCapsuleState('reasoning', 'Querying Anakin.io API…');
-    updateChatMessage(missionMsgId, `📋 **Auditing 4 Connected Stores via Anakin.io API: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 2, 'SEARCHING')}${step1SummaryBox}`);
-    speak(`Mencari data pembanding di Shopee, Tokopedia, Blibli, dan Amazon melalui Anakin Web Search.`);
+    // ─── STEP 2: Store Discovery Search ───
+    setCapsuleState('reasoning', isSingleStore ? `Searching ${singleStoreName}…` : 'Searching connected stores…');
+    const step2Header = isSingleStore
+      ? `**Auditing Toko Terhubung di Setting (${singleStoreName}): "${escapeHtml(displaySubject)}"**`
+      : `**Auditing ${activeTargets.length} Connected Stores (${targetStoreNames.join(', ')}): "${escapeHtml(displaySubject)}"**`;
+    updateChatMessage(missionMsgId, `${step2Header}\n\n${renderJobDeskProgressHtml(plan, 2, 'SEARCHING')}${step1SummaryBox}`);
+    const step2ActiveSpeech = isSingleStore
+      ? `Mencari kandidat produk terbaik di ${singleStoreName} sesuai konfigurasi website di setting.`
+      : `Mencari data pembanding di ${targetStoreNames.join(', ')}.`;
+    speak(step2ActiveSpeech);
 
     let candidates = [];
     try {
@@ -4845,7 +5963,7 @@
             userPrompt: userPrompt,
             budgetMax: plan.constraints?.budgetMax || userBudgetCeiling,
             targetCategory: plan.category || 'General',
-            stores: ['tokopedia', 'shopee', 'blibli', 'amazon']
+            stores: targetStoreKeys
           }
         }, resolve);
       });
@@ -4899,13 +6017,13 @@
     }
 
     await new Promise(r => setTimeout(r, 1800));
-    updateChatMessage(missionMsgId, `📋 **4-Store Discovery Complete**\n\n${renderJobDeskProgressHtml(plan, 2, 'AUDITED')}${step1SummaryBox}`);
-    speak(`Data 4 marketplace berhasil didapatkan. Melanjutkan ke Step 3: audit spesifikasi dan garansi resmi.`);
+    updateChatMessage(missionMsgId, `**${step2Title} Selesai**\n\n${renderJobDeskProgressHtml(plan, 2, 'AUDITED')}${step1SummaryBox}`);
+    speak(`Data produk ${isSingleStore ? singleStoreName : targetStoreNames.join(', ')} berhasil didapatkan. Melanjutkan ke Step 3: audit spesifikasi dan garansi resmi.`);
     await new Promise(r => setTimeout(r, 1200));
 
     // ─── STEP 3: Specs & Trust Audit ───
     setCapsuleState('reasoning', 'Auditing specs & official warranty…');
-    updateChatMessage(missionMsgId, `🔬 **Deep Spec & Trust Audit: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITING SPECS')}${step1SummaryBox}`);
+    updateChatMessage(missionMsgId, `**Deep Spec & Trust Audit: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITING SPECS')}${step1SummaryBox}`);
     speak(`Mengaudit spesifikasi driver audio dan garansi resmi toko.`);
 
     const effectiveBudget = plan.constraints?.budgetMax || userBudgetCeiling || Infinity;
@@ -4918,13 +6036,13 @@
       };
     });
     await new Promise(r => setTimeout(r, 1800));
-    updateChatMessage(missionMsgId, `🔬 **Specs & Trust Audit Complete**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITED')}${step1SummaryBox}`);
+    updateChatMessage(missionMsgId, `**Specs & Trust Audit Complete**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITED')}${step1SummaryBox}`);
     speak(`Audit spesifikasi selesai. Melanjutkan ke Step 4: simulasi landed price checkout.`);
     await new Promise(r => setTimeout(r, 1200));
 
     // ─── STEP 4: Landed Price Audit (Ongkir + Fees - Vouchers) ───
     setCapsuleState('reasoning', 'Auditing true landed checkout prices…');
-    updateChatMessage(missionMsgId, `💳 **Landed Price Audit (Ongkir + Fees - Vouchers): "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 4, 'LANDED SIMULATION')}${step1SummaryBox}`);
+    updateChatMessage(missionMsgId, `**Landed Price Audit (Ongkir + Fees - Vouchers): "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 4, 'LANDED SIMULATION')}${step1SummaryBox}`);
     speak(`Menghitung simulasi landed price hingga checkout termasuk ongkir dan voucher.`);
 
     candidates.forEach(c => {
@@ -4933,13 +6051,13 @@
       c.landedPriceStr = `Rp ${landed.toLocaleString('id-ID')}`;
     });
     await new Promise(r => setTimeout(r, 1800));
-    updateChatMessage(missionMsgId, `💳 **Landed Price Audit Complete**\n\n${renderJobDeskProgressHtml(plan, 4, 'AUDITED')}${step1SummaryBox}`);
+    updateChatMessage(missionMsgId, `**Landed Price Audit Complete**\n\n${renderJobDeskProgressHtml(plan, 4, 'AUDITED')}${step1SummaryBox}`);
     speak(`Simulasi landed price selesai. Melanjutkan ke Step 5: sintesis rekomendasi AI.`);
     await new Promise(r => setTimeout(r, 1200));
 
     // ─── STEP 5: Multi-Factor Synthesis via Groq LLM ───
     setCapsuleState('reasoning', 'Synthesizing decision matrix…');
-    updateChatMessage(missionMsgId, `🧠 **Synthesizing Multi-Factor Decision Matrix: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 5, 'AI SYNTHESIS')}${step1SummaryBox}`);
+    updateChatMessage(missionMsgId, `**Synthesizing Multi-Factor Decision Matrix: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 5, 'AI SYNTHESIS')}${step1SummaryBox}`);
     speak(`Menyusun matriks perbandingan dan rekomendasi akhir.`);
 
     let report = null;
@@ -4987,27 +6105,33 @@
     if (!tableMarkdown || !tableMarkdown.includes('|')) {
       tableMarkdown = `| Rank / Store | Product & Specs | Warranty & Trust | Landed Checkout Price | Verdict |\n` +
                       `| :--- | :--- | :--- | :--- | :--- |\n` +
-                      `| 🥇 **Winner**<br>**${escapeHtml(winner.store || 'Tokopedia')}** | **${escapeHtml(winner.title || 'dbE GM160')}**<br><small style="color:var(--voice);">${escapeHtml(winner.specs || '50mm Driver · Detachable Mic')}</small> | 🏷️ ${escapeHtml(winner.trust || 'Garansi Resmi 1 Tahun')}<br>⭐ ${escapeHtml(winner.rating || '4.9 ★')} | **${escapeHtml(winner.landedPrice || 'Rp 182.000')}**<br><small>(Base: ${escapeHtml(winner.listedPrice || 'Rp 175k')})</small> | 🎯 **${escapeHtml(winner.verdictBadge || 'Best Spec & Budget-Friendly Pick')}** |\n` +
-                      `| 🥈 Runner-Up<br>${escapeHtml(runnerUp.store || 'Shopee')} | ${escapeHtml(runnerUp.title || 'Fantech Portal HQ55')}<br><small>${escapeHtml(runnerUp.specs || '50mm Driver · Omni Mic')}</small> | 🏷️ ${escapeHtml(runnerUp.trust || 'Garansi Resmi 1 Tahun')}<br>⭐ ${escapeHtml(runnerUp.rating || '4.8 ★')} | ${escapeHtml(runnerUp.landedPrice || 'Rp 194.000')}<br><small>(Base: ${escapeHtml(runnerUp.listedPrice || 'Rp 169k')})</small> | ⚡ ${escapeHtml(runnerUp.verdictBadge || 'Cheaper Base but Higher Ongkir')} |\n` +
-                      `| 🥉 Alternate<br>${escapeHtml(third.store || 'Blibli')} | ${escapeHtml(third.title || 'Rexus Thundervox HX20')}<br><small>${escapeHtml(third.specs || '40mm Driver')}</small> | ⚠️ ${escapeHtml(third.trust || 'Garansi Toko')}<br>⭐ ${escapeHtml(third.rating || '4.6 ★')} | ${escapeHtml(third.landedPrice || 'Rp 170.000')}<br><small>(Base: ${escapeHtml(third.listedPrice || 'Rp 155k')})</small> | ⚠️ ${escapeHtml(third.verdictBadge || 'Avoid: Distributor Warranty')} |`;
+                      `| **Winner**<br>**${escapeHtml(winner.store || 'Tokopedia')}** | **${escapeHtml(winner.title || 'dbE GM160')}**<br><small style="color:var(--voice);">${escapeHtml(winner.specs || '50mm Driver · Detachable Mic')}</small> | ${escapeHtml(winner.trust || 'Garansi Resmi 1 Tahun')}<br>${escapeHtml(winner.rating || '4.9 ★')} | **${escapeHtml(winner.landedPrice || 'Rp 182.000')}**<br><small>(Base: ${escapeHtml(winner.listedPrice || 'Rp 175k')})</small> | **${escapeHtml(winner.verdictBadge || 'Best Spec & Budget-Friendly Pick')}** |\n` +
+                      `| Runner-Up<br>${escapeHtml(runnerUp.store || 'Shopee')} | ${escapeHtml(runnerUp.title || 'Fantech Portal HQ55')}<br><small>${escapeHtml(runnerUp.specs || '50mm Driver · Omni Mic')}</small> | ${escapeHtml(runnerUp.trust || 'Garansi Resmi 1 Tahun')}<br>${escapeHtml(runnerUp.rating || '4.8 ★')} | ${escapeHtml(runnerUp.landedPrice || 'Rp 194.000')}<br><small>(Base: ${escapeHtml(runnerUp.listedPrice || 'Rp 169k')})</small> | ${escapeHtml(runnerUp.verdictBadge || 'Cheaper Base but Higher Ongkir')} |\n` +
+                      `| Alternate<br>${escapeHtml(third.store || 'Blibli')} | ${escapeHtml(third.title || 'Rexus Thundervox HX20')}<br><small>${escapeHtml(third.specs || '40mm Driver')}</small> | ${escapeHtml(third.trust || 'Garansi Toko')}<br>${escapeHtml(third.rating || '4.6 ★')} | ${escapeHtml(third.landedPrice || 'Rp 170.000')}<br><small>(Base: ${escapeHtml(third.listedPrice || 'Rp 155k')})</small> | ${escapeHtml(third.verdictBadge || 'Avoid: Distributor Warranty')} |`;
     }
 
-    const reportContent = `✅ **Autonomous Shopping Mission Completed**\n\n` +
+    const storeContextLabel = isSingleStore ? singleStoreName : targetStoreNames.join(', ');
+    const reportContent = `**Autonomous Shopping Mission Completed**\n\n` +
       renderJobDeskProgressHtml(plan, 5, 'DONE') + '\n\n' +
-      `⚖️ **Multi-Store Comparison Matrix & Deep Spec Audit**\n\n` +
-      `Here is my comprehensive audit across **4 connected stores (Shopee, Tokopedia, Blibli, Amazon)** evaluating **hardware specifications, seller credibility (Official Store / Garansi Resmi), buyer ratings**, and **true landed checkout price (ongkir + fees - vouchers)**:\n\n` +
+      `### 🏆 REKOMENDASI TERBAIK (THE BEST)\n\n` +
+      `Berdasarkan audit mendalam di **${escapeHtml(storeContextLabel)}**, produk yang paling **BEST** adalah:\n\n` +
+      `> **${escapeHtml(winner.title || displaySubject)}**\n` +
+      `> **Harga Landed:** ${escapeHtml(winner.landedPrice || winner.listedPrice || 'Harga Terbaik')} · **Toko:** ${escapeHtml(winner.store || singleStoreName)}\n` +
+      `> **Garansi & Trust:** ${escapeHtml(winner.trust || 'Official Store · Garansi Resmi')} · **Rating:** ${escapeHtml(winner.rating || '4.9 ★')}\n` +
+      `> **Spesifikasi Utama:** ${escapeHtml(winner.specs || 'Spesifikasi hardware terbaik dengan nilai value tertinggi')}\n\n` +
+      `**Matriks Perbandingan Lengkap:**\n\n` +
       tableMarkdown + '\n\n' +
-      `💡 **AI Trade-off Rationale:**\n` +
-      `${report?.aiRationale || 'While some competitors have a lower listed base price, their higher shipping costs or distributor warranties make them inferior. The winner delivers top-tier hardware specs with official warranty and the lowest true landed checkout price.'}\n\n` +
-      `🛡️ *Safety Guardrail: Landed price audit halted safely before payment. No orders were placed.*`;
+      `**Analisis Keputusan AI:**\n` +
+      `${report?.aiRationale || 'Produk pemenang memberikan keseimbangan ideal antara kualitas hardware, garansi resmi terpercaya, dan total landed price paling hemat hingga tahap checkout.'}\n\n` +
+      `*Safety Guardrail: Simulasi berhenti aman sebelum pembayaran. Tidak ada saldo terpotong.*`;
 
-    const spokenText = report?.spoken || `I completed the multi-store audit across 4 stores. The winner is ${winner.title} on ${winner.store}. Even though Shopee had a slightly cheaper base price, Tokopedia wins on true landed checkout price with lower shipping, 50 millimeter drivers, and official 1-year warranty.`;
+    const spokenText = report?.spoken || `Dari hasil perbandingan di ${winner.store || singleStoreName}, produk yang paling BEST adalah ${winner.title || displaySubject} seharga ${winner.landedPrice || winner.listedPrice || 'terbaik'}! Mau langsung dibeli sekarang?`;
 
     const quickOptions = [
-      { label: `🛍️ Beli & Checkout (${winner.store || 'Tokopedia'})`, action: 'buy_winner', targetUrl: winner.url || 'https://tokopedia.com' },
-      { label: `👉 Buka Produk Pemenang`, action: 'open_winner', targetUrl: winner.url || 'https://tokopedia.com' },
-      { label: "⚖️ Bandingkan Toko Lain", query: `bandingkan harga ${displaySubject}` },
-      { label: "🏷️ Garansi Resmi Only", query: `${targetSubject} garansi resmi official store` }
+      { label: `⚡ Langsung Beli Sekarang (${winner.store || singleStoreName})`, action: 'buy_winner', targetUrl: winner.url || window.location.href },
+      { label: `🔗 Buka Halaman Produk`, action: 'open_winner', targetUrl: winner.url || window.location.href },
+      { label: `🔍 Bandingkan Produk Lain`, query: `bandingkan lagi ${displaySubject}` },
+      { label: `🏷️ Cari Kupon Tambahan`, action: 'deals' }
     ];
 
     // Single living card update with full matrix & 1-click action chips
@@ -5017,7 +6141,7 @@
     });
 
     speak(spokenText);
-    setCapsuleState('idle', 'Shopping audit complete');
+    setCapsuleState('idle', 'Audit perbandingan selesai');
   }
 
   const executeAutonomousCompare = executeAutonomousLiveCompare;
@@ -5112,16 +6236,32 @@
       const linkEl = targetCard.querySelector('a[href]') || targetCard.closest('a[href]') || targetCard;
       const spoken = `Opening the ${targetLabel} for you.`;
       speak(spoken);
-      appendChatMessage('agent', `👆 **Opening ${targetLabel}**\n\nNavigating to product details…`);
+      appendChatMessage('agent', `**Opening ${targetLabel}**\n\nNavigating to product details…`);
+      setCapsuleState('acting', `Opening: ${targetLabel.slice(0, 30)}`, 'VOX IS OPENING PRODUCT');
+
+      if (typeof activeAgentLoop !== 'undefined' && activeAgentLoop) {
+        activeAgentLoop.history.push({
+          action: { action: 'CLICK_PRODUCT', reason: `Opening ${targetLabel}` },
+          result: { success: true, clicked: targetLabel }
+        });
+        if (typeof saveActiveMission === 'function') {
+          await saveActiveMission(activeAgentLoop);
+        }
+      }
 
       setTimeout(() => {
         try {
-          linkEl.click();
+          if (linkEl && linkEl.href && !linkEl.href.startsWith('javascript:')) {
+            window.location.href = linkEl.href;
+          } else if (linkEl) {
+            linkEl.click();
+          } else {
+            targetCard.click();
+          }
         } catch (_) {
-          targetCard.click();
+          try { targetCard.click(); } catch (e) {}
         }
-      }, 600);
-      setCapsuleState('idle', 'Item opened');
+      }, 500);
       return;
     }
 
@@ -5150,11 +6290,16 @@
 
     // Direct replacements for phonetics, accents, and ESL code-mixing
     const replacements = [
+      // Wake word variants (e.g. "hey vos", "hei vos", "halo vos", "hey fox", "hey box")
+      { pattern: /\b(hey|hei|halo|hai|ok)?\s*(vos|voss|foss|vocks|vaux|foks|folks|fox)\b/gi, replace: 'hey vox' },
+
       // View Pricing / Price intent (Indonesian + broken English phonetics)
       { pattern: /\b(can\s+you\s+see|can\s+you\s+look|bisa\s+)?(kamu\s+bisa\s+)?(ngeliat|ngelihat|liat|lihat|tengok|see|look|view|cek|check|open|buka|tekan|teken|klik|click|press)\s*(at\s+)?(the\s+)?(viu|view\s+)?(pricing|presing|preising|praising|prays|prices|price|harga|harganya|cost|rate|plans|paket|buy|beli)(\s*(nggak|gak|ga|ya|dong|kah))?\b/gi, replace: 'view pricing' },
       { pattern: /\b(bisa\s+)?(klik|click|tekan|teken|press|pencet|tap)\s*(tombol\s+)?(pricing|price|buy|beli|order|shop|specs)(\s*(nggak|gak|ga|ya|dong|kah))?\b/gi, replace: 'view pricing' },
-      { pattern: /\b(how\s+much\s+price|how\s+mach|how\s+mat|how\s+mut|so\s+price|berapa\s+harganya|berapaan)\b/gi, replace: 'how much is the price' },
-      { pattern: /\b(buy\s+now|beli\s+sekarang|order\s+now|shop\s+now)\b/gi, replace: 'buy now' },
+      // Buy & Purchase intent
+      { pattern: /\b(buy(\s*now|\s*this|\s*winner|\s*it)?|beli(\s*sekarang|\s*ini|\s*ya|\s*dong|\s*aja|\s*produknya|\s*barangnya)?|order(\s*now|\s*this)?|checkout|bayar\s*sekarang|beliin\s*ini)\b/gi, replace: 'buy now' },
+      // Click product intent
+      { pattern: /\b(klik|click|buka|open|pilih|select|teken|tekan)\s*(the|that|this)?\s*(produk|product|item|barang)?\s*(nya)?\b/gi, replace: 'click product' },
 
       // Compare intent (e.g. "kalau kamu bandingin iPhone 17 sama iPhone 18")
       { pattern: /\b(kalau\s+kamu\s+)?(bandingin|bandingkan|compare|komper|vs|versus)\s+([a-z0-9\s]+?)\s+(sama|dengan|with|and|dan|to)\s+([a-z0-9\s]+)\b/gi, replace: 'compare $3 and $5' },
@@ -5210,7 +6355,7 @@
       { pattern: /\b(use\s+(my\s+)?home\s+address|switch\s+to\s+home)\b/gi, replace: 'switch profile home and fill address' },
 
       // Buy / Checkout intent (STRICTLY for winner item or current item e.g. "beli ini", "beli yang ini", "beli pemenang", "checkout sekarang")
-      { pattern: /\b(beliin\s+(ini|yang\s*ini|barang\s*ini|produk\s*ini|pemenang(nya)?)|beli\s+(ini|yang\s*ini|barang\s*ini|produk\s*ini|pemenang(nya)?|sekarang)|buy\s+(this(\s+for\s+me)?|winner|the\s*winner)|checkout\s+(sekarang|pemenang(nya)?)|beli\s+dan\s+checkout|buy\s+and\s+checkout)\b/gi, replace: 'buy this item and checkout' },
+      { pattern: /\b(beliin\s+(ini|yang\s*ini|barang\s*ini|produk\s*ini|pemenang(nya)?)|beli\s+(ini|yang\s*ini|barang\s*ini|produk\s*ini|pemenang(nya)?|sekarang)|buy\s+(this(\s+for\s+me)?|winner|the\s+winner)|checkout\s+(sekarang|pemenang(nya)?)|beli\s+dan\s+checkout|buy\s+and\s+checkout)\b/gi, replace: 'buy this item and checkout' },
       { pattern: /\b(add\s+to\s+cart|tambah\s+ke\s+keranjang|masukin\s+keranjang|\+\s*keranjang)\b/gi, replace: 'add to cart' },
 
       // Deal Hunting intent
@@ -5275,7 +6420,7 @@
           openDialog();
           showMainView();
           setCapsuleState('reasoning', 'Executing 1-Click Buy…');
-          appendChatMessage('agent', `🛍️ **Resuming Autonomous Buy & Checkout**\n\nInitiating 1-Click order execution for **${escapeHtml(parsed.winnerTitle || 'Winner Product')}**.`);
+          appendChatMessage('agent', `**Resuming Autonomous Buy & Checkout**\n\nInitiating 1-Click order execution for **${escapeHtml(parsed.winnerTitle || 'Winner Product')}**.`);
           speak(`Halaman produk dibuka. Memulai proses pembelian dan checkout otomatis.`);
           await new Promise(r => setTimeout(r, 800));
           await executeAutonomousCheckout('checkout');
@@ -5294,8 +6439,8 @@
       recognition.continuous = true;
       recognition.interimResults = true;
 
-      // Multi-lingual recognition with Indonesian & ESL harmonization
-      const defaultLang = (window.VOX_ENV?.VOX_LANGUAGE === 'id' || window.VOX_ENV?.VOX_LANGUAGE === 'id-ID') ? 'id-ID' : (localStorage.getItem('vox_speech_lang') || 'id-ID');
+      // Multi-lingual recognition with English default
+      const defaultLang = voxLanguage || (window.VOX_ENV?.VOX_LANGUAGE || 'en-US');
       recognition.lang = defaultLang;
 
       recognition.onstart = () => {
@@ -5306,10 +6451,21 @@
         dialogTranscript.textContent = 'Listening to your voice… speak freely.';
       };
 
+      recognition.onspeechstart = () => {
+        stopCurrentSpeech(true);
+        isSpeaking = false;
+      };
+
       let wakeWordDebounceTimer = null;
       let lastProcessedQuery = '';
+      let lastProcessedTime = 0;
 
       recognition.onresult = (event) => {
+        if (isSpeaking) {
+          stopCurrentSpeech(true);
+          isSpeaking = false;
+        }
+
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
@@ -5322,38 +6478,69 @@
           const clean = transcript.trim();
           if (!clean) return;
 
-          // Harmonize ESL English vocabulary
-          const harmonized = harmonizeUserVocab(clean);
-
-          // Strip wake word: "hey vox", "hey fox", "halo vox", "vox", "fox"
-          const withoutWake = harmonized.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks)[,.]?\s*/i, '').trim();
-
           // Clear any pending timer
           if (wakeWordDebounceTimer) {
             clearTimeout(wakeWordDebounceTimer);
             wakeWordDebounceTimer = null;
           }
 
-          // If the user JUST said the wake word without a question (e.g. only "Hey Vox")
-          if (!withoutWake) {
-            // Wait 900ms in case user was briefly pausing before asking their question
-            wakeWordDebounceTimer = setTimeout(() => {
-              if (lastProcessedQuery === 'hai') return;
-              lastProcessedQuery = 'hai';
-              stopListening();
-              processNaturalQuery('hai');
-            }, 900);
+          // Harmonize ESL English vocabulary
+          const harmonized = harmonizeUserVocab(clean);
+
+          // Strip wake word: "hey vox", "hey vos", "hey fox", "halo vox", "vox", "fox"
+          let withoutWake = harmonized.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks|vos|voss|foss)[,.]?\s*/i, '').trim();
+
+          // Strip conversational transition words: "terus", "lalu", "kemudian", "and then", "then"
+          withoutWake = withoutWake.replace(/^(terus|lalu|kemudian|and\s+then|then)\s+/i, '').trim();
+
+          // Check for pause / hold phrases: e.g. "bentar", "tunggu", "wait", "hold on", "sabar", "nanti"
+          const isPausePhrase = /^(bentar|sebentar|tunggu|wait|hold\s*on|sabar|pause|nanti)/i.test(clean) ||
+                                /\b(bentar|sebentar|tunggu|hold\s*on|sabar)\b/i.test(clean);
+          if (isPausePhrase) {
+            console.log('[Vox Agent] User asked to wait/pause:', clean);
+            stopCurrentSpeech(true);
+            setCapsuleState('listening', 'Menunggu Anda…');
+            dialogTranscript.textContent = `"${clean}" (Menunggu Anda bicara…)`;
             return;
           }
 
-          // Real question asked
-          if (withoutWake.length >= 2 && withoutWake !== lastProcessedQuery) {
+          // Check if user is testing the microphone
+          if (/^(tes\s*mic|cek\s*mic|test\s*mic|mic\s*check|tes(\s*1\s*2\s*3)?)$/i.test(clean)) {
+            playUiChime('ready');
+            expandCapsule('Mikrofon aktif & jernih!', 3500);
+            setCapsuleState('listening', 'Mendengarkan…');
+            dialogTranscript.textContent = 'Mikrofon aktif & jernih. Siap mendengarkan!';
+            speak('Mikrofon aktif dan berfungsi dengan baik bro, siap membantu.');
+            return;
+          }
+
+          // If the user JUST said the wake word or greeting without a question (e.g. only "Hey Vox", "Hey Vos", "Halo Vox", "Vox")
+          const isWakeWordOnly = !withoutWake || /^(hey\s*(vox|fox|box|vos|voss|foss|folks)|heyvox|heyvos|halo\s*(vox|vos)|halovox|hai\s*(vox|vos)|haivox|hei\s*(vox|vos)|heivox|vox|vos|fox|hey\s*fox|heyfox|halo\s*asisten|hey\s*box|halo|hai|hey|hello|hi)$/i.test(clean);
+          if (isWakeWordOnly) {
+            console.log('[Vox Agent] Wake word acknowledged:', clean);
+            playUiChime('ready');
+            expandCapsule('Halo! Ada yang bisa dibantu?', 3000);
+            setCapsuleState('listening', 'Mendengarkan…');
+            dialogTranscript.textContent = 'Halo! Ada yang bisa dibantu?';
+            const isIndo = (voxLanguage.startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id') ||
+                           /\b(halo|hai|bro|mas|gan)\b/i.test(clean);
+            const greeting = isIndo ? 'Ya bro?' : 'Yes?';
+            speak(greeting);
+            return;
+          }
+
+          // Real question asked — prevent double execution only within 2.5s window
+          const isDuplicateInWindow = (withoutWake === lastProcessedQuery) && (Date.now() - lastProcessedTime < 2500);
+          if (withoutWake.length >= 2 && !isDuplicateInWindow) {
             lastProcessedQuery = withoutWake;
+            lastProcessedTime = Date.now();
+            stopCurrentSpeech(true);
+            isSpeaking = false;
             if (recognition && isListening) {
               try { recognition.stop(); } catch (_) {}
             }
             isListening = false;
-            setCapsuleState('reasoning', 'Thinking…');
+            setCapsuleState('thinking', 'Berpikir… 💭', 'VOX IS THINKING');
 
             // Attempt high-accuracy Groq Whisper transcription if recorded audio exists
             stopAudioRecordingAndTranscribe().then((whisperText) => {
@@ -5361,7 +6548,8 @@
               if (whisperText && whisperText.length >= 3) {
                 console.log(`[Vox Agent] Groq Whisper transcribed: "${whisperText}" (WebSpeech was: "${withoutWake}")`);
                 let cleanWhisper = harmonizeUserVocab(whisperText);
-                cleanWhisper = cleanWhisper.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks)[,.]?\s*/i, '').trim();
+                cleanWhisper = cleanWhisper.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks|vos|voss|foss)[,.]?\s*/i, '').trim();
+                cleanWhisper = cleanWhisper.replace(/^(terus|lalu|kemudian|and\s+then|then)\s+/i, '').trim();
                 if (cleanWhisper.length >= 2) {
                   finalText = cleanWhisper;
                 }
@@ -5376,14 +6564,18 @@
 
       recognition.onerror = (err) => {
         isListening = false;
-        // Don't kill hands-free on transient errors (no-speech, network, aborted)
+        console.log('[Vox Agent] Speech mic info/error:', err.error);
         if (err.error === 'not-allowed' || err.error === 'service-not-allowed') {
           setCapsuleState('idle', 'Mic blocked — check permissions');
           isHandsFreeMode = false;
           console.warn('[Vox Agent] Microphone permission denied.');
         } else {
-          console.log('[Vox Agent] Speech mic info:', err.error);
-          // Auto-restart in hands-free mode after transient errors
+          // Clear stuck isSpeaking lock if speech hung for > 6s
+          if (isSpeaking && (!currentAudio || currentAudio.paused) && (Date.now() - speechStartTime > 6000)) {
+            console.warn('[Vox Agent] Force-clearing stuck isSpeaking lock on mic error.');
+            isSpeaking = false;
+          }
+          // Auto-restart in hands-free mode after transient errors (no-speech, network, aborted)
           if (isHandsFreeMode && !isSpeaking) {
             setTimeout(() => {
               if (isHandsFreeMode && !isSpeaking && !isListening) {
@@ -5398,6 +6590,11 @@
 
       recognition.onend = () => {
         isListening = false;
+        // Clear stuck isSpeaking lock if speech hung for > 7s
+        if (isSpeaking && (!currentAudio || currentAudio.paused) && (Date.now() - speechStartTime > 7000)) {
+          console.warn('[Vox Agent] Force-clearing stuck isSpeaking lock on mic end.');
+          isSpeaking = false;
+        }
         // Persistent Hands-Free: auto-restart mic after it naturally stops
         if (isHandsFreeMode && !isSpeaking) {
           setTimeout(() => {
@@ -5422,6 +6619,86 @@
   let audioStream = null;
   let isRecordingAudio = false;
 
+  /**
+   * Check if microphone permission is already granted (no prompt).
+   * Returns true if granted, false if denied/prompt-needed.
+   */
+  async function checkMicPermission() {
+    try {
+      if (navigator.permissions) {
+        const result = await navigator.permissions.query({ name: 'microphone' });
+        micPermissionGranted = result.state === 'granted';
+        // Listen for permission changes
+        result.addEventListener('change', () => {
+          micPermissionGranted = result.state === 'granted';
+          console.log('[Vox Agent] Mic permission changed to:', result.state);
+        });
+        return micPermissionGranted;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  /**
+   * Save mic state to chrome.storage for cross-page persistence.
+   */
+  function saveMicState() {
+    const state = {
+      isHandsFreeMode,
+      isListening,
+      timestamp: Date.now()
+    };
+    try {
+      if (chrome.storage?.local) {
+        chrome.storage.local.set({ [VOX_MIC_STATE_KEY]: state });
+      } else {
+        sessionStorage.setItem(VOX_MIC_STATE_KEY, JSON.stringify(state));
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Restore mic state after page navigation.
+   * Only auto-starts mic if permission is already granted (no prompt).
+   */
+  async function restoreMicState() {
+    const permissionOk = await checkMicPermission();
+
+    const onLoaded = (state) => {
+      if (!state) return;
+
+      // Only restore if saved within last 60 seconds (navigation window)
+      const age = Date.now() - (state.timestamp || 0);
+      if (age > 60000) return;
+
+      isHandsFreeMode = state.isHandsFreeMode || false;
+
+      // Auto-resume mic if it was active AND permission is already granted
+      if ((state.isListening || state.isHandsFreeMode) && permissionOk) {
+        console.log('[Vox Agent] Auto-resuming mic after page navigation (permission granted)');
+        setTimeout(() => {
+          startListening();
+          setCapsuleState('listening', '🎙 Resumed listening', 'VOX IS LISTENING');
+        }, 800);
+      } else if (state.isHandsFreeMode && !permissionOk) {
+        // Mic was active but permission not pre-granted — show hint instead of prompting
+        console.log('[Vox Agent] Mic was active but permission needs re-grant. Waiting for user click.');
+        setCapsuleState('idle', 'Tap to resume mic', 'VOX IS READY');
+      }
+    };
+
+    try {
+      if (chrome.storage?.local) {
+        chrome.storage.local.get([VOX_MIC_STATE_KEY], (res) => {
+          onLoaded(res[VOX_MIC_STATE_KEY]);
+        });
+      } else {
+        const saved = JSON.parse(sessionStorage.getItem(VOX_MIC_STATE_KEY) || 'null');
+        onLoaded(saved);
+      }
+    } catch (_) {}
+  }
+
   async function startAudioRecording() {
     try {
       if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -5432,7 +6709,17 @@
       }
       recordedAudioChunks = [];
       if (!audioStream || !audioStream.active) {
+        // Only call getUserMedia if permission is already granted (avoid popup)
+        // On first user-initiated mic click, permission will be requested naturally
+        if (!micPermissionGranted) {
+          const permOk = await checkMicPermission();
+          if (!permOk) {
+            console.log('[Vox Agent] Skipping getUserMedia — permission not yet granted. SpeechRecognition will handle voice input.');
+            return;
+          }
+        }
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micPermissionGranted = true;
       }
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -5515,19 +6802,20 @@
     stopCurrentSpeech();
     startAudioRecording();
     if (!recognition) {
-      dialogTranscript.textContent = 'Microphone API unavailable in this browser. You can type in the box below!';
-      quickInput.focus();
+      if (dialogTranscript) dialogTranscript.textContent = 'Microphone API unavailable in this browser. You can type in the box below!';
+      if (quickInput) quickInput.focus();
       return;
     }
     if (isListening) return;
     isHandsFreeMode = true;  // Enable hands-free when user initiates listening
+    saveMicState(); // Persist mic state across page navigations
     try {
       recognition.start();
     } catch (_) {
       stopListening();
       setTimeout(() => {
         try { recognition.start(); } catch (e) {
-          quickInput.focus();
+          if (quickInput) quickInput.focus();
         }
       }, 100);
     }
@@ -5542,6 +6830,7 @@
     }
     isListening = false;
     isRecordingAudio = false;
+    saveMicState(); // Persist mic state across page navigations
     setCapsuleState('idle', 'Hey Vox or Ask');
   }
 
@@ -5570,6 +6859,7 @@
     if (isListening || (capsule && capsule.dataset.state === 'listening')) {
       isHandsFreeMode = false;  // User explicitly stopped — disable hands-free
       stopListening();
+      saveMicState();
       setFloatingMode('ambient');
     } else {
       startListening();
@@ -5606,7 +6896,16 @@
   }
 
   // 9. Realistic Natural Voice Engine & Autonomous Page Auto-Scroll
-  function stopCurrentSpeech() {
+  let activeSpeechWatchdog = null;
+
+  function stopCurrentSpeech(invalidateAsync = true) {
+    if (invalidateAsync) {
+      currentSpeechId++;
+    }
+    if (activeSpeechWatchdog) {
+      clearTimeout(activeSpeechWatchdog);
+      activeSpeechWatchdog = null;
+    }
     if (currentAudio) {
       try {
         currentAudio.pause();
@@ -5619,6 +6918,10 @@
       try { window.speechSynthesis.cancel(); } catch (_) {}
     }
   }
+
+  window.addEventListener('beforeunload', () => {
+    stopCurrentSpeech();
+  });
 
   function splitTextForAudio(text) {
     const rawChunks = text.match(/[^.!?,;]+(?:[.!?]+|\s*,\s*|\s*;\s*)|[^.!?,;]+$/g) || [text];
@@ -5711,14 +7014,14 @@
     let selectedVoice = null;
 
     if (lang.startsWith('id')) {
-      selectedVoice = voices.find(v => /google.*indonesia/i.test(v.name)) ||
-                      voices.find(v => /gadis|ardi|natural.*id/i.test(v.name)) ||
-                      voices.find(v => /damayanti/i.test(v.name)) ||
+      selectedVoice = voices.find(v => /ardi|natural.*id.*male/i.test(v.name)) ||
+                      voices.find(v => /google.*indonesia/i.test(v.name)) ||
+                      voices.find(v => /gadis|damayanti/i.test(v.name)) ||
                       voices.find(v => v.lang.startsWith('id'));
     } else {
-      selectedVoice = voices.find(v => /google.*us english/i.test(v.name)) ||
-                      voices.find(v => /natural.*english|jenny|guy|aria/i.test(v.name)) ||
-                      voices.find(v => /samantha.*enhanced|daniel/i.test(v.name)) ||
+      selectedVoice = voices.find(v => /daniel|guy|natural.*(male|guy|david)|david|mark/i.test(v.name)) ||
+                      voices.find(v => /google.*us english/i.test(v.name)) ||
+                      voices.find(v => /samantha|jenny|aria/i.test(v.name)) ||
                       voices.find(v => v.lang.startsWith('en'));
     }
 
@@ -5739,10 +7042,50 @@
     window.speechSynthesis.speak(u);
   }
 
+  function cleanTextForSpeech(text) {
+    if (!text || typeof text !== 'string') return '';
+    let cleaned = text;
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+    cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+    cleaned = cleaned.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+    cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+    cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+    cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+    cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+    cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+    cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');
+    cleaned = cleaned.replace(/^\s*[-*+•●]\s+/gm, '');
+    cleaned = cleaned.replace(/[★☆]/g, ' stars');
+    cleaned = cleaned.replace(/->|→|←|⇒|▶|▼|▲|◀/g, ' ');
+    cleaned = cleaned.replace(/[*#`~|]/g, ' ');
+    cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FAFF}\u{1F000}-\u{1F02F}\u{1F0A0}-\u{1F0FF}]/gu, '');
+    cleaned = cleaned.replace(/\[(\d+)\]/g, '$1');
+    cleaned = cleaned.replace(/-{2,}/g, ' ');
+    cleaned = cleaned.replace(/={2,}/g, ' ');
+    cleaned = cleaned.replace(/\s+([,.:;?!])/g, '$1');
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    return cleaned;
+  }
+
   let currentSpeechId = 0;
 
   async function speak(text, onEndCallback) {
-    const thisSpeechId = ++currentSpeechId;
+    text = cleanTextForSpeech(text);
+    if (!text) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
+
+    // Stop and cancel ANY previous speech immediately and invalidate pending async TTS requests
+    stopCurrentSpeech(true);
+    const thisSpeechId = currentSpeechId;
+
+    // Silent mode: skip all TTS during background work
+    if (silentMode) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
 
     if (isMuted) {
       setCapsuleState('idle', 'Hey Vox or Ask');
@@ -5750,17 +7093,34 @@
       return;
     }
 
-    // Stop and cancel ANY previous speech immediately (both WebSpeech and Audio elements)
     pauseMicForSpeech();
     isSpeaking = true;
-    stopCurrentSpeech();
+    speechStartTime = Date.now();
     setCapsuleState('speaking', 'Speaking…');
 
-    const isIndonesian = (window.VOX_ENV?.VOX_LANGUAGE === 'id') ||
+    const isIndonesian = (voxLanguage.startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id') &&
       /\b(yang|untuk|dengan|tidak|kegunaan|halo|kami|kamu|layak|harga|diskon|kupon|pesanan|alamat)\b/i.test(text);
     const langCode = isIndonesian ? 'id' : 'en';
 
+    // Safety watchdog: Chrome SpeechSynthesis / Audio elements sometimes never fire onend
+    // Adaptive buffer: short utterances get shorter watchdog (3.5s base), long ones get up to 60s
+    const baseDuration = (text || '').length < 60 ? 3500 : 8000;
+    const estDurationMs = Math.max(3500, Math.min(60000, baseDuration + (text || '').length * 140));
+    if (activeSpeechWatchdog) {
+      clearTimeout(activeSpeechWatchdog);
+    }
+    activeSpeechWatchdog = setTimeout(() => {
+      if (thisSpeechId === currentSpeechId && isSpeaking) {
+        console.log('[Vox Agent] Speech watchdog released lock.');
+        onSpeechDone();
+      }
+    }, estDurationMs);
+
     const onSpeechDone = () => {
+      if (activeSpeechWatchdog) {
+        clearTimeout(activeSpeechWatchdog);
+        activeSpeechWatchdog = null;
+      }
       if (thisSpeechId !== currentSpeechId) return; // Stale utterance, ignore
       isSpeaking = false;
       setCapsuleState('idle', isHandsFreeMode ? '🎙 Live Listening' : 'Hey Vox or Ask');
@@ -5770,18 +7130,22 @@
 
     // Strategy 1: ElevenLabs / Background TTS Proxy (ultra-realistic human voice)
     try {
-      if (chrome.runtime?.sendMessage) {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage && chrome.runtime?.id) {
         const proxyResult = await new Promise((resolve) => {
-          chrome.runtime.sendMessage(
-            { action: 'TTS_GENERATE_AUDIO', payload: { text, lang: langCode } },
-            (response) => {
-              if (chrome.runtime.lastError || !response?.success) {
-                resolve(null);
-              } else {
-                resolve(response.data);
+          try {
+            chrome.runtime.sendMessage(
+              { action: 'TTS_GENERATE_AUDIO', payload: { text, lang: langCode } },
+              (response) => {
+                if (chrome.runtime?.lastError || !response?.success) {
+                  resolve(null);
+                } else {
+                  resolve(response.data);
+                }
               }
-            }
-          );
+            );
+          } catch (_) {
+            resolve(null);
+          }
         });
 
         // If a new query arrived while waiting for ElevenLabs, cancel this playback!
@@ -5789,10 +7153,20 @@
 
         if (proxyResult) {
           if (proxyResult.source === 'elevenlabs' && proxyResult.audioDataUri) {
-            stopCurrentSpeech(); // Ensure no audio or Web Speech is running
+            stopCurrentSpeech(false); // Ensure no old audio or Web Speech is running without invalidating this speech sequence
             const audio = new Audio(proxyResult.audioDataUri);
             currentAudio = audio;
             audio.playbackRate = voiceSpeed;
+            audio.onloadedmetadata = () => {
+              if (audio.duration && isFinite(audio.duration)) {
+                if (activeSpeechWatchdog) clearTimeout(activeSpeechWatchdog);
+                activeSpeechWatchdog = setTimeout(() => {
+                  if (thisSpeechId === currentSpeechId && isSpeaking) {
+                    onSpeechDone();
+                  }
+                }, Math.max(3000, (audio.duration * 1000) + 2500));
+              }
+            };
             audio.onended = onSpeechDone;
             audio.onerror = () => {
               if (thisSpeechId !== currentSpeechId) return;
@@ -5809,7 +7183,7 @@
               return;
             }
           } else if (proxyResult.source === 'google_neural' && proxyResult.audioChunks?.length) {
-            stopCurrentSpeech();
+            stopCurrentSpeech(false);
             let idx = 0;
             const playNext = () => {
               if (thisSpeechId !== currentSpeechId) return;
@@ -5830,7 +7204,9 @@
         }
       }
     } catch (err) {
-      console.warn('[Vox Agent] Background TTS proxy unavailable:', err);
+      if (!err?.message?.includes('Extension context invalidated')) {
+        console.warn('[Vox Agent] Background TTS proxy unavailable:', err);
+      }
     }
 
     if (thisSpeechId !== currentSpeechId) return;
@@ -5841,6 +7217,7 @@
 
   async function fallbackToNeuralOrWebSpeech(text, langCode, onDone, speechId) {
     if (speechId && speechId !== currentSpeechId) return;
+    stopCurrentSpeech(false);
     speakViaWebSpeech(text, langCode === 'id' ? 'id-ID' : 'en-US', onDone);
   }
 
@@ -5958,6 +7335,294 @@
     }, 10000);
   }
 
+  // ===== VISUAL SPOTLIGHT TOUR ENGINE =====
+  // Sequential choreography: highlights elements one-by-one with numbered badges,
+  // progress dots, smooth scrolling, and optional speech narration per step.
+
+  let activeTour = null; // { steps, currentStep, badges, progressEl, cancelled }
+
+  /**
+   * Clear any running spotlight tour — remove all badges, highlights, progress bar.
+   */
+  function clearTour() {
+    if (!activeTour) return;
+    activeTour.cancelled = true;
+
+    // Remove all tour highlights and badges from the page
+    document.querySelectorAll('.vox-tour-highlight').forEach(el => el.classList.remove('vox-tour-highlight'));
+    document.querySelectorAll('.vox-tour-step-badge').forEach(el => el.remove());
+    document.querySelectorAll('.vox-tour-progress').forEach(el => el.remove());
+
+    activeTour = null;
+  }
+
+  /**
+   * Position a tour badge near a highlighted element.
+   */
+  function positionTourBadge(badge, el) {
+    const r = el.getBoundingClientRect();
+    badge.style.top = `${Math.max(8, r.top + window.scrollY - 42)}px`;
+    badge.style.left = `${Math.max(12, r.left + window.scrollX + 6)}px`;
+  }
+
+  /**
+   * Run a multi-step spotlight tour.
+   * @param {Array} steps - Array of { selector, title, desc, speak }
+   *   - selector: CSS selector string to find the element
+   *   - title: Short title shown in the badge (e.g. "Harga Produk")
+   *   - desc: Short description under the title (e.g. "Rp 2.499.000")
+   *   - speak: Optional text for Vox to narrate at this step
+   * @param {Object} options - { delayPerStep, speakSteps }
+   */
+  async function runSpotlightTour(steps, options = {}) {
+    if (!steps || steps.length === 0) return;
+
+    clearTour();
+    clearHighlight();
+
+    const delayPerStep = options.delayPerStep || 3500;
+    const speakSteps = options.speakSteps !== false;
+
+    activeTour = {
+      steps,
+      currentStep: 0,
+      badges: [],
+      progressEl: null,
+      cancelled: false
+    };
+
+    // Create progress bar
+    const progressEl = document.createElement('div');
+    progressEl.className = 'vox-tour-progress';
+    progressEl.innerHTML = `
+      <span class="vox-tour-progress-label">⚡ Tour: Step <span class="vox-tour-current">1</span>/${steps.length}</span>
+      <div class="vox-tour-progress-dots">
+        ${steps.map((_, i) => `<span class="vox-tour-dot${i === 0 ? ' active' : ''}" data-step="${i}"></span>`).join('')}
+      </div>
+      <button class="vox-tour-skip-btn" type="button">✕ Skip</button>
+    `;
+    document.body.appendChild(progressEl);
+    activeTour.progressEl = progressEl;
+
+    // Skip button
+    const skipBtn = progressEl.querySelector('.vox-tour-skip-btn');
+    if (skipBtn) {
+      skipBtn.addEventListener('click', () => {
+        clearTour();
+        setCapsuleState('idle', 'Tour skipped', 'VOX IS READY');
+      });
+    }
+
+    // Update capsule state
+    setCapsuleState('observing', `Tour: ${steps.length} steps`, 'VOX SPOTLIGHT TOUR');
+
+    // Run each step sequentially
+    for (let i = 0; i < steps.length; i++) {
+      if (activeTour?.cancelled) break;
+
+      const step = steps[i];
+      activeTour.currentStep = i;
+
+      // Clear previous step highlights & badges
+      document.querySelectorAll('.vox-tour-highlight').forEach(el => el.classList.remove('vox-tour-highlight'));
+      document.querySelectorAll('.vox-tour-step-badge').forEach(el => el.remove());
+
+      // Update progress dots
+      const dots = progressEl.querySelectorAll('.vox-tour-dot');
+      dots.forEach((dot, di) => {
+        dot.classList.remove('active', 'done');
+        if (di < i) dot.classList.add('done');
+        if (di === i) dot.classList.add('active');
+      });
+      const currentLabel = progressEl.querySelector('.vox-tour-current');
+      if (currentLabel) currentLabel.textContent = i + 1;
+
+      // Find the target element
+      let targetEl = null;
+      if (step.selector) {
+        try {
+          targetEl = document.querySelector(step.selector);
+        } catch (_) {}
+      }
+      // Fallback: try to find by text content in headings
+      if (!targetEl && step.title) {
+        const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="heading"]'));
+        targetEl = headings.find(h => h.innerText?.toLowerCase().includes(step.title.toLowerCase()));
+        if (targetEl) {
+          targetEl = targetEl.closest('section, article, div.card, [class*="card"], [class*="section"]') || targetEl;
+        }
+      }
+
+      if (!targetEl) {
+        // Can't find element — skip this step
+        console.log(`[Spotlight Tour] Step ${i + 1}: Element not found for "${step.title}" (selector: ${step.selector})`);
+        continue;
+      }
+
+      // Highlight the element
+      targetEl.classList.add('vox-tour-highlight');
+
+      // Scroll to it smoothly
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      await new Promise(r => setTimeout(r, 500));
+
+      // Create step badge
+      const badge = document.createElement('div');
+      badge.className = 'vox-tour-step-badge';
+      badge.innerHTML = `
+        <span class="vox-tour-step-num">${i + 1}</span>
+        <span class="vox-tour-step-text">
+          <span class="vox-tour-step-title">${step.title || 'Step ' + (i + 1)}</span>
+          ${step.desc ? `<span class="vox-tour-step-desc">${step.desc}</span>` : ''}
+        </span>
+      `;
+      document.body.appendChild(badge);
+      activeTour.badges.push(badge);
+
+      // Position badge near element
+      positionTourBadge(badge, targetEl);
+
+      // Reposition on scroll
+      const scrollHandler = () => {
+        if (badge.parentNode) positionTourBadge(badge, targetEl);
+      };
+      window.addEventListener('scroll', scrollHandler, { passive: true });
+
+      // Update capsule
+      setCapsuleState('observing', `${step.title || 'Step ' + (i + 1)}`, `STEP ${i + 1}/${steps.length}`);
+
+      // Speak narration for this step
+      if (speakSteps && step.speak) {
+        await new Promise((resolve) => {
+          speak(step.speak, resolve);
+        });
+      } else {
+        // Wait the delay per step
+        await new Promise(r => setTimeout(r, delayPerStep));
+      }
+
+      // Cleanup scroll handler
+      window.removeEventListener('scroll', scrollHandler);
+
+      if (activeTour?.cancelled) break;
+    }
+
+    // Tour complete — clean up
+    if (activeTour && !activeTour.cancelled) {
+      // Mark all dots as done
+      const dots = progressEl?.querySelectorAll('.vox-tour-dot');
+      if (dots) dots.forEach(d => { d.classList.remove('active'); d.classList.add('done'); });
+      if (progressEl?.querySelector('.vox-tour-current')) {
+        progressEl.querySelector('.vox-tour-current').textContent = '✓';
+      }
+      const label = progressEl?.querySelector('.vox-tour-progress-label');
+      if (label) label.textContent = '✓ Tour Complete';
+
+      setCapsuleState('idle', 'Tour complete!', 'VOX IS READY');
+
+      // Auto-dismiss after 3s
+      setTimeout(() => clearTour(), 3000);
+    }
+  }
+
+  /**
+   * Build tour steps from a page analysis — automatically detects interesting elements.
+   * Used by processNaturalQuery when the user asks to "explain this page" or "show me around".
+   */
+  function buildTourStepsFromPage() {
+    const steps = [];
+
+    // 1. Hero / main heading
+    const h1 = document.querySelector('main h1, [role="main"] h1, article h1, header h1, h1');
+    if (h1) {
+      const hero = h1.closest('section, header, [class*="hero"], [id*="hero"]') || h1;
+      steps.push({
+        selector: null,
+        title: h1.innerText.slice(0, 40),
+        desc: 'Main heading & hero section',
+        speak: `Ini adalah ${h1.innerText.slice(0, 60)}.`,
+        _el: hero
+      });
+    }
+
+    // 2. Pricing section
+    const priceEl = document.querySelector('#pricing, [id*="pricing"], [class*="pricing"], [id*="price"], [class*="price"]');
+    if (priceEl) {
+      const priceText = priceEl.querySelector('h2, h3, [class*="amount"], [class*="price"]')?.innerText?.slice(0, 30) || 'Pricing';
+      steps.push({
+        selector: '#pricing, [id*="pricing"], [class*="pricing"]',
+        title: 'Harga & Paket',
+        desc: priceText,
+        speak: `Bagian harga menunjukkan ${priceText}.`
+      });
+    }
+
+    // 3. Features section
+    const featEl = document.querySelector('#features, [id*="features"], [class*="features"], #specs, [id*="specs"]');
+    if (featEl) {
+      steps.push({
+        selector: '#features, [id*="features"], [class*="features"], #specs',
+        title: 'Fitur & Spesifikasi',
+        desc: 'Key features and specifications',
+        speak: 'Berikut fitur dan spesifikasi utama.'
+      });
+    }
+
+    // 4. Product images / gallery
+    const gallery = document.querySelector('[class*="gallery"], [class*="image"], [class*="carousel"], [id*="gallery"]');
+    if (gallery) {
+      steps.push({
+        selector: '[class*="gallery"], [class*="image"], [class*="carousel"]',
+        title: 'Galeri Produk',
+        desc: 'Product images and photos',
+        speak: 'Ini galeri foto produk.'
+      });
+    }
+
+    // 5. Reviews / ratings
+    const reviews = document.querySelector('[class*="review"], [id*="review"], [class*="rating"], [id*="rating"]');
+    if (reviews) {
+      steps.push({
+        selector: '[class*="review"], [id*="review"], [class*="rating"]',
+        title: 'Ulasan & Rating',
+        desc: 'Customer reviews and ratings',
+        speak: 'Bagian ulasan dan rating dari pembeli.'
+      });
+    }
+
+    // 6. CTA / Buy buttons
+    const cta = document.querySelector('[class*="cta"], [class*="buy"], [class*="cart"], button[class*="primary"]');
+    if (cta) {
+      steps.push({
+        selector: '[class*="cta"], [class*="buy"], [class*="cart"]',
+        title: 'Tombol Aksi',
+        desc: cta.innerText?.slice(0, 30) || 'Call to Action',
+        speak: `Tombol aksi utama: ${cta.innerText?.slice(0, 30) || 'beli atau tambah ke keranjang'}.`
+      });
+    }
+
+    // For steps with _el (direct reference), set selector to a generated one
+    steps.forEach(step => {
+      if (step._el && !step.selector) {
+        // Build a unique selector for this element
+        try {
+          if (step._el.id) {
+            step.selector = '#' + step._el.id;
+          } else {
+            step.selector = step._el.tagName.toLowerCase();
+            if (step._el.className && typeof step._el.className === 'string') {
+              const cls = step._el.className.trim().split(/\s+/)[0];
+              if (cls) step.selector += '.' + cls;
+            }
+          }
+        } catch (_) {}
+        delete step._el;
+      }
+    });
+
+    return steps;
+  }
+
   // Voice Persona / Speed Switcher
   if (voicePersonaBtn) {
     voicePersonaBtn.addEventListener('click', () => {
@@ -6000,184 +7665,1424 @@
    * Accurately distinguishes between Search, Live Product Comparison, Click/Select,
    * Checkout/Buy, Deal Hunting, Autofill, and Contextual AI Q&A.
    */
-  function classifyUserIntent(rawQuery) {
-    if (!rawQuery) return { intent: 'PAGE_QA' };
+  /**
+   * ─── TIER 1: FAST LOCAL GUARD ───
+   * Instant regex match for safety-critical actions that MUST NOT wait for Groq.
+   * Returns { intent, isGuarded: true } for guarded intents, or null to delegate to Groq.
+   */
+  function classifyUserIntentLocalGuard(rawQuery) {
+    if (!rawQuery) return null;
     const q = rawQuery.toLowerCase().trim();
 
-    // 1. Guardrail Confirm / Cancel Order
+    // 0. Cancel active mission / loop / voice (MUST be instant)
+    if (/^(stop|cancel|batal|berhenti|cukup|diam|cancel\s*(mission|loop|search|checkout|order)|stop\s*(mission|loop|search))$/i.test(q)) {
+      return { intent: 'CANCEL_MISSION', isGuarded: true };
+    }
+
+    // 0.1 Emergency Reset Vox Data & State (voice command)
+    if (/^(reset|reset\s*data|reset\s*vox|reset\s*hey\s*vox|restart\s*mic|mulai\s*ulang|reset\s*asisten|bersihkan\s*data)$/i.test(q)) {
+      return { intent: 'RESET_VOX_STATE', isGuarded: true };
+    }
+
+    // 1. Guardrail Confirm / Cancel Order (MUST be instant — no Groq delay)
     if (/^(confirm\s*order|konfirmasi\s*pesanan|bayar\s*sekarang|place\s*order)$/i.test(q)) {
-      return { intent: 'CONFIRM_ORDER' };
+      return { intent: 'CONFIRM_ORDER', isGuarded: true };
     }
     if (/^(cancel(\s*(checkout|order))?|batalkan(\s*pesanan)?|batal)$/i.test(q)) {
-      return { intent: 'CANCEL_ORDER' };
+      return { intent: 'CANCEL_ORDER', isGuarded: true };
     }
 
-    // 2. Submit form
+    // 2. Submit form (instant)
     if (/^submit\s*form$/i.test(q)) {
-      return { intent: 'SUBMIT_FORM' };
+      return { intent: 'SUBMIT_FORM', isGuarded: true };
     }
 
-    // 3. Sign In / Register
+    // All natural language intents are delegated to Groq cognitive classifier
+    return null;
+  }
+
+  /**
+   * ─── TIER 2: GROQ COGNITIVE INTENT CLASSIFIER ───
+   * Sends the user's utterance to Groq LLM to understand true intent.
+   * Returns structured { intent, steps, params, spokenResponse }.
+   * Falls back to local regex classification if Groq is unavailable.
+   */
+  async function classifyIntentViaGroq(rawQuery) {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          action: 'CLASSIFY_INTENT',
+          payload: {
+            utterance: rawQuery,
+            currentUrl: window.location.href,
+            pageTitle: document.title,
+            domain: window.location.hostname,
+            userLanguage: voxLanguage || 'en-US'
+          }
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          if (!response || !response.success) {
+            reject(new Error(response?.error || 'Unknown error'));
+            return;
+          }
+          resolve(response.data);
+        });
+      });
+
+      console.log(`[Vox Agent] Groq classified "${rawQuery}" → ${result.intent} (${((result.confidence || 0) * 100).toFixed(0)}%)`);
+      return result;
+    } catch (err) {
+      console.warn('[Vox Agent] Groq intent classification failed, using local fallback:', err.message);
+      return classifyUserIntentLocalFallback(rawQuery);
+    }
+  }
+
+  /**
+   * ─── LOCAL FALLBACK CLASSIFIER ───
+   * Used only when Groq is unavailable. Preserves the old regex logic as a safety net.
+   */
+  function classifyUserIntentLocalFallback(rawQuery) {
+    if (!rawQuery) return { intent: 'PAGE_QA', steps: [], params: {} };
+    const q = rawQuery.toLowerCase().trim();
+
+    // About Vox / Identity / AI Helper
+    const isAboutVox = /^(what\s*are\s*you|who\s*are\s*you|what\s*can\s*you\s*do|what\s*is\s*vox(\s*agent)?|tell\s*me\s*about\s*yourself|help\s*me|how\s*to\s*use\s*vox)$/i.test(q)
+      || /^(kamu\s*(siapa|apa|ini\s*apa)|siapa\s*kamu|apa\s*itu\s*vox(\s*agent)?|kamu\s*bisa\s*apa|bisa\s*apa\s*aja|bisa\s*bantu\s*apa|fungsi\s*(kamu|vox)|tentang\s*kamu|kenalan\s*dong|kamu\s*robot\s*apa|kamu\s*ai\s*apa)$/i.test(q)
+      || /\b(what\s+are\s+you|who\s+are\s+you|kamu\s+siapa|kamu\s+ini\s+apa|what\s+is\s+vox\s+agent)\b/i.test(q);
+    if (isAboutVox) return { intent: 'ABOUT_VOX', steps: [], params: {} };
+
+    // Greetings
+    const isGreeting = /^(hai|halo|hello|hey|hei|hi|morning|afternoon|salam|pagi|siang|malam)(\s*(vox|fox|copilot|ai)?)?$/i.test(q) ||
+                       (/^(hai|halo|hello|hey|hei|hi)\b/i.test(q) && q.length <= 15);
+    if (isGreeting) return { intent: 'GREETING', steps: [], params: {} };
+
+    // Deep Research (e.g. "research dulu", "riset dulu", "menurut groq bagus yang mana", "pilihin yang paling bagus", etc.)
+    if (/\b(do\s*(some\s*)?research|research(\s*dulu)?|riset(\s*dulu)?|analisis(\s*dulu)?|deep\s*research|bagus\s*yang\s*mana|mana\s*yang\s*(lebih\s*|paling\s*)?(bagus|murah|oke|worth\s*it|terbaik)|menurut\s*(kamu|groq|ai|vox)|pilih(kan|in)?\s*(yang\s*)?(paling\s*|lebih\s*)?(bagus|terbaik|oke)|cari(in|kan)?\s*(yang\s*)?(paling\s*|lebih\s*)?(bagus|terbaik|oke)|rekomendasi(kan)?\s*(yang\s*)?(paling\s*|lebih\s*)?(bagus|terbaik))\b/i.test(q)) {
+      return { intent: 'DEEP_RESEARCH', steps: [], params: {} };
+    }
+
+    // Explain Simply
+    if (/\b(jelaskan\s*(secara\s*)?sederhana|explain\s*(this\s*)?(simply|to\s*me\s*like\s*i'?m\s*5)|maksudnya\s*apa\s*(sih)?|apa\s*maksud\s*(dari)?|aku\s*(nggak|tidak|gak)\s*ngerti|ini\s*tuh\s*apa\s*(sih)?|demystify)\b/i.test(q)) {
+      return { intent: 'EXPLAIN_SIMPLY', steps: [], params: {} };
+    }
+
+    // Media Control / YouTube
+    if (/\b(play\s*(this\s*)?song|putar\s*(lagu|video)|play\s*(video|music|lagu)|stop\s*music|pause\s*(video|music|lagu)?|resume\s*(video|music|lagu)?)\b/i.test(q)
+        || /^(play|putar|pause|stop|lanjutkan)\s+/i.test(q)) {
+      return { intent: 'MEDIA_CONTROL', steps: [], params: {} };
+    }
+
+    // Sign In / Register
     if (/sign\s*in|log\s*in|login|masuk\s*akun/i.test(q) && !/product|laptop|hp|harga/i.test(q)) {
-      return { intent: 'SIGN_IN' };
+      return { intent: 'SIGN_IN', steps: [], params: {} };
     }
     if (/register\s*new\s*account|daftar\s*akun|buat\s*akun/i.test(q)) {
-      return { intent: 'REGISTER' };
+      return { intent: 'REGISTER', steps: [], params: {} };
     }
 
-    // 4. Fill Address / Autofill
+    // Fill Address / Autofill
     if (/switch\s*profile\s*(office|home|kantor|rumah)\s*and\s*fill\s*address/i.test(q)) {
-      return { intent: 'AUTOFILL_SWITCH' };
+      return { intent: 'AUTOFILL_SWITCH', steps: [], params: {} };
     }
     if (/fill\s*(shipping\s*)?address|isi\s*alamat|autofill/i.test(q)) {
-      return { intent: 'AUTOFILL' };
+      return { intent: 'AUTOFILL', steps: [], params: {} };
     }
 
-    // 5. Deal Hunter / Coupons
+    // Deal Hunter / Coupons
     if (/hunt\s*deals|cari\s*promo|ada\s*(kupon|diskon|voucher)|find\s*coupons?|check\s*deals/i.test(q)) {
-      return { intent: 'DEAL_HUNTER' };
+      return { intent: 'DEAL_HUNTER', steps: [], params: {} };
     }
 
-    // 6. Buy / Checkout / Add to Cart
-    if (/(buy\s*(this|winner|the\s*winner)|beli\s*(sekarang|yang\s*ini|ini|pemenang(nya)?)|checkout(\s*pemenang)?|beliin\s*(ini|yang\s*ini)|add\s*to\s*cart|tambah\s*ke\s*keranjang|masukin\s*keranjang|beli\s*dan\s*checkout)/i.test(q)) {
-      return { intent: 'CHECKOUT' };
+    // Buy / Checkout / Add to Cart
+    if (/\b(buy|beli|checkout|order|pesan|beliin|add\s*to\s*cart|tambah\s*ke\s*keranjang|masukin\s*keranjang|purchase)\b/i.test(q)) {
+      return { intent: 'CHECKOUT', steps: [], params: {} };
     }
 
-    // 7. Click / Select / Open specific product on screen
-    // "klik yang termurah", "click the first one", "buka yang official store", "klik produk nomor 1"
-    if (/\b(klik|click|buka|open|pilih|select|tap)\s*(the|that|produk|item|barang)?\s*(yang|nomor|ke-|\d+|pertama|kedua|ketiga|winner|runner|official|murah)/i.test(q) && !/pricing|search|compare/i.test(q)) {
-      return { intent: 'CLICK_ITEM' };
+    // Click / Select / Open
+    if (/\b(klik|click|buka|open|pilih|select|tap)\b/i.test(q) && !/pricing|search|compare|account|profile/i.test(q)) {
+      return { intent: 'CLICK_ITEM', steps: [], params: {} };
     }
 
-    // 8. Explicit Page Reading & Navigation Q&A (ONLY when specifically asking to read/explain the current page/website)
-    const isExplicitPageQa = /^(apa\s*isi|jelaskan\s*(isi|halaman|artikel|web)|ringkas\s*(isi|halaman)|baca\s*deskripsi|tentang\s*apa\s*(halaman|website|toko|artikel)\s*ini|summarize\s*this\s*page|what\s*is\s*this\s*page\s*about)/i.test(q) ||
-      (/^(hai|halo|hello|hey|hei|hi|morning|salam|pagi|siang|malam)(\s*(vox|fox|copilot|ai)?)?$/i.test(q));
-
+    // Explicit Page Q&A
+    const isExplicitPageQa = /^(apa\s*isi|jelaskan\s*(isi|halaman|artikel|web)|ringkas\s*(isi|halaman)|baca\s*deskripsi|tentang\s*apa\s*(halaman|website|toko|artikel)\s*ini|summarize\s*this\s*page|what\s*is\s*this\s*page\s*about)/i.test(q);
     if (isExplicitPageQa) {
-      return { intent: 'PAGE_QA' };
+      return { intent: 'PAGE_QA', steps: [], params: {} };
     }
 
-    // 9. Zero-Fragility Autonomous Shopping Mission (Search, Compare, Recommend, Inquire, Slang)
-    // EVERYTHING else is dynamically routed to the 5-Layer Cognitive Multi-Agent Shopping Engine.
-    // We NEVER rely on brittle, hardcoded product dictionaries (e.g. headset|laptop|mouse).
-    // The Groq LLM cognitive planner parses ANY product category (shoes, coffee, appliances, tech), slang, and constraints zero-shot.
-    return { intent: 'SHOPPING_MISSION' };
+    // WhatsApp Autonomous Action
+    if (/\b(kontak\s*(aku|saya)?\s*(aja\s*)?(yang\s*)?(di-?pin|pin)|ke\s*kontak\s*pin|kirim\s*(ke\s*)?(wa|whatsapp)|buka\s*(wa|whatsapp)|send\s*to\s*whatsapp)\b/i.test(q)) {
+      return { intent: 'WHATSAPP_ACTION', steps: [], params: { targetContact: 'pinned' } };
+    }
+
+    // Specific product search keyword
+    if (/\b(cari|carikan|search|find|rekomendasi|looking\s*for)\b/i.test(q)) {
+      return { intent: 'SHOPPING_MISSION', steps: [], params: {} };
+    }
+
+    // Default: general page QA rather than blindly assuming shopping
+    return { intent: 'PAGE_QA', steps: [], params: {} };
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 9b. AUTONOMOUS AGENT LOOP — Groq = Brain, Extension = Hands
+  // ═══════════════════════════════════════════════════════
+
+  const STORAGE_KEY_MISSION = 'vox_active_mission';
+  let activeAgentLoop = null; // { goal, history, stepCount, isActive, awaitingUserAnswer, lastMessage, updatedAt, fromUrl }
+
+  async function saveActiveMission(loopState) {
+    if (!loopState) return;
+    const missionData = {
+      goal: loopState.goal,
+      history: (loopState.history || []).map(h => ({
+        action: {
+          action: h.action?.action,
+          reason: h.action?.reason,
+          productIndex: h.action?.productIndex,
+          buttonIndex: h.action?.buttonIndex,
+          inputIndex: h.action?.inputIndex,
+          text: h.action?.text,
+          url: h.action?.url
+        },
+        result: {
+          success: h.result?.success,
+          clicked: h.result?.clicked,
+          typed: h.result?.typed,
+          filledCount: h.result?.filledCount,
+          navigatedTo: h.result?.navigatedTo
+        }
+      })),
+      stepCount: loopState.stepCount || 0,
+      isActive: loopState.isActive !== false,
+      awaitingUserAnswer: !!loopState.awaitingUserAnswer,
+      lastMessage: loopState.lastMessage || '',
+      updatedAt: Date.now(),
+      fromUrl: window.location.href
+    };
+    try {
+      sessionStorage.setItem(STORAGE_KEY_MISSION, JSON.stringify(missionData));
+    } catch (_) {}
+    return new Promise((resolve) => {
+      try {
+        if (chrome.storage?.local) {
+          chrome.storage.local.set({ [STORAGE_KEY_MISSION]: missionData }, () => resolve());
+        } else {
+          resolve();
+        }
+      } catch (_) {
+        resolve();
+      }
+    });
+  }
+
+  async function clearActiveMission() {
+    activeAgentLoop = null;
+    try { sessionStorage.removeItem(STORAGE_KEY_MISSION); } catch (_) {}
+    return new Promise((resolve) => {
+      try {
+        if (chrome.storage?.local) {
+          chrome.storage.local.remove([STORAGE_KEY_MISSION], () => resolve());
+        } else {
+          resolve();
+        }
+      } catch (_) {
+        resolve();
+      }
+    });
+  }
+
+  async function restoreActiveMission() {
+    return new Promise((resolve) => {
+      try {
+        const checkMission = async (mission) => {
+          if (!mission || !mission.isActive) {
+            resolve(null);
+            return;
+          }
+
+          // Expiry check: 3 minutes max inactive
+          const ageMs = Date.now() - (mission.updatedAt || 0);
+          if (ageMs > 180000) {
+            console.log('[Vox Agent] Discarding stale mission (age ' + Math.round(ageMs / 1000) + 's)');
+            await clearActiveMission();
+            resolve(null);
+            return;
+          }
+
+          console.log('[Vox Agent] Restoring active mission across page navigation:', mission.goal, mission);
+          activeAgentLoop = mission;
+
+          if (mission.awaitingUserAnswer) {
+            setCapsuleState('listening', (mission.lastMessage || 'Waiting for your reply…').slice(0, 35), 'VOX IS WAITING FOR REPLY');
+            resolve(mission);
+            return;
+          }
+
+          // Automatically resume agent loop on the new page
+          silentMode = false;
+          setCapsuleState('navigating', 'Page loaded. Resuming mission…', 'VOX IS RESUMING');
+          setTimeout(async () => {
+            if (activeAgentLoop && activeAgentLoop.isActive && !activeAgentLoop.awaitingUserAnswer) {
+              console.log('[Vox Agent] Auto-executing resumed agent loop on:', window.location.href);
+              await runAgentLoop(mission.goal, mission);
+            }
+          }, 1200);
+          resolve(mission);
+        };
+
+        if (chrome.storage?.local) {
+          chrome.storage.local.get([STORAGE_KEY_MISSION], (res) => {
+            let m = res?.[STORAGE_KEY_MISSION];
+            if (!m) {
+              try {
+                const sess = sessionStorage.getItem(STORAGE_KEY_MISSION);
+                if (sess) m = JSON.parse(sess);
+              } catch (_) {}
+            }
+            checkMission(m);
+          });
+        } else {
+          try {
+            const sess = sessionStorage.getItem(STORAGE_KEY_MISSION);
+            const m = sess ? JSON.parse(sess) : null;
+            checkMission(m);
+          } catch (_) {
+            resolve(null);
+          }
+        }
+      } catch (err) {
+        console.warn('[Vox Agent] Error restoring active mission:', err);
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * OBSERVE — scrape current page state for Groq
+   */
+  function observeCurrentPage() {
+    const allClickables = Array.from(document.querySelectorAll('button, a, [role="button"], input[type="submit"], input[type="button"]'))
+      .filter(isElementVisible);
+
+    const actionPattern = /\b(beli|buy|cart|keranjang|checkout|bayar|pesan|order|add\s*to|lanjut|pilih|submit|search|cari|apply|kupon|voucher)\b/i;
+
+    const actionBtns = [];
+    const regularBtns = [];
+
+    // Ensure dedicated Buy button from PDP is always captured and placed first
+    const topBuyBtn = findProductPageBuyButton();
+    const isPdp = isProductDetailPage();
+
+    if (topBuyBtn && isElementVisible(topBuyBtn)) {
+      actionBtns.push({
+        text: (topBuyBtn.innerText || topBuyBtn.textContent || topBuyBtn.getAttribute('aria-label') || 'Beli Sekarang').trim().slice(0, 80),
+        tag: topBuyBtn.tagName.toLowerCase(),
+        type: topBuyBtn.type || 'button',
+        _el: topBuyBtn
+      });
+    }
+
+    for (const el of allClickables) {
+      if (topBuyBtn && el === topBuyBtn) continue;
+      const txt = (el.innerText || el.textContent || el.getAttribute('aria-label') || el.value || '').trim();
+      if (!txt || txt.length < 2) continue;
+      if (el.tagName === 'A' && (el.getAttribute('href') === '#' || /facebook|twitter|instagram|tiktok/i.test(el.href || ''))) continue;
+
+      const item = {
+        text: txt.slice(0, 80),
+        tag: el.tagName.toLowerCase(),
+        type: el.type || '',
+        _el: el
+      };
+
+      const isAction = actionPattern.test(txt) ||
+        /buy|cart|checkout|pdp-buy|add-to-cart|order-now/i.test((el.id || '') + ' ' + (el.className || '') + ' ' + (el.getAttribute('data-testid') || ''));
+
+      if (isAction) {
+        actionBtns.push(item);
+      } else {
+        regularBtns.push(item);
+      }
+    }
+
+    const buttons = [...actionBtns, ...regularBtns].slice(0, 30).map((b, i) => ({
+      index: i,
+      text: b.text,
+      tag: b.tag,
+      type: b.type,
+      _el: b._el
+    }));
+
+    const inputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'))
+      .filter(isElementVisible)
+      .slice(0, 15)
+      .map((el, i) => ({
+        index: i,
+        name: el.name || el.id || '',
+        type: el.type || 'text',
+        value: el.value || '',
+        placeholder: el.placeholder || '',
+        _el: el
+      }));
+
+    // Detect product cards (only when NOT on a product detail page to prevent recommendation cards being treated as search results)
+    const cardSelectors = [
+      '.shopee-search-item-result__item', 'div[data-sqi]',
+      'ul.shopee-search-item-result__items > li',
+      'div[data-testid="divSRPContentItem"]', 'div[data-testid="master-product-card"]',
+      'div[data-component-type="s-search-result"]', '.product-card',
+      'div[class*="ProductCard"]', 'div[class*="product-item"]',
+      'article[data-qa-id="product-item"]',
+      'div[data-testid*="ProductCard"]'
+    ];
+    let productEls = [];
+    if (!isPdp) {
+      let bestMatches = [];
+      for (const sel of cardSelectors) {
+        try {
+          const matches = Array.from(document.querySelectorAll(sel)).filter(el => el.offsetHeight > 60 && el.offsetWidth > 60 && isElementVisible(el));
+          if (matches.length > bestMatches.length) {
+            bestMatches = matches;
+          }
+        } catch (_) {}
+      }
+      productEls = bestMatches;
+
+      // Smart fallback: If standard selectors found nothing or fewer than 2 items on a search page,
+      // collect card-like containers containing price text (Rp / IDR)
+      if (productEls.length < 3) {
+        const potentialCards = Array.from(document.querySelectorAll('div, article, li, a[href]')).filter(el => {
+          if (!isElementVisible(el) || el.offsetHeight < 70 || el.offsetWidth < 70) return false;
+          if (el.offsetHeight > 750 || el.offsetWidth > 500) return false;
+          const txt = el.innerText || '';
+          return /(?:Rp\.?|IDR)\s*[\d,.]+/i.test(txt) && el.querySelectorAll('img, a[href]').length >= 1;
+        });
+        const uniqueByHref = [];
+        const seenLinks = new Set();
+        for (const el of potentialCards) {
+          const link = el.tagName === 'A' ? el : el.querySelector('a[href]');
+          if (link && link.href && !link.href.includes('#') && !link.href.startsWith('javascript:')) {
+            if (!seenLinks.has(link.href)) {
+              seenLinks.add(link.href);
+              uniqueByHref.push(el);
+            }
+          }
+        }
+        if (uniqueByHref.length > productEls.length) {
+          productEls = uniqueByHref;
+        }
+      }
+    }
+
+    // Limit to top 30 items
+    productEls = productEls.slice(0, 30);
+
+    const products = productEls.map((el, i) => {
+      const text = (el.innerText || el.textContent || '').slice(0, 400);
+
+      // 1. Extract Price & Numeric Price Value (parse sale price vs strikethrough price)
+      const strikeEls = Array.from(el.querySelectorAll('s, del, [style*="line-through"], [class*="slash" i], [class*="strike" i], [class*="original" i]'));
+      const strikeTexts = strikeEls.map(s => s.innerText || '').join(' ');
+
+      const allPrices = [];
+      const priceRegex = /(?:Rp\.?|IDR)\s*([\d,.]+)/gi;
+      let pMatch;
+      while ((pMatch = priceRegex.exec(text)) !== null) {
+        const rawDigits = pMatch[1].replace(/[.,]/g, '');
+        const val = parseInt(rawDigits, 10);
+        if (!isNaN(val) && val > 0 && val < 500000000) {
+          const isStriked = strikeTexts.includes(pMatch[1]);
+          allPrices.push({ raw: pMatch[0], val, isStriked });
+        }
+      }
+
+      let chosenPrice = '';
+      let chosenPriceVal = 0;
+      if (allPrices.length > 0) {
+        const nonStriked = allPrices.filter(p => !p.isStriked);
+        const candidates = nonStriked.length > 0 ? nonStriked : allPrices;
+        // Sort ascending to get sale price
+        candidates.sort((a, b) => a.val - b.val);
+        chosenPrice = candidates[0].raw;
+        chosenPriceVal = candidates[0].val;
+      } else {
+        const fallbackMatch = text.match(/(?:Rp\.?|IDR|\$|€|£)\s*[\d,.]+|[\d,.]+\s*(?:USD|IDR|EUR|Rp)/i);
+        chosenPrice = fallbackMatch ? fallbackMatch[0] : '';
+        if (chosenPrice) {
+          const digits = chosenPrice.replace(/[^\d]/g, '');
+          if (digits) chosenPriceVal = parseInt(digits, 10) || 0;
+        }
+      }
+
+      // 2. Extract Clean Title (avoid badges like "Ad", "Cashback", "Star+", "Diskon")
+      let title = '';
+      const titleEl = el.querySelector('[data-testid*="title" i], [data-testid*="name" i], div[class*="title" i], div[class*="name" i], [class*="line-clamp" i], h3, h2');
+      if (titleEl && titleEl.innerText?.trim()) {
+        title = titleEl.innerText.trim();
+      } else {
+        const img = el.querySelector('img[alt]');
+        if (img && img.alt && img.alt.length > 5 && !/badge|logo|icon|promo/i.test(img.alt)) {
+          title = img.alt.trim();
+        } else {
+          const lines = text.split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 3 && !/^(ad|iklan|star\+?|mall|official|resmi|terlaris|cashback|diskon|ongkir|cod|\d+(\.\d+)?%|\d+(\.\d+)?\s*★|rp\.?|idr)/i.test(l));
+          title = lines.sort((a, b) => b.length - a.length)[0] || text.split('\n')[0] || `Product ${i + 1}`;
+        }
+      }
+      title = title.replace(/\s+/g, ' ').slice(0, 90);
+
+      // 3. Extract Store / Location
+      let store = '';
+      const storeEl = el.querySelector('[data-testid*="shop" i], [class*="shop" i], [data-testid*="merchant" i], [class*="merchant" i], [class*="seller" i]');
+      if (storeEl && storeEl.innerText?.trim()) {
+        store = storeEl.innerText.trim().slice(0, 30);
+      }
+
+      // 4. Rating
+      const ratingMatch = text.match(/([\d.]+)\s*★|rating\s*([\d.]+)/i);
+
+      // 5. Link
+      const link = el.querySelector('a[href]') || el.closest('a[href]') || el;
+
+      return {
+        index: i,
+        title,
+        price: chosenPrice,
+        priceVal: chosenPriceVal,
+        store,
+        rating: ratingMatch ? (ratingMatch[1] || ratingMatch[2]) + ' ★' : '',
+        official: /official|mall|resmi/i.test(text),
+        href: (link && link.href) ? link.href : '',
+        _el: el,
+        _linkEl: link
+      };
+    });
+
+    return {
+      url: window.location.href,
+      title: document.title,
+      isProductPage: isPdp,
+      buttons: buttons.map(({ _el, ...rest }) => rest), // strip DOM refs for JSON
+      inputs: inputs.map(({ _el, ...rest }) => rest),
+      products: products.map(({ _el, _linkEl, ...rest }) => rest),
+      textSummary: (document.body?.innerText || '').slice(0, 2000),
+      _buttons: buttons, // keep DOM refs locally
+      _inputs: inputs,
+      _products: products
+    };
+  }
+
+  /**
+   * ACT — execute a single action from Groq's decision
+   */
+  async function executeAgentAction(decision, pageObservation) {
+    const buttons = pageObservation._buttons || [];
+    const inputs = pageObservation._inputs || [];
+    const products = pageObservation._products || [];
+
+    switch (decision.action) {
+      case 'CLICK_PRODUCT': {
+        const idx = decision.productIndex ?? decision.buttonIndex ?? 0;
+        const prod = products[idx] || products[0];
+        if (prod && prod._el) {
+          const prodTitle = prod.title || 'selected product';
+          const prodPrice = prod.price || '';
+          silentMode = false;
+          speak(`Membuka ${prodTitle}${prodPrice ? ' seharga ' + prodPrice : ''}…`);
+          setCapsuleState('acting', `Opening: ${prodTitle.slice(0, 30)}`, 'VOX IS OPENING PRODUCT');
+          prod._el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+          prod._el.classList.add('vox-halo-highlight');
+          await new Promise(r => setTimeout(r, 400));
+          const link = prod._linkEl || prod._el.querySelector('a[href]') || prod._el.closest('a[href]');
+          const targetHref = link && link.href && !link.href.startsWith('javascript:') ? link.href : '';
+
+          if (activeAgentLoop) {
+            activeAgentLoop.history.push({ action: decision, result: { success: true, clicked: prodTitle } });
+            await saveActiveMission(activeAgentLoop);
+          }
+
+          if (targetHref) {
+            window.location.href = targetHref;
+            await new Promise(r => setTimeout(r, 4000));
+          } else {
+            (link || prod._el).click();
+          }
+          return { success: true, clicked: prodTitle };
+        }
+        return { success: false, error: `Product index ${idx} not found` };
+      }
+
+      case 'BUY_NOW':
+      case 'ADD_TO_CART': {
+        // SAFE MODE: Only add to cart, never checkout
+        silentMode = false;
+        const pageTitle = (document.title || '').replace(/[-|–—].*$/, '').trim() || 'produk ini';
+        const addToCartBtn = findProductPageAddToCartButton();
+        if (addToCartBtn) {
+          setCapsuleState('acting', 'Adding to cart…', 'VOX IS ADDING TO CART');
+          robustClick(addToCartBtn);
+          await new Promise(r => setTimeout(r, 800));
+          speak(`Sudah ditambahkan ke keranjang: ${pageTitle.slice(0, 40)}.`);
+          appendChatMessage('agent', `✅ Added to cart: **${pageTitle}**. I won't proceed to checkout — you can review your cart when ready.`);
+          return { success: true, clicked: 'Add to Cart (Safe Mode)' };
+        } else {
+          speak(`Saya tidak menemukan tombol tambah keranjang di halaman ini.`);
+          appendChatMessage('agent', `⚠️ Could not find an "Add to Cart" button on this page.`);
+          return { success: false, error: 'Add to Cart button not found' };
+        }
+      }
+
+      case 'CLICK': {
+        // If Groq targeted a product card
+        if (decision.productIndex !== undefined || decision.target === 'product') {
+          const idx = decision.productIndex ?? 0;
+          const prod = products[idx] || products[0];
+          if (prod && prod._el) {
+            const prodTitle = prod.title || 'selected product';
+            setCapsuleState('acting', `Opening: ${prodTitle.slice(0, 30)}`, 'VOX IS OPENING PRODUCT');
+            prod._el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+            prod._el.classList.add('vox-halo-highlight');
+            await new Promise(r => setTimeout(r, 400));
+            const link = prod._linkEl || prod._el.querySelector('a[href]') || prod._el.closest('a[href]');
+            const targetHref = link && link.href && !link.href.startsWith('javascript:') ? link.href : '';
+
+            if (activeAgentLoop) {
+              activeAgentLoop.history.push({ action: decision, result: { success: true, clicked: prodTitle } });
+              await saveActiveMission(activeAgentLoop);
+            }
+
+            if (targetHref) {
+              window.location.href = targetHref;
+              await new Promise(r => setTimeout(r, 4000));
+            } else {
+              (link || prod._el).click();
+            }
+            return { success: true, clicked: prodTitle };
+          }
+        }
+
+        const idx = decision.buttonIndex ?? 0;
+        const btn = buttons[idx];
+        if (btn && btn._el) {
+          const btnText = (btn.text || '').toLowerCase();
+          // SAFE MODE: Only allow add-to-cart, skip checkout triggers
+          if (/tambah\s*ke\s*keranjang|add\s*to\s*cart/i.test(btnText)) {
+            setCapsuleState('acting', 'Adding to cart…', 'VOX IS ADDING TO CART');
+            btn._el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            robustClick(btn._el);
+            await new Promise(r => setTimeout(r, 800));
+            appendChatMessage('agent', `🛒 Added to cart: **${btn.text}**`);
+            return { success: true, clicked: btn.text };
+          }
+          if (/beli\s*sekarang|buy\s*now|checkout/i.test(btnText)) {
+            // SAFE MODE: Block checkout/buy-now button clicks
+            console.log('[Agent Loop] SAFE MODE: Blocked checkout button click:', btn.text);
+            appendChatMessage('agent', `⚠️ Safe Mode: I found a "${btn.text}" button but won't click it. You can proceed manually when ready.`);
+            return { success: false, error: 'Safe Mode: Checkout blocked' };
+          }
+
+          setCapsuleState('acting', `Clicking: ${(btn.text || 'Button').slice(0, 30)}`, 'VOX IS ACTING');
+          btn._el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+          btn._el.classList.add('vox-halo-highlight');
+          await new Promise(r => setTimeout(r, 400));
+
+          const link = btn._el.tagName === 'A' ? btn._el : btn._el.querySelector('a[href]') || btn._el.closest('a[href]');
+          if (link && link.href && !link.href.startsWith('javascript:')) {
+            if (activeAgentLoop) {
+              activeAgentLoop.history.push({ action: decision, result: { success: true, clicked: btn.text } });
+              await saveActiveMission(activeAgentLoop);
+            }
+            window.location.href = link.href;
+            await new Promise(r => setTimeout(r, 4000));
+            return { success: true, clicked: btn.text };
+          }
+
+          btn._el.click();
+          setTimeout(() => btn._el.classList.remove('vox-halo-highlight'), 1000);
+          return { success: true, clicked: btn.text };
+        }
+
+        // Fallback: try product card click if button was not found
+        const prod = products[idx];
+        if (prod && prod._el) {
+          const prodTitle = prod.title || 'Product';
+          setCapsuleState('acting', `Opening: ${prodTitle.slice(0, 30)}`, 'VOX IS OPENING PRODUCT');
+          prod._el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const link = prod._linkEl || prod._el.querySelector('a[href]') || prod._el;
+          if (activeAgentLoop) {
+            activeAgentLoop.history.push({ action: decision, result: { success: true, clicked: prodTitle } });
+            await saveActiveMission(activeAgentLoop);
+          }
+          if (link && link.href && !link.href.startsWith('javascript:')) {
+            window.location.href = link.href;
+            await new Promise(r => setTimeout(r, 4000));
+          } else {
+            link.click();
+          }
+          return { success: true, clicked: prodTitle };
+        }
+        return { success: false, error: `Button index ${idx} not found` };
+      }
+
+      case 'TYPE': {
+        const idx = decision.inputIndex ?? 0;
+        const inp = inputs[idx];
+        if (inp && inp._el) {
+          setCapsuleState('acting', `Searching: ${(decision.text || '').slice(0, 30)}`, 'VOX IS SEARCHING');
+          inp._el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          inp._el.focus();
+          inp._el.value = '';
+          // Simulate typing
+          for (const char of (decision.text || '')) {
+            inp._el.value += char;
+            inp._el.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          inp._el.dispatchEvent(new Event('change', { bubbles: true }));
+
+          // Submit after typing if requested
+          if (decision.submitAfter) {
+            if (activeAgentLoop) {
+              activeAgentLoop.history.push({ action: decision, result: { success: true, typed: decision.text } });
+              await saveActiveMission(activeAgentLoop);
+            }
+            await new Promise(r => setTimeout(r, 300));
+            const form = inp._el.closest('form');
+            if (form) {
+              const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+              if (submitBtn) submitBtn.click();
+              else form.submit();
+            } else {
+              inp._el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+            }
+            await new Promise(r => setTimeout(r, 3500));
+          }
+          return { success: true, typed: decision.text };
+        }
+        return { success: false, error: `Input index ${idx} not found` };
+      }
+
+      case 'SCROLL': {
+        setCapsuleState('acting', 'Scrolling for more products…', 'VOX IS SCROLLING');
+        const amount = decision.direction === 'up' ? -600 : 600;
+        window.scrollBy({ top: amount, behavior: 'smooth' });
+        await new Promise(r => setTimeout(r, 500));
+        return { success: true };
+      }
+
+      case 'SPEAK': {
+        expandCapsule((decision.message || '').slice(0, 60), 4000, 'VOX IS SPEAKING');
+        speak(decision.message || '');
+        return { success: true };
+      }
+
+      case 'FILL_FORM': {
+        setCapsuleState('acting', 'Filling form data…', 'VOX IS FILLING FORM');
+        const fields = decision.fields || [];
+        let filled = 0;
+        for (const field of fields) {
+          const inp = inputs[field.inputIndex];
+          if (inp && inp._el) {
+            inp._el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            inp._el.focus();
+            inp._el.value = field.value || '';
+            inp._el.dispatchEvent(new Event('input', { bubbles: true }));
+            inp._el.dispatchEvent(new Event('change', { bubbles: true }));
+            filled++;
+          }
+        }
+        return { success: filled > 0, filledCount: filled };
+      }
+
+      case 'NAVIGATE': {
+        if (decision.url) {
+          setCapsuleState('navigating', 'Navigating to store…', 'VOX IS NAVIGATING');
+          if (activeAgentLoop) {
+            activeAgentLoop.history.push({ action: decision, result: { success: true, navigatedTo: decision.url } });
+            await saveActiveMission(activeAgentLoop);
+          }
+          window.location.href = decision.url;
+          await new Promise(r => setTimeout(r, 4000));
+          return { success: true, navigatedTo: decision.url };
+        }
+        return { success: false, error: 'No URL provided' };
+      }
+
+      case 'WAIT': {
+        setCapsuleState('observing', `Waiting for page (${decision.seconds || 2}s)…`, 'VOX IS WAITING');
+        const ms = (decision.seconds || 2) * 1000;
+        await new Promise(r => setTimeout(r, ms));
+        return { success: true };
+      }
+
+      case 'SPEAK': {
+        silentMode = false;
+        const msg = decision.message || '';
+        if (msg) {
+          setCapsuleState('speaking', msg.slice(0, 35), 'VOX');
+          speak(msg);
+          appendChatMessage('agent', msg);
+        }
+        return { success: true, spoken: msg };
+      }
+
+      case 'ASK_USER':
+      case 'DONE':
+        return { success: true };
+
+      default:
+        return { success: false, error: `Unknown action: ${decision.action}` };
+    }
+  }
+
+  /**
+   * RUN AGENT LOOP — the core observe→think→act loop
+   */
+  async function runAgentLoop(goal, resumeState = null) {
+    const MAX_STEPS = 20;
+    let history = resumeState?.history || [];
+    let stepCount = resumeState?.stepCount || 0;
+
+    activeAgentLoop = {
+      goal,
+      history,
+      stepCount,
+      isActive: true,
+      awaitingUserAnswer: false,
+      lastMessage: '',
+      updatedAt: Date.now(),
+      fromUrl: window.location.href
+    };
+    await saveActiveMission(activeAgentLoop);
+
+    silentMode = false;
+    setCapsuleState('reasoning', `Working on: ${goal.slice(0, 30)}…`, 'VOX IS THINKING');
+
+    while (stepCount < MAX_STEPS) {
+      stepCount++;
+      activeAgentLoop.stepCount = stepCount;
+      activeAgentLoop.updatedAt = Date.now();
+      await saveActiveMission(activeAgentLoop);
+
+      // 1. OBSERVE
+      setCapsuleState('observing', `Scanning screen (Step ${stepCount}/${MAX_STEPS})…`, 'VOX IS OBSERVING');
+      await new Promise(r => setTimeout(r, 700));
+      let pageState = observeCurrentPage();
+
+      // If on search / marketplace results and no products found yet, wait for React/SPA hydration
+      if ((pageState.products || []).length === 0 && /search|find|cari|shop|tokopedia|shopee|lazada|blibli|amazon/i.test(window.location.href)) {
+        setCapsuleState('observing', 'Waiting for product cards to load…', 'VOX IS SCANNING PRODUCTS');
+        await new Promise(r => setTimeout(r, 1000));
+        pageState = observeCurrentPage();
+      }
+
+      // 2. THINK — ask Groq
+      setCapsuleState('thinking', `Consulting Groq AI (Step ${stepCount}/${MAX_STEPS})…`, 'VOX IS THINKING');
+      let decision;
+      try {
+        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+          throw new Error('Extension context invalidated');
+        }
+        decision = await new Promise((resolve, reject) => {
+          try {
+            chrome.runtime.sendMessage({
+              action: 'AGENT_LOOP_THINK',
+              payload: {
+                goal,
+                pageState: {
+                  url: pageState.url,
+                  title: pageState.title,
+                  isProductPage: pageState.isProductPage,
+                  buttons: pageState.buttons,
+                  inputs: pageState.inputs,
+                  products: pageState.products,
+                  textSummary: pageState.textSummary
+                },
+                history: history.map(h => ({
+                  action: { action: h.action?.action, reason: h.action?.reason, productIndex: h.action?.productIndex },
+                  result: { success: h.result?.success }
+                })),
+                vaultData: window.VOX_ENV?.IDENTITY_VAULT?.profiles?.home || {},
+                stepNumber: stepCount,
+                userLanguage: voxLanguage || 'en-US'
+              }
+            }, (response) => {
+              if (chrome.runtime?.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+              }
+              if (!response?.success) {
+                reject(new Error(response?.error || 'Think failed'));
+                return;
+              }
+              resolve(response.data);
+            });
+          } catch (sendErr) {
+            reject(sendErr);
+          }
+        });
+      } catch (err) {
+        if (err?.message?.includes('Extension context invalidated') || !chrome?.runtime?.id) {
+          console.warn('[Agent Loop] Extension reloaded. Please refresh the webpage (F5) to re-attach Vox Agent.');
+          silentMode = false;
+          activeAgentLoop = null;
+          setCapsuleState('idle', 'Extension updated — refresh page (F5)', 'VOX RELOADED');
+          return;
+        }
+        console.error('[Agent Loop] Think failed:', err);
+        silentMode = false;
+        setCapsuleState('idle', 'Agent encountered an error', 'VOX ERROR');
+        await clearActiveMission();
+        return;
+      }
+
+      console.log(`[Agent Loop] Step ${stepCount}: ${decision.action} — ${decision.reason || ''}`);
+
+      // 3. ACT
+      if (decision.action === 'DONE') {
+        silentMode = false;
+        await clearActiveMission();
+        const msg = decision.message || 'Task completed.';
+        setCapsuleState('idle', msg.slice(0, 35), 'VOX COMPLETED');
+        speak(msg);
+        appendChatMessage('agent', msg);
+        return;
+      }
+
+      if (decision.action === 'ASK_USER') {
+        silentMode = false;
+        const question = decision.message || 'What would you like?';
+        activeAgentLoop.awaitingUserAnswer = true;
+        activeAgentLoop.lastMessage = question;
+        activeAgentLoop.updatedAt = Date.now();
+        await saveActiveMission(activeAgentLoop);
+
+        setCapsuleState('listening', question.slice(0, 35), 'VOX IS WAITING FOR REPLY');
+        speak(question, () => {
+          collapseCapsule();
+          startListening();
+        });
+        appendChatMessage('agent', question, {
+          quickOptions: [
+            { label: '🛒 Tambah ke Keranjang', query: 'Tambahkan ke keranjang' },
+            { label: '🔍 Cari Produk Lain', query: 'Cari produk lainnya' },
+            { label: '💡 Jelaskan produk ini', query: 'Jelaskan produk ini lebih detail' }
+          ]
+        });
+        return; // Pause loop — user will answer to resume
+      }
+
+      if (decision.action === 'SPEAK') {
+        silentMode = false;
+        const msg = decision.message || '';
+        if (msg) {
+          setCapsuleState('speaking', msg.slice(0, 35), 'VOX');
+          speak(msg);
+          appendChatMessage('agent', msg);
+        }
+      }
+
+      // Execute action with real-time state feedback
+      const actionOverline = decision.action === 'CLICK_PRODUCT' ? 'VOX IS OPENING PRODUCT' :
+                             decision.action === 'BUY_NOW' || decision.action === 'ADD_TO_CART' ? 'VOX IS ADDING TO CART' :
+                             decision.action === 'TYPE' ? 'VOX IS SEARCHING' :
+                             decision.action === 'SCROLL' ? 'VOX IS SCROLLING' :
+                             decision.action === 'NAVIGATE' ? 'VOX IS NAVIGATING' :
+                             decision.action === 'WAIT' ? 'VOX IS WAITING' : 'VOX IS ACTING';
+      setCapsuleState('acting', (decision.reason || decision.action).slice(0, 35), actionOverline);
+
+      const result = await executeAgentAction(decision, pageState);
+
+      // 4. RECORD (if not already recorded by navigation-triggering actions)
+      const lastRecorded = history[history.length - 1];
+      if (!lastRecorded || lastRecorded.action !== decision) {
+        history.push({ action: decision, result });
+        activeAgentLoop.history = history;
+        await saveActiveMission(activeAgentLoop);
+      }
+
+      // SAFE MODE: Log cart actions but do NOT pause the loop for checkout
+      const isCartAction = decision.action === 'BUY_NOW' || decision.action === 'ADD_TO_CART' ||
+        (decision.action === 'CLICK' && /keranjang|cart/i.test(result?.clicked || ''));
+      if (isCartAction) {
+        console.log('[Agent Loop] Safe Mode: Cart action logged, loop continues (no checkout).');
+      }
+
+      // Wait between actions for page to settle
+      if (decision.action === 'CLICK' || decision.action === 'CLICK_PRODUCT' || decision.action === 'TYPE') {
+        await new Promise(r => setTimeout(r, 1200));
+      }
+    }
+
+    // Max steps reached
+    silentMode = false;
+    await clearActiveMission();
+    setCapsuleState('idle', 'Reached maximum steps', 'VOX IS READY');
+    speak('I reached the maximum number of steps. Please continue manually.');
+  }
+
+  // ===== WORD CORRECTION SYSTEM =====
+  // Shows a floating bar of clickable word chips after speech transcription.
+  // Tap a word to edit it inline, then hit "Run" to re-dispatch corrected query.
+
+  function showWordCorrectionBar(transcript) {
+    if (!wordCorrectionBar || !wordChipsContainer) return;
+    const words = transcript.trim().split(/\s+/);
+    if (words.length === 0 || (words.length === 1 && !words[0])) return;
+
+    wordCorrectionWords = [...words];
+    renderWordChips();
+    wordCorrectionBar.style.display = 'block';
+  }
+
+  function hideWordCorrectionBar() {
+    if (wordCorrectionBar) wordCorrectionBar.style.display = 'none';
+    wordCorrectionWords = [];
+  }
+
+  function renderWordChips() {
+    if (!wordChipsContainer) return;
+    wordChipsContainer.innerHTML = '';
+    wordCorrectionWords.forEach((word, idx) => {
+      const chip = document.createElement('span');
+      chip.className = 'vox-word-chip';
+      chip.textContent = word;
+      chip.dataset.index = idx;
+      chip.addEventListener('click', () => startEditingChip(idx));
+      wordChipsContainer.appendChild(chip);
+    });
+  }
+
+  function startEditingChip(index) {
+    if (!wordChipsContainer) return;
+    const chips = wordChipsContainer.querySelectorAll('.vox-word-chip, .vox-word-chip-input');
+    const chip = chips[index];
+    if (!chip || chip.tagName === 'INPUT') return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'vox-word-chip-input';
+    input.value = wordCorrectionWords[index];
+    input.style.width = Math.max(50, wordCorrectionWords[index].length * 9) + 'px';
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        wordCorrectionWords[index] = input.value.trim() || wordCorrectionWords[index];
+        renderWordChips();
+      }
+      if (e.key === 'Escape') {
+        renderWordChips();
+      }
+    });
+    input.addEventListener('blur', () => {
+      wordCorrectionWords[index] = input.value.trim() || wordCorrectionWords[index];
+      renderWordChips();
+    });
+
+    chip.replaceWith(input);
+    input.focus();
+    input.select();
+  }
+
+  function getCorrectedTranscript() {
+    return wordCorrectionWords.join(' ');
+  }
+
+  // Wire up word correction bar buttons
+  if (wordBarRunBtn) {
+    wordBarRunBtn.addEventListener('click', () => {
+      const corrected = getCorrectedTranscript();
+      hideWordCorrectionBar();
+      if (corrected) {
+        processNaturalQuery(corrected);
+      }
+    });
+  }
+  if (wordBarCloseBtn) {
+    wordBarCloseBtn.addEventListener('click', () => {
+      hideWordCorrectionBar();
+    });
+  }
+
+  // ===== VOX IDENTITY & AI HELPER INTRODUCTIONS =====
+  function respondWithVoxIdentity(query = '') {
+    const q = (query || '').toLowerCase().trim();
+    const isIndo = (voxLanguage.startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id') ||
+      /\b(kamu|siapa|apa|ini|bisa|dong|tolong|halo|hai|bantu|kenalan|fitur|jelaskan)\b/i.test(q);
+
+    setCapsuleState('idle', 'Vox AI Agent Helper', 'VOX IS READY');
+
+    if (isIndo) {
+      const summary = `**Vox Agent — Autonomous In-Browser AI Agent Helper** 🌐⚡\n\nSaya adalah asisten AI otonom yang hidup langsung di dalam browser kamu! Saya bukan sekadar chatbot biasa, melainkan AI Agent yang bisa membaca halaman web, menganalisis data, dan mengambil tindakan langsung:\n\n• 🔍 **Riset Produk Mendalam**: Menganalisis seluruh item di marketplace (seperti Shopee/Tokopedia), memilihkan pemenang terbaik beserta alasannya, dan menyiapkan ringkasan untuk dikirim ke WhatsApp kamu.\n• 💡 **Penjelas Konsep Sederhana**: Membedah konsep rumit atau teknologi baru (seperti Web3, blockchain, istilah teknis) dengan analogi dunia nyata yang mudah dimengerti.\n• 🎵 **Kontrol Media YouTube**: Memutar atau menjeda lagu dan video di YouTube cukup lewat suara.\n• 🔦 **Spotlight Tour Interaktif**: Menemani dan menyorot elemen-elemen penting di halaman web secara visual dan bersuara.\n\nAda yang bisa saya bantu atau riset untuk kamu sekarang?`;
+      const spoken = `Halo! Saya Vox Agent, asisten AI otonom di browser kamu. Saya siap membantu kamu meriset produk di marketplace, menjelaskan konsep rumit dengan cara sederhana, memutar lagu di YouTube, hingga memandu tur halaman web. Ada yang bisa saya bantu sekarang?`;
+
+      expandCapsule('Saya Vox Agent, AI Agent Helper kamu!', 4000);
+      speak(spoken);
+      appendChatMessage('agent', summary, {
+        spoken,
+        quickOptions: [
+          { label: '🔍 Riset Halaman Ini', action: 'research_page' },
+          { label: '💡 Jelaskan Sederhana', action: 'explain_simple' },
+          { label: '🎵 Buka YouTube', action: 'open_youtube' },
+          { label: '🔦 Spotlight Tour', action: 'run_tour' }
+        ]
+      });
+    } else {
+      const summary = `**Vox Agent — Autonomous In-Browser AI Agent Helper** 🌐⚡\n\nI am your autonomous in-browser AI Agent Helper! Beyond a conventional chatbot, I actively read live web pages, reason across options, and execute actions directly in your browser:\n\n• 🔍 **Deep Product Research**: Audit all candidate items on marketplace pages (e.g. Shopee, Amazon), pick the best winner with safety & quality rationale, and format reports for WhatsApp.\n• 💡 **Simple Concept Explainer**: Demystify complex concepts (e.g. Web3, technical terms) using intuitive real-world analogies.\n• 🎵 **YouTube Media Control**: Play or pause songs and videos on YouTube hands-free with voice commands.\n• 🔦 **Spotlight Guided Tour**: Visual spotlight tour guiding you through key features on any website.\n\nWhat can I assist or research for you today?`;
+      const spoken = `Hello! I am Vox Agent, your autonomous in-browser AI Agent Helper. I can help you research products on marketplaces, explain complex concepts simply, control YouTube media, or guide you through any website. How can I help you today?`;
+
+      expandCapsule('I am Vox Agent, your AI Agent Helper!', 4000);
+      speak(spoken);
+      appendChatMessage('agent', summary, {
+        spoken,
+        quickOptions: [
+          { label: '🔍 Research This Page', action: 'research_page' },
+          { label: '💡 Explain Simply', action: 'explain_simple' },
+          { label: '🎵 Play on YouTube', action: 'open_youtube' },
+          { label: '🔦 Spotlight Tour', action: 'run_tour' }
+        ]
+      });
+    }
   }
 
   // 10. Dynamic Natural Language Query Processing
   async function processNaturalQuery(query) {
-    showMainView();
-    openDialog();
-    setCapsuleState('reasoning', 'Thinking…');
+    // ─── 0. Reset Audio Locks & Stop Any Previous Speech Immediately ───
+    stopCurrentSpeech();
+    if (window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+    }
+    isSpeaking = false;
 
+    // ─── Show visual Thinking state FIRST on floating capsule (NO premature speech) ───
+    setCapsuleState('thinking', 'Berpikir… 💭', 'VOX IS THINKING');
+    expandCapsule('Berpikir… 💭', 0);
+
+    // Show word correction bar so user can fix misheard words
+    showWordCorrectionBar(query);
+
+    // Append to chat session (but don't open dialog)
     appendChatMessage('user', query);
 
-    queryMetaLabel.textContent = 'Question';
-    dialogTranscript.textContent = `"${query}"`;
-    responseBox.style.display = 'block';
-    answerText.innerHTML = '<span style="color: var(--ink-sec);">Processing intent & analyzing page…</span>';
-    tableWrap.style.display = 'none';
-    worthitWrap.style.display = 'none';
-
-    // ─── AUTONOMOUS ACTION & INTENT ROUTING LAYER ───
+    // ─── TIER 1: FAST LOCAL GUARD (instant, no Groq delay) ───
     const qLower = query.toLowerCase().trim();
-    const classified = classifyUserIntent(query);
-    console.log(`[Vox Agent] User query: "${query}" -> Classified intent: "${classified.intent}"`);
+    const guarded = classifyUserIntentLocalGuard(query);
 
-    // 1. Guardrail Confirm / Cancel Order
-    if (classified.intent === 'CONFIRM_ORDER') {
-      if (executeCheckoutConfirmation()) return;
-    }
-    if (classified.intent === 'CANCEL_ORDER') {
-      if (cancelCheckoutConfirmation()) return;
+    if (guarded) {
+      console.log(`[Vox Agent] GUARDED intent: "${query}" → ${guarded.intent}`);
+
+      if (guarded.intent === 'CANCEL_MISSION' || guarded.intent === 'CANCEL_ORDER') {
+        await clearActiveMission();
+        cancelCheckoutConfirmation();
+        clearTour();
+        stopCurrentSpeech();
+        setCapsuleState('idle', 'Mission cancelled', 'VOX IS READY');
+        speak('Action cancelled.');
+        return;
+      }
+      if (guarded.intent === 'RESET_VOX_STATE') {
+        await resetAllVoxStateAndData();
+        return;
+      }
+      if (guarded.intent === 'CONFIRM_ORDER') {
+        if (executeCheckoutConfirmation()) return;
+      }
+      if (guarded.intent === 'SUBMIT_FORM') {
+        const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], form button:last-of-type');
+        if (submitBtn) {
+          submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          submitBtn.classList.add('vox-halo-highlight');
+          setTimeout(() => { submitBtn.click(); submitBtn.classList.remove('vox-halo-highlight'); }, 500);
+          speak('Form submitted.');
+        } else {
+          speak('I could not find a submit button on this page.');
+        }
+        return;
+      }
     }
 
-    // 2. Submit Form
-    if (classified.intent === 'SUBMIT_FORM') {
-      const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], form button:last-of-type');
-      if (submitBtn) {
-        submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        submitBtn.classList.add('vox-halo-highlight');
-        setTimeout(() => { submitBtn.click(); submitBtn.classList.remove('vox-halo-highlight'); }, 500);
-        speak('Form submitted.');
+    // ─── TIER 1.1: PENDING MODE RESOLUTION ───
+    if (pendingModeContext) {
+      const mode = pendingModeContext;
+      pendingModeContext = null;
+      if (mode === 'instant_buy') {
+        await initiateInstantBuyForProduct(query);
+        return;
+      }
+      if (mode === 'compare') {
+        await executeAutonomousLiveCompare(query);
+        return;
+      }
+    }
+
+    // ─── TIER 1.2: PENDING CLARIFICATION ANSWER RESOLUTION ───
+    if (pendingProductClarification) {
+      const targetProd = pendingProductClarification.product;
+      if (/compare|banding|bandingkan|bandingin|cek\s*harga|spek|spesifikasi/i.test(qLower)) {
+        pendingProductClarification = null;
+        await executeAutonomousLiveCompare(targetProd);
+        return;
+      }
+      if (/instant\s*buy|beli\s*langsung|langsung\s*beli|buy\s*instant|checkout|beli\s*aja|beli/i.test(qLower)) {
+        pendingProductClarification = null;
+        await initiateInstantBuyForProduct(targetProd);
+        return;
+      }
+      if (/kupon|coupon|diskon|promo|voucher|deals/i.test(qLower)) {
+        pendingProductClarification = null;
+        await executeAutonomousDealHunter(targetProd);
+        return;
+      }
+      if (/vault|identity|alamat|isi\s*alamat|shipping/i.test(qLower)) {
+        pendingProductClarification = null;
+        switchDialogTab('address');
+        speak('Membuka Identity Vault untuk profil alamat Anda.');
+        return;
+      }
+    }
+
+    // ─── TIER 1.3: PROACTIVE PRODUCT DESIRE CLARIFICATION & PDP DIRECT BUY ───
+    const isPdp = isProductDetailPage() || !!findProductPageBuyButton();
+    const isPdpDirectBuy = isPdp && /\b(beli|beli\s*sekarang|teken\s*beli|klik\s*beli|buy|buy\s*now|checkout|order\s*this|beli\s*ini|langsung\s*beli|beli\s*langsung)\b/i.test(qLower);
+
+    if (isPdpDirectBuy) {
+      console.log('[Vox Agent] Direct buy command on product page, executing checkout immediately.');
+      appendChatMessage('agent', `**Memproses Pembelian**\n\nMenekan tombol Beli Sekarang dan memproses checkout otomatis…`);
+      speak('Siap, langsung menekan Beli Sekarang untuk produk ini.');
+      await executeAutonomousCheckout('checkout');
+      return;
+    }
+
+    // ─── AGENT LOOP RESUME: If loop is active or waiting for user answer ───
+    if (activeAgentLoop && activeAgentLoop.isActive) {
+      console.log(`[Agent Loop] Resuming with user answer/instruction: "${query}"`);
+      activeAgentLoop.awaitingUserAnswer = false;
+      activeAgentLoop.stepCount = 0; // Fresh step budget so new command doesn't hit max steps
+      activeAgentLoop.history.push({
+        action: { action: 'USER_ANSWERED', reason: query },
+        result: { success: true }
+      });
+      // Update goal to include user's clarification
+      const updatedGoal = `${activeAgentLoop.goal} (user instructed: "${query}")`;
+      await runAgentLoop(updatedGoal, activeAgentLoop);
+      return;
+    }
+
+    // ─── TIER 2: GROQ COGNITIVE INTENT CLASSIFIER ───
+    expandCapsule('Understanding…', 0);
+    const classified = await classifyIntentViaGroq(query);
+    console.log(`[Vox Agent] Groq intent: "${query}" → ${classified.intent}`, classified.steps || []);
+
+    // ─── NEEDS_MORE_INFO: Conversational Groq Loop ───
+    // Groq needs more info → ask follow-up → listen → re-classify → repeat
+    if (classified.intent === 'NEEDS_MORE_INFO') {
+      const followUp = classified.spokenResponse || classified.params?.question || 'Could you clarify what you want me to do?';
+      console.log(`[Vox Agent] Groq needs more info: "${followUp}"`);
+      expandCapsule(followUp, 0);
+      speak(followUp, () => {
+        // After speaking the question, auto-listen for user's answer
+        collapseCapsule();
+        startListening();
+      });
+      return;
+    }
+
+    // ─── INTENT ROUTING (powered by Groq's understanding) ───
+
+    // ABOUT_VOX: identity & capabilities of Vox Agent
+    if (classified.intent === 'ABOUT_VOX') {
+      respondWithVoxIdentity(query);
+      return;
+    }
+
+    // GREETING / CHAT: conversational response from Vox AI Agent Helper
+    if (classified.intent === 'GREETING' || classified.intent === 'CHAT') {
+      const isIdentity = /\b(what are you|who are you|what can you do|what is vox|tell me about yourself|kamu siapa|kamu ini apa|apa itu vox|siapa kamu|bisa apa|kamu bisa apa|fungsi kamu|tentang kamu)\b/i.test(qLower);
+      if (isIdentity) {
+        respondWithVoxIdentity(query);
+        return;
+      }
+
+      if (classified.spokenResponse && classified.spokenResponse.length > 5) {
+        collapseCapsule();
+        const spoken = classified.spokenResponse;
+        expandCapsule(spoken.slice(0, 60) + '…', 4000);
+        speak(spoken);
+        appendChatMessage('agent', spoken, {
+          spoken,
+          quickOptions: [
+            { label: '🔍 Riset Halaman Ini', action: 'research_page' },
+            { label: '💡 Jelaskan Sederhana', action: 'explain_simple' },
+            { label: '🎵 Buka YouTube', action: 'open_youtube' },
+            { label: '🔦 Spotlight Tour', action: 'run_tour' }
+          ]
+        });
+        return;
+      }
+
+      respondWithVoxIdentity(query);
+      return;
+    }
+
+    // DEEP_RESEARCH: deep product research across live DOM items with WhatsApp export
+    if (classified.intent === 'DEEP_RESEARCH') {
+      collapseCapsule();
+      const targetTerm = classified.params?.product || query;
+      await executeDeepPageResearch(targetTerm);
+      return;
+    }
+
+    // WHATSAPP_ACTION: autonomous WhatsApp Web agent action
+    if (classified.intent === 'WHATSAPP_ACTION') {
+      collapseCapsule();
+      const targetContact = classified.params?.targetContact || 'pinned';
+      await triggerAutonomousWhatsAppAction(targetContact);
+      return;
+    }
+
+    // EXPLAIN_SIMPLY: demystify concept with everyday analogy
+    if (classified.intent === 'EXPLAIN_SIMPLY') {
+      collapseCapsule();
+      const concept = classified.params?.topic || query;
+      await executeExplainSimply(concept);
+      return;
+    }
+
+    // MEDIA_CONTROL: YouTube or video playback control
+    if (classified.intent === 'MEDIA_CONTROL') {
+      collapseCapsule();
+      const action = classified.params?.action || 'play';
+      await handleYouTubeMediaControl(action, query);
+      return;
+    }
+
+    // SPOTLIGHT_TOUR: guided visual walkthrough of the page
+    if (classified.intent === 'SPOTLIGHT_TOUR') {
+      collapseCapsule();
+      const steps = buildTourStepsFromPage();
+      if (steps.length > 0) {
+        appendChatMessage('agent', `🔦 Starting spotlight tour with **${steps.length} steps**. Tap **Skip** to stop anytime.`);
+        const isIndo = (voxLanguage || '').startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id';
+        speak(isIndo ? `Memulai tur halaman ini dengan ${steps.length} langkah.` : `Starting spotlight tour with ${steps.length} steps.`);
+        await runSpotlightTour(steps);
       } else {
-        speak('I could not find a submit button on this page.');
+        appendChatMessage('agent', `Halaman ini tidak memiliki elemen yang cukup untuk di-tour.`);
+        speak('Maaf, halaman ini tidak punya cukup elemen untuk tour.');
+        setCapsuleState('idle', 'No tour elements found', 'VOX IS READY');
       }
       return;
     }
 
-    // 3. Sign In & Registration
-    if (classified.intent === 'SIGN_IN') {
-      answerText.innerHTML = '<span style="color: var(--voice);">Signing into your account…</span>';
-      await executeAutonomousSignIn(qLower);
-      return;
-    }
-    if (classified.intent === 'REGISTER') {
-      answerText.innerHTML = '<span style="color: var(--voice);">Looking for registration form…</span>';
-      await executeAutonomousSignIn(qLower);
+    // RESET_VOX_STATE: reset data and assistant state
+    if (classified.intent === 'RESET_VOX_STATE') {
+      await resetAllVoxStateAndData();
       return;
     }
 
-    // 4. Fill Shipping Address / Autofill
+    // SIGN IN / REGISTER
+    if (classified.intent === 'SIGN_IN' || classified.intent === 'REGISTER') {
+      expandCapsule('Signing in…', 3000);
+      await executeAutonomousSignIn(qLower);
+      collapseCapsule();
+      return;
+    }
+
+    // AUTOFILL / AUTOFILL_SWITCH
     if (classified.intent === 'AUTOFILL_SWITCH') {
-      const profileMatch = qLower.match(/switch\s*profile\s*(office|home|kantor|rumah)/i);
-      let profileName = 'home';
-      if (profileMatch) {
-        const p = profileMatch[1].toLowerCase();
-        profileName = (p === 'office' || p === 'kantor') ? 'office' : 'home';
-      }
-      answerText.innerHTML = `<span style="color: var(--voice);">Switching to ${profileName} profile and filling form…</span>`;
+      const profileName = classified.params?.profileName || 'home';
+      expandCapsule(`Switching to ${profileName}…`, 3000);
       await executeAutonomousAutofill(qLower, profileName);
+      collapseCapsule();
       return;
     }
     if (classified.intent === 'AUTOFILL') {
-      answerText.innerHTML = '<span style="color: var(--voice);">Filling your shipping address…</span>';
+      expandCapsule('Filling form…', 3000);
       await executeAutonomousAutofill(qLower);
+      collapseCapsule();
       return;
     }
 
-    // 5. Deal Hunter (Coupons & Discounts)
+    // DEAL HUNTER
     if (classified.intent === 'DEAL_HUNTER') {
-      answerText.innerHTML = '<span style="color: var(--voice);">Hunting deals & coupons…</span>';
+      silentMode = true;
+      collapseCapsule();
+      setCapsuleState('reasoning', 'Hunting deals…');
       await executeAutonomousDealHunter(qLower);
+      silentMode = false;
+      expandCapsule('Deals found', 3000);
       return;
     }
 
-    // 6. Autonomous 5-Layer Cognitive Multi-Agent Shopping Engine (Compare, Search, Recommendations)
+    // SHOPPING MISSION / COMPARE / SEARCH — AGENT LOOP
     if (classified.intent === 'SHOPPING_MISSION' || classified.intent === 'COMPARE' || classified.intent === 'SEARCH') {
-      await executeAutonomousLiveCompare(query);
+      collapseCapsule();
+      await runAgentLoop(query);
       return;
     }
 
-    // 7. Autonomous Click / Select Item on Screen
+    // CLICK ITEM
     if (classified.intent === 'CLICK_ITEM') {
+      collapseCapsule();
+      if (activeAgentLoop) {
+        console.log(`[Agent Loop] Resuming with click command: "${query}"`);
+        activeAgentLoop.history.push({
+          action: { action: 'USER_CLICK_REQUEST', reason: query },
+          result: { success: true }
+        });
+        await runAgentLoop(query, activeAgentLoop);
+        return;
+      }
       await executeAutonomousClickTarget(query);
       return;
     }
 
-    // 8. Buy & Checkout
+    // CHECKOUT / BUY
     if (classified.intent === 'CHECKOUT') {
-      answerText.innerHTML = '<span style="color: var(--voice);">Starting checkout process…</span>';
-      if (lastMissionWinner || currentAnalysis?.winner) {
-        await executeBuyAndCheckoutWinner(lastMissionWinner || currentAnalysis?.winner);
-      } else {
-        await executeAutonomousCheckout(qLower);
+      collapseCapsule();
+      if (activeAgentLoop) {
+        activeAgentLoop.history.push({
+          action: { action: 'USER_BUY_REQUEST', reason: query },
+          result: { success: true }
+        });
       }
+      await executeAutonomousCheckout('checkout');
       return;
     }
 
-    // Use cached ingested context if available, otherwise extract fresh
+    // NAVIGATE
+    if (classified.intent === 'NAVIGATE') {
+      const store = classified.params?.store;
+      if (store) {
+        const storeUrls = {
+          shopee: 'https://shopee.co.id',
+          tokopedia: 'https://www.tokopedia.com',
+          blibli: 'https://www.blibli.com',
+          amazon: 'https://www.amazon.com'
+        };
+        const url = storeUrls[store.toLowerCase()] || `https://www.google.com/search?q=${encodeURIComponent(store)}`;
+        window.open(url, '_blank');
+        expandCapsule(`Opening ${store}…`, 2000);
+        return;
+      }
+    }
+
+    // PAGE_QA or FALLBACK — Ask Groq to analyze the page content
+    collapseCapsule();
     const activeData = ingestedPageContext || extractPageContext();
     activeData.query = query;
 
-    // Autonomous exploration & navigation: click buttons, tabs, links (e.g. View Pricing, Buy, Specs)
-    const isGreetingQuery = /^(hai|halo|hello|hey|hei|hi|morning|salam|pagi|siang|malam)/i.test(query.trim());
+    const isGreetingQuery = classified.intent === 'GREETING' || classified.intent === 'CHAT';
     if (!isGreetingQuery) {
       const revealed = await autonomousExploreAndClick(query);
       if (revealed) {
         activeData.rawSample = (activeData.rawSample || '') + '\n\n[AUTONOMOUS ACTION: ' + revealed.source + ']\n' + revealed.content;
         activeData.actionClicked = revealed.source;
-        answerText.innerHTML = `<span style="color: var(--voice);">${revealed.toast}</span>`;
       }
     }
 
@@ -6206,7 +9111,12 @@
     playUiChime('ready');
     autoScrollAndHighlight(data.targetFocus, query, data.spoken || data.summary, data.targetKeywords);
 
+    // In silent mode, don't speak or show chat — just log
+    if (silentMode) return;
+
+    // Show result on capsule briefly, then speak
     const spokenText = data.followUpQuestion ? `${data.spoken || data.summary} ${data.followUpQuestion}` : (data.spoken || data.summary);
+    expandCapsule(spokenText.slice(0, 60) + '…', 4000);
     speak(spokenText);
 
     let summaryWithFollowUp = data.summary || data.spoken;
@@ -6234,10 +9144,9 @@
     const headings = activeData.headings || [];
     const metaDesc = activeData.metaDesc || '';
 
-    const isIndonesian = (window.VOX_ENV?.VOX_LANGUAGE === 'id') ||
-      /\b(tolong|cariin|apakah|gimana|bagaimana|kegunaan|murahan?|mahal|diskon|kupon|pesanan)\b/i.test(q) ||
-      /\b(ngga|nggak|enggak|dong|siang|pagi|malam|kamu|saya)\b/i.test(q) ||
-      /\b(apa\s*ini|bandingkan|lihat\s*harga|beli\s*sekarang|buat\s*apa)\b/i.test(q);
+    const isIndonesian = (voxLanguage.startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id') &&
+      (/\b(tolong|cariin|apakah|gimana|bagaimana|kegunaan|murahan?|mahal|diskon|kupon|pesanan)\b/i.test(q) ||
+       /\b(ngga|nggak|enggak|dong|siang|pagi|malam|kamu|saya)\b/i.test(q));
 
     const isGreeting = /^(hai|halo|hello|hey|hei|hi|morning|afternoon|salam|pagi|siang|malam)(\s*(vox|fox|copilot|ai)?)?$/i.test(q) ||
                        (/^(hai|halo|hello|hey|hei|hi)\b/i.test(q) && q.length <= 15);
@@ -6251,6 +9160,8 @@
     let comparisonMatrix = null;
     let worthItAudit = null;
 
+    const isIdentity = /\b(what are you|who are you|what can you do|what is vox|tell me about yourself|kamu siapa|kamu ini apa|apa itu vox|siapa kamu|bisa apa|kamu bisa apa|fungsi kamu|tentang kamu)\b/i.test(q);
+
     const isLangQuery = /speak english|bahasa inggris|do you speak|can you speak|bisa bahasa/i.test(q);
     if (isLangQuery) {
       return {
@@ -6261,8 +9172,47 @@
         targetFocus: 'hero',
         targetKeywords: headings.slice(0, 4),
         ghostSource: 'local_heuristics',
-        summary: "Yes, absolutely! I speak English fluently. I am Vox Agent, your in-browser AI voice copilot. Feel free to ask me anything about this page!",
-        spoken: "Yes, absolutely! I speak English fluently and I am ready to help you explore this page. What would you like to know?",
+        summary: "Yes, absolutely! I speak English fluently. I am Vox Agent, your autonomous in-browser AI Agent Helper. How can I help you today?",
+        spoken: "Yes, absolutely! I speak English fluently. I am Vox Agent, your in-browser AI Agent Helper. How can I help you today?",
+        followUpQuestion: "What page or topic would you like to explore today?",
+        quickOptions: [
+          { label: '🔍 Research This Page', action: 'research_page' },
+          { label: '💡 Explain Simply', action: 'explain_simple' },
+          { label: '🎵 Play on YouTube', action: 'open_youtube' },
+          { label: '🔦 Spotlight Tour', action: 'run_tour' }
+        ],
+        worthIt: null,
+        competitors: null,
+        jargon: []
+      };
+    }
+
+    if (isIdentity) {
+      targetFocus = 'hero';
+      if (isIndonesian) {
+        directAnswer = `Saya Vox Agent, asisten AI otonom di browser kamu! Saya bukan sekadar chatbot biasa, melainkan AI Agent yang bisa membaca halaman web, menganalisis data live, meriset produk di marketplace, menjelaskan konsep rumit dengan analogi sederhana, mengontrol YouTube, hingga memandu tur visual halaman. Ada yang bisa saya bantu sekarang?`;
+        spokenText = `Halo! Saya Vox Agent, asisten AI otonom di browser kamu. Saya siap membantu kamu meriset produk di marketplace, menjelaskan konsep rumit, memutar lagu di YouTube, hingga memandu tur halaman web. Mau saya bantu apa sekarang?`;
+      } else {
+        directAnswer = `I am Vox Agent, your autonomous in-browser AI Agent Helper! Beyond a simple chatbot, I can audit items on marketplace pages, explain complex concepts simply, control YouTube playback, and guide you with visual spotlight tours. How can I assist you today?`;
+        spokenText = `Hello! I am Vox Agent, your autonomous AI Agent Helper. How can I help you with your browsing or research today?`;
+      }
+      return {
+        domain,
+        url: activeData.url || window.location.href,
+        title,
+        query,
+        targetFocus: 'hero',
+        targetKeywords: ['research', 'explain', 'media', 'spotlight'],
+        ghostSource: 'local_heuristics',
+        summary: directAnswer,
+        spoken: spokenText,
+        followUpQuestion: isIndonesian ? 'Mau riset atau jelaskan apa hari ini?' : 'What would you like to research or explore today?',
+        quickOptions: [
+          { label: isIndonesian ? '🔍 Riset Halaman Ini' : '🔍 Research This Page', action: 'research_page' },
+          { label: isIndonesian ? '💡 Jelaskan Sederhana' : '💡 Explain Simply', action: 'explain_simple' },
+          { label: isIndonesian ? '🎵 Buka YouTube' : '🎵 Play on YouTube', action: 'open_youtube' },
+          { label: '🔦 Spotlight Tour', action: 'run_tour' }
+        ],
         worthIt: null,
         competitors: null,
         jargon: []
@@ -6272,12 +9222,33 @@
     if (isGreeting) {
       targetFocus = 'hero';
       if (isIndonesian) {
-        directAnswer = `Halo! Saya Vox, voice copilot kamu. Saya sedang aktif memantau halaman ${title || domain}. Ada yang bisa saya bantu jelaskan? Kamu bisa tanyakan apa fungsi website ini, perbandingannya, atau detail harganya.`;
-        spokenText = `Halo! Saya Vox copilot. Ada yang bisa saya bantu tentang halaman ${title || domain} ini? Silakan tanya fungsi website, harga, atau alternatifnya.`;
+        directAnswer = `Halo! Saya Vox Agent, asisten AI otonom di browser kamu. Saya siap membantu kamu meriset halaman ini, menjelaskan hal-hal penting, atau memutar media. Ada yang bisa saya bantu?`;
+        spokenText = `Halo! Saya Vox Agent, asisten AI otonom kamu. Ada yang bisa saya bantu hari ini?`;
       } else {
-        directAnswer = `Hello! I am Vox, your in-browser voice copilot. I am actively monitoring ${title || domain}. How can I assist you today? Feel free to ask about this website, pricing, or alternatives.`;
-        spokenText = `Hello! I am Vox copilot. How can I assist you with ${title || domain}? Feel free to ask about this website, pricing, or competitors.`;
+        directAnswer = `Hello! I am Vox Agent, your autonomous in-browser AI Agent Helper. I am ready to help you explore, research, and navigate ${title || domain}. How can I assist you today?`;
+        spokenText = `Hello! I am Vox Agent, your AI Agent Helper. How can I assist you today?`;
       }
+      return {
+        domain,
+        url: activeData.url || window.location.href,
+        title,
+        query,
+        targetFocus: 'hero',
+        targetKeywords: headings.slice(0, 5),
+        ghostSource: 'local_heuristics',
+        summary: directAnswer,
+        spoken: spokenText,
+        followUpQuestion: isIndonesian ? 'Mau saya bantu riset apa hari ini?' : 'What would you like to explore today?',
+        quickOptions: [
+          { label: isIndonesian ? '🔍 Riset Halaman Ini' : '🔍 Research This Page', action: 'research_page' },
+          { label: isIndonesian ? '💡 Jelaskan Sederhana' : '💡 Explain Simply', action: 'explain_simple' },
+          { label: isIndonesian ? '🎵 Buka YouTube' : '🎵 Play on YouTube', action: 'open_youtube' },
+          { label: '🔦 Spotlight Tour', action: 'run_tour' }
+        ],
+        worthIt: null,
+        competitors: null,
+        jargon: []
+      };
     } else if (isWorthIt) {
       targetFocus = 'pricing';
       if (isIndonesian) {
@@ -6322,17 +9293,17 @@
         followUpQuestion = "What is your target budget, and are you looking for the budget LOQ series (~Rp 14M) or high-performance Legion 5 (~Rp 20M+)?";
         quickOptions = [
           { label: "💰 Budget LOQ (Rp 12-16M)", query: "Lenovo LOQ RTX 4050" },
-          { label: "⚡ Mid Legion 5 (Rp 18-24M)", query: "Lenovo Legion 5 RTX 4060" },
+          { label: "Mid Legion 5 (Rp 18-24M)", query: "Lenovo Legion 5 RTX 4060" },
           { label: "🔥 Flagship Legion Pro (Rp 28M+)", query: "Lenovo Legion Pro 7" },
-          { label: "🎯 Under Rp 15 Million", query: `${query} under 15 juta` },
+          { label: "Under Rp 15 Million", query: `${query} under 15 juta` },
           { label: "🚀 RTX 4060 Spec", query: `${query} RTX 4060` }
         ];
       } else {
         followUpQuestion = "What is your budget range, and do you prefer budget-friendly or official store options?";
         quickOptions = [
           { label: "💰 Budget Pick", query: `${query} murah berkualitas` },
-          { label: "⭐ Top Rated", query: `${query} terlaris` },
-          { label: "🏷️ Official Store", query: `${query} official store` }
+          { label: "Top Rated", query: `${query} terlaris` },
+          { label: "Official Store", query: `${query} official store` }
         ];
       }
     }
@@ -6488,37 +9459,7 @@
     });
   }
 
-  function showMainView() {
-    if (bodyMain) bodyMain.style.display = 'flex';
-    if (bodyHistory) bodyHistory.style.display = 'none';
-    if (bodySettings) bodySettings.style.display = 'none';
-    if (bodyVault) bodyVault.style.display = 'none';
-    if (historyToggleBtn) historyToggleBtn.textContent = 'History';
-    if (settingsToggleBtn) settingsToggleBtn.textContent = 'API';
-    if (btnVaultToggle) btnVaultToggle.textContent = 'Vault';
-  }
-
-  function showHistoryView() {
-    if (bodyMain) bodyMain.style.display = 'none';
-    if (bodyHistory) bodyHistory.style.display = 'flex';
-    if (bodySettings) bodySettings.style.display = 'none';
-    if (bodyVault) bodyVault.style.display = 'none';
-    if (historyToggleBtn) historyToggleBtn.textContent = 'Back';
-    if (settingsToggleBtn) settingsToggleBtn.textContent = 'API';
-    if (btnVaultToggle) btnVaultToggle.textContent = 'Vault';
-    updateHistoryUI();
-  }
-
-  function showSettingsView() {
-    if (bodyMain) bodyMain.style.display = 'none';
-    if (bodyHistory) bodyHistory.style.display = 'none';
-    if (bodySettings) bodySettings.style.display = 'flex';
-    if (bodyVault) bodyVault.style.display = 'none';
-    if (historyToggleBtn) historyToggleBtn.textContent = 'History';
-    if (settingsToggleBtn) settingsToggleBtn.textContent = 'Back';
-    if (btnVaultToggle) btnVaultToggle.textContent = 'Vault';
-
-    // Populate keys from storage
+  function populateSettingsKeys() {
     if (chrome.storage?.local) {
       chrome.storage.local.get(['apiKey', 'groqApiKey', 'elevenlabsApiKey', 'liveScrape'], (res) => {
         if (inputAnakinKey) inputAnakinKey.value = res.apiKey || '';
@@ -6528,7 +9469,7 @@
         const hasEL = !!(res.elevenlabsApiKey);
         const hasGroq = !!(res.groqApiKey);
         const hasAnakin = !!(res.apiKey && res.liveScrape);
-        if (settingsStatusBadge) settingsStatusBadge.textContent = hasEL ? 'ElevenLabs Voice' : (hasGroq ? 'Groq Llama-3.3' : (hasAnakin ? 'Live Anakin' : 'Local Heuristics'));
+        if (settingsStatusBadge) settingsStatusBadge.textContent = hasEL ? 'ElevenLabs Voice' : (hasGroq ? 'Groq Fast AI' : (hasAnakin ? 'Live Anakin' : 'Local Heuristics'));
       });
     } else {
       if (inputAnakinKey) inputAnakinKey.value = localStorage.getItem('anakin_api_key') || window.VOX_ENV?.ANAKIN_API_KEY || '';
@@ -6538,8 +9479,64 @@
       const hasEL = !!(inputElevenlabsKey?.value.trim());
       const hasGroq = !!(inputGroqKey?.value.trim());
       const hasAnakin = !!(inputAnakinKey?.value.trim() && chkLiveScrape?.checked);
-      if (settingsStatusBadge) settingsStatusBadge.textContent = hasEL ? 'ElevenLabs Voice' : (hasGroq ? 'Groq Llama-3.3' : (hasAnakin ? 'Live Anakin' : 'Local Heuristics'));
+      if (settingsStatusBadge) settingsStatusBadge.textContent = hasEL ? 'ElevenLabs Voice' : (hasGroq ? 'Groq Fast AI' : (hasAnakin ? 'Live Anakin' : 'Local Heuristics'));
     }
+  }
+
+  function switchDialogTab(tabName) {
+    if (bodyMain) bodyMain.style.display = 'none';
+    if (bodyHistory) bodyHistory.style.display = 'none';
+    if (bodySettings) bodySettings.style.display = 'none';
+    if (bodyVault) bodyVault.style.display = 'none';
+    if (bodyWeb) bodyWeb.style.display = 'none';
+
+    // Update active state on tab buttons
+    const tabs = shadow.querySelectorAll('.vox-nav-tab');
+    tabs.forEach(t => {
+      if (t.getAttribute('data-tab') === tabName) {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
+
+    if (tabName === 'chat') {
+      if (bodyMain) bodyMain.style.display = 'flex';
+    } else if (tabName === 'address') {
+      if (bodyVault) bodyVault.style.display = 'flex';
+      loadVaultProfile(currentVaultProfile);
+    } else if (tabName === 'web') {
+      if (bodyWeb) bodyWeb.style.display = 'flex';
+      const curDomainEl = shadow.getElementById('web-current-domain-text');
+      if (curDomainEl) curDomainEl.textContent = window.location.hostname;
+      renderConnectedStores();
+    } else if (tabName === 'settings') {
+      if (bodySettings) bodySettings.style.display = 'flex';
+      populateSettingsKeys();
+    } else if (tabName === 'history') {
+      if (bodyHistory) bodyHistory.style.display = 'flex';
+      updateHistoryUI();
+    }
+  }
+
+  function showMainView() {
+    switchDialogTab('chat');
+  }
+
+  function showHistoryView() {
+    switchDialogTab('history');
+  }
+
+  function showSettingsView() {
+    switchDialogTab('settings');
+  }
+
+  function showVaultView() {
+    switchDialogTab('address');
+  }
+
+  function showWebView() {
+    switchDialogTab('web');
   }
 
   if (historyToggleBtn) {
@@ -6562,35 +9559,85 @@
     });
   }
 
+  // Orb settings gear button — opens dialog directly to Isi Alamat as requested
+  const orbSettingsBtn = shadow.getElementById('vox-orb-settings');
+  if (orbSettingsBtn) {
+    orbSettingsBtn.addEventListener('click', () => {
+      showVaultView();
+      dialog.classList.add('open');
+      if (typeof activeChatSession !== 'undefined') {
+        activeChatSession.isOpen = true;
+        saveActiveChatSession();
+      }
+    });
+  }
+
+  // Tab Nav Click Handlers
+  if (tabNavChat) tabNavChat.addEventListener('click', () => switchDialogTab('chat'));
+  if (tabNavAddress) tabNavAddress.addEventListener('click', () => switchDialogTab('address'));
+  if (tabNavWeb) tabNavWeb.addEventListener('click', () => switchDialogTab('web'));
+  if (tabNavSettings) tabNavSettings.addEventListener('click', () => switchDialogTab('settings'));
+
   // ─── Vault View Toggle & Logic ───
+
+  function updateVaultPreview() {
+    const name = vaultFullname?.value.trim() || 'Nama belum diisi';
+    const phone = vaultPhone?.value.trim() || 'No. HP belum diisi';
+    const street = vaultStreet?.value.trim() || 'Alamat belum diisi';
+    const city = vaultCity?.value.trim() || '';
+    const prov = vaultProvince?.value.trim() || '';
+    const postal = vaultPostalcode?.value.trim() || '';
+    const cityProv = [city, prov, postal].filter(Boolean).join(', ') || 'Kota / Provinsi belum diisi';
+
+    if (vaultPreviewProfile) {
+      vaultPreviewProfile.textContent = currentVaultProfile === 'office' ? '🏢 Profil: Kantor (Office)' : '🏠 Profil: Rumah (Home)';
+    }
+    if (vaultPreviewNamePhone) {
+      vaultPreviewNamePhone.textContent = `${name} · ${phone}`;
+    }
+    if (vaultPreviewAddress) {
+      vaultPreviewAddress.textContent = street;
+    }
+    if (vaultPreviewCityProv) {
+      vaultPreviewCityProv.textContent = cityProv;
+    }
+  }
 
   function loadVaultProfile(profileName) {
     currentVaultProfile = profileName || 'home';
     const vault = window.VOX_ENV?.IDENTITY_VAULT || { profiles: {} };
     const profile = vault.profiles?.[currentVaultProfile] || {};
 
-    vaultFullname.value = profile.fullName || '';
-    vaultEmail.value = profile.email || '';
-    vaultPhone.value = profile.phone || '';
-    vaultUsername.value = profile.username || '';
-    vaultStreet.value = profile.street || '';
-    vaultCity.value = profile.city || '';
-    vaultProvince.value = profile.province || '';
-    vaultPostalcode.value = profile.postalCode || '';
-    vaultActiveBadge.textContent = profile.label || currentVaultProfile;
+    if (vaultFullname) vaultFullname.value = profile.fullName || '';
+    if (vaultEmail) vaultEmail.value = profile.email || '';
+    if (vaultPhone) vaultPhone.value = profile.phone || '';
+    if (vaultUsername) vaultUsername.value = profile.username || '';
+    if (vaultStreet) vaultStreet.value = profile.street || '';
+    if (vaultCity) vaultCity.value = profile.city || '';
+    if (vaultProvince) vaultProvince.value = profile.province || '';
+    if (vaultPostalcode) vaultPostalcode.value = profile.postalCode || '';
+    if (vaultActiveBadge) vaultActiveBadge.textContent = currentVaultProfile === 'office' ? 'Kantor' : 'Rumah';
 
     // Style active profile buttons
-    if (currentVaultProfile === 'home') {
-      btnVaultHome.style.borderColor = 'var(--voice)';
-      btnVaultHome.style.color = 'var(--voice)';
-      btnVaultOffice.style.borderColor = 'var(--border)';
-      btnVaultOffice.style.color = 'var(--ink-sec)';
-    } else {
-      btnVaultOffice.style.borderColor = 'var(--voice)';
-      btnVaultOffice.style.color = 'var(--voice)';
-      btnVaultHome.style.borderColor = 'var(--border)';
-      btnVaultHome.style.color = 'var(--ink-sec)';
+    if (btnVaultHome && btnVaultOffice) {
+      if (currentVaultProfile === 'home') {
+        btnVaultHome.style.borderColor = 'var(--voice)';
+        btnVaultHome.style.color = 'var(--voice)';
+        btnVaultHome.style.background = 'var(--chip-bg)';
+        btnVaultOffice.style.borderColor = 'var(--border)';
+        btnVaultOffice.style.color = 'var(--ink-sec)';
+        btnVaultOffice.style.background = 'transparent';
+      } else {
+        btnVaultOffice.style.borderColor = 'var(--voice)';
+        btnVaultOffice.style.color = 'var(--voice)';
+        btnVaultOffice.style.background = 'var(--chip-bg)';
+        btnVaultHome.style.borderColor = 'var(--border)';
+        btnVaultHome.style.color = 'var(--ink-sec)';
+        btnVaultHome.style.background = 'transparent';
+      }
     }
+
+    updateVaultPreview();
 
     // Also try loading from chrome.storage
     if (chrome.runtime?.sendMessage) {
@@ -6599,30 +9646,19 @@
         (response) => {
           if (chrome.runtime.lastError || !response?.success) return;
           const p = response.data;
-          if (p.fullName) vaultFullname.value = p.fullName;
-          if (p.email) vaultEmail.value = p.email;
-          if (p.phone) vaultPhone.value = p.phone;
-          if (p.username) vaultUsername.value = p.username;
-          if (p.street) vaultStreet.value = p.street;
-          if (p.city) vaultCity.value = p.city;
-          if (p.province) vaultProvince.value = p.province;
-          if (p.postalCode) vaultPostalcode.value = p.postalCode;
-          vaultActiveBadge.textContent = p.label || currentVaultProfile;
+          if (p.fullName && vaultFullname) vaultFullname.value = p.fullName;
+          if (p.email && vaultEmail) vaultEmail.value = p.email;
+          if (p.phone && vaultPhone) vaultPhone.value = p.phone;
+          if (p.username && vaultUsername) vaultUsername.value = p.username;
+          if (p.street && vaultStreet) vaultStreet.value = p.street;
+          if (p.city && vaultCity) vaultCity.value = p.city;
+          if (p.province && vaultProvince) vaultProvince.value = p.province;
+          if (p.postalCode && vaultPostalcode) vaultPostalcode.value = p.postalCode;
+          if (vaultActiveBadge) vaultActiveBadge.textContent = (p.label || currentVaultProfile) === 'office' ? 'Kantor' : 'Rumah';
+          updateVaultPreview();
         }
       );
     }
-  }
-
-  function showVaultView() {
-    bodyMain.style.display = 'none';
-    bodyHistory.style.display = 'none';
-    bodySettings.style.display = 'none';
-    bodyVault.style.display = 'flex';
-    btnVaultToggle.textContent = 'Back';
-    historyToggleBtn.textContent = 'History';
-    settingsToggleBtn.textContent = 'API';
-    loadVaultProfile(currentVaultProfile);
-    renderConnectedStores();
   }
 
   if (btnVaultToggle) {
@@ -6637,6 +9673,11 @@
 
   if (btnVaultHome) btnVaultHome.addEventListener('click', () => loadVaultProfile('home'));
   if (btnVaultOffice) btnVaultOffice.addEventListener('click', () => loadVaultProfile('office'));
+
+  // Live input update for address preview
+  [vaultFullname, vaultPhone, vaultEmail, vaultUsername, vaultStreet, vaultCity, vaultProvince, vaultPostalcode].forEach(input => {
+    if (input) input.addEventListener('input', updateVaultPreview);
+  });
 
   if (btnVaultSave) {
     btnVaultSave.addEventListener('click', () => {
@@ -6653,16 +9694,32 @@
         postalCode: vaultPostalcode ? vaultPostalcode.value.trim() : ''
       };
 
+      if (!window.VOX_ENV) window.VOX_ENV = {};
+      if (!window.VOX_ENV.IDENTITY_VAULT) window.VOX_ENV.IDENTITY_VAULT = { profiles: {} };
+      if (!window.VOX_ENV.IDENTITY_VAULT.profiles) window.VOX_ENV.IDENTITY_VAULT.profiles = {};
+      window.VOX_ENV.IDENTITY_VAULT.profiles[currentVaultProfile] = profileData;
+
+      try {
+        localStorage.setItem('vox_vault_' + currentVaultProfile, JSON.stringify(profileData));
+      } catch (_) {}
+
+      updateVaultPreview();
+
+      const showSavedFeedback = () => {
+        if (lblVaultSaved) {
+          lblVaultSaved.style.display = 'inline';
+          setTimeout(() => { if (lblVaultSaved) lblVaultSaved.style.display = 'none'; }, 2500);
+        }
+        playUiChime('success');
+      };
+
       if (chrome.runtime?.sendMessage) {
         chrome.runtime.sendMessage(
           { action: 'SAVE_IDENTITY_PROFILE', payload: { profileName: currentVaultProfile, profileData } },
-          () => {
-            if (lblVaultSaved) {
-              lblVaultSaved.style.display = 'inline';
-              setTimeout(() => { lblVaultSaved.style.display = 'none'; }, 2000);
-            }
-          }
+          () => showSavedFeedback()
         );
+      } else {
+        showSavedFeedback();
       }
     });
   }
@@ -6679,17 +9736,17 @@
     if (el) el.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
   };
 
-  setupShopChip('chip-checkout', () => { appendChatMessage('user', '🛒 Buy Item & Checkout'); executeAutonomousCheckout('checkout'); });
-  setupShopChip('chip-deals', () => { appendChatMessage('user', '🏷️ Hunt Deals & Coupons'); executeAutonomousDealHunter('deals'); });
-  setupShopChip('chip-compare', () => { appendChatMessage('user', '⚖️ Compare Prices & Specs'); executeAutonomousCompare('compare'); });
-  setupShopChip('chip-autofill', () => { appendChatMessage('user', '📦 Autofill Shipping Address'); executeAutonomousAutofill('autofill'); });
+  setupShopChip('chip-checkout', () => { appendChatMessage('user', 'Buy Item & Checkout'); executeAutonomousCheckout('checkout'); });
+  setupShopChip('chip-deals', () => { appendChatMessage('user', 'Hunt Deals & Coupons'); executeAutonomousDealHunter('deals'); });
+  setupShopChip('chip-compare', () => { appendChatMessage('user', 'Compare Prices & Specs'); executeAutonomousCompare('compare'); });
+  setupShopChip('chip-autofill', () => { showVaultView(); });
   setupShopChip('chip-vault', () => { openDialog(); showVaultView(); });
 
-  setupShopChip('dlg-chip-checkout', () => { appendChatMessage('user', '🛒 Buy Item & Checkout'); executeAutonomousCheckout('checkout'); });
-  setupShopChip('dlg-chip-deals', () => { appendChatMessage('user', '🏷️ Hunt Deals & Coupons'); executeAutonomousDealHunter('deals'); });
-  setupShopChip('dlg-chip-compare', () => { appendChatMessage('user', '⚖️ Compare Prices & Specs'); executeAutonomousCompare('compare'); });
-  setupShopChip('dlg-chip-autofill', () => { appendChatMessage('user', '📦 Autofill Shipping Address'); executeAutonomousAutofill('autofill'); });
-  setupShopChip('dlg-chip-vault', () => { showVaultView(); });
+  setupShopChip('dlg-chip-checkout', () => { appendChatMessage('user', 'Buy Item & Checkout'); executeAutonomousCheckout('checkout'); });
+  setupShopChip('dlg-chip-deals', () => { appendChatMessage('user', 'Hunt Deals & Coupons'); executeAutonomousDealHunter('deals'); });
+  setupShopChip('dlg-chip-compare', () => { appendChatMessage('user', 'Compare Prices & Specs'); executeAutonomousCompare('compare'); });
+  setupShopChip('dlg-chip-autofill', () => { showVaultView(); });
+  setupShopChip('dlg-chip-vault', () => { showWebView(); });
 
   if (btnSaveSettings) {
     btnSaveSettings.addEventListener('click', () => {
@@ -6697,13 +9754,16 @@
       const groqKey = inputGroqKey ? inputGroqKey.value.trim() : '';
       const elKey = inputElevenlabsKey ? inputElevenlabsKey.value.trim() : '';
       const live = chkLiveScrape ? chkLiveScrape.checked : false;
-      const nextSettings = { apiKey: key, groqApiKey: groqKey, elevenlabsApiKey: elKey, liveScrape: live };
+      const lang = selectVoxLanguage ? selectVoxLanguage.value : 'en-US';
+      voxLanguage = lang;
+      if (recognition) recognition.lang = lang;
+      const nextSettings = { apiKey: key, groqApiKey: groqKey, elevenlabsApiKey: elKey, liveScrape: live, voxLanguage: lang };
 
       const updateBadge = () => {
         const hasEL = !!elKey;
         const hasGroq = !!groqKey;
         const hasAnakin = !!(key && live);
-        if (settingsStatusBadge) settingsStatusBadge.textContent = hasEL ? 'ElevenLabs Voice' : (hasGroq ? 'Groq Llama-3.3' : (hasAnakin ? 'Live Anakin' : 'Local Heuristics'));
+        if (settingsStatusBadge) settingsStatusBadge.textContent = hasEL ? 'ElevenLabs Voice' : (hasGroq ? 'Groq Fast AI' : (hasAnakin ? 'Live Anakin' : 'Local Heuristics'));
         if (lblSettingsSaved) {
           lblSettingsSaved.style.display = 'inline';
           setTimeout(() => { lblSettingsSaved.style.display = 'none'; }, 2000);
@@ -6727,11 +9787,95 @@
     });
   }
 
+  // Emergency Reset Logic for Stuck Missions, Audio Locks, and Dead Mics
+  async function resetAllVoxStateAndData() {
+    console.log('[Vox Agent] Performing emergency data & state reset...');
+
+    // 1. Terminate any active agent loop / missions
+    if (activeAgentLoop) {
+      activeAgentLoop.isActive = false;
+      activeAgentLoop = null;
+    }
+    await clearActiveMission();
+
+    // 2. Clear all session storage & local storage mission artifacts
+    try {
+      sessionStorage.removeItem(STORAGE_KEY_MISSION);
+      sessionStorage.removeItem('vox_pending_auto_checkout');
+      sessionStorage.removeItem('vox_active_chat_session');
+    } catch (_) {}
+
+    if (chrome.storage?.local) {
+      chrome.storage.local.remove([STORAGE_KEY_MISSION, 'vox_pending_auto_checkout']);
+    }
+
+    // 3. Clear pending clarifications, modes, and queries
+    pendingProductClarification = null;
+    pendingModeContext = null;
+    currentAnalysis = null;
+    lastMissionWinner = null;
+    lastProcessedQuery = '';
+    lastProcessedTime = 0;
+    silentMode = false;
+
+    // 4. Force release all speech and audio locks
+    currentSpeechId++;
+    isSpeaking = false;
+    speechStartTime = 0;
+    if (activeSpeechWatchdog) {
+      clearTimeout(activeSpeechWatchdog);
+      activeSpeechWatchdog = null;
+    }
+    stopCurrentSpeech();
+    if (window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+    }
+    clearHighlight();
+
+    // 5. Reset and restart microphone
+    stopListening();
+    isHandsFreeMode = true;
+    await new Promise(r => setTimeout(r, 200));
+    startListening();
+
+    // 6. Visual & instant chime feedback (NO speech lock to keep mic immediately listening!)
+    setFloatingMode('ambient');
+    setCapsuleState('listening', 'Hey Vox siap mendengarkan!');
+    expandCapsule('✓ Memori bersih. Mikrofon aktif & siap mendengarkan!', 3500);
+    playUiChime('ready');
+  }
+
+  if (btnResetVoxState) {
+    btnResetVoxState.addEventListener('click', async () => {
+      btnResetVoxState.disabled = true;
+      btnResetVoxState.textContent = 'Memproses reset…';
+      await resetAllVoxStateAndData();
+      btnResetVoxState.disabled = false;
+      btnResetVoxState.textContent = '⚡ Reset Data & Nyalakan Ulang Mic';
+      if (lblResetVoxStatus) {
+        lblResetVoxStatus.style.display = 'block';
+        setTimeout(() => { if (lblResetVoxStatus) lblResetVoxStatus.style.display = 'none'; }, 3000);
+      }
+    });
+  }
+
+  // Capsule-integrated reset button
+  if (capsuleBtnResetInline) {
+    capsuleBtnResetInline.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      capsuleBtnResetInline.classList.add('is-resetting');
+      await resetAllVoxStateAndData();
+      setTimeout(() => {
+        capsuleBtnResetInline.classList.remove('is-resetting');
+      }, 1200);
+    });
+  }
+
   // 12. Copy Brief & Cheatsheet
   if (btnCopyAnswer) {
     btnCopyAnswer.addEventListener('click', () => {
       if (!currentAnalysis) return;
-      const text = `# ${currentAnalysis.domain} — Vox Copilot\nQuestion: "${currentAnalysis.query}"\n\n${currentAnalysis.summary}\n`;
+      const text = `# ${currentAnalysis.domain} — Vox Agent\nQuestion: "${currentAnalysis.query}"\n\n${currentAnalysis.summary}\n`;
       navigator.clipboard.writeText(text).then(() => {
         btnCopyAnswer.textContent = 'Copied';
         setTimeout(() => { if (btnCopyAnswer) btnCopyAnswer.textContent = 'Copy Brief'; }, 2000);
@@ -6753,6 +9897,8 @@
 
   // 13. Dialog Open & Close Handlers
   function openDialog() {
+    // Silent mode: don't auto-open dialog during background work
+    if (silentMode) return;
     dialog.classList.add('open');
     if (typeof activeChatSession !== 'undefined') {
       activeChatSession.isOpen = true;
@@ -6790,6 +9936,8 @@
       if (dialog.classList.contains('open')) {
         closeDialog();
       }
+      clearTour();
+      hideWordCorrectionBar();
       setFloatingMode('ambient');
     }
 
@@ -6809,4 +9957,11 @@
   updateHistoryUI();
   loadCustomStores(() => renderConnectedStores());
   restoreActiveChatSession();
+  restoreActiveMission();
+  restoreMicState(); // Resume mic if it was active before page navigation
+
+  // Save mic state before page unload (navigation, refresh)
+  window.addEventListener('beforeunload', () => {
+    saveMicState();
+  });
 })();

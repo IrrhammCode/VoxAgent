@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Vox Agent — Autonomous AI Shopping Copilot",
-  "version": "1.2.0",
-  "description": "Autonomous voice shopping AI agent that compares prices, hunts coupon deals, autofills checkout, and executes 1-click buy on any online store. Powered by Anakin.io",
+  "name": "Vox Agent — Autonomous In-Browser AI Agent Helper",
+  "version": "1.3.0",
+  "description": "Autonomous voice AI agent helper that reads, reasons, and acts on any webpage: deep product research, simplified analogies, YouTube media control, and hands-free web assistance.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -18,6 +18,10 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+      "exclude_matches": [
+        "*://web.whatsapp.com/*",
+        "*://*.whatsapp.com/*"
+      ],
       "js": ["config.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
