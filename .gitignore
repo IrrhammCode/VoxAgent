@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+DEMO_SCRIPT.md
 
 # Operating System files
 .DS_Store
