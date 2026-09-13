@@ -1989,10 +1989,11 @@
           const targetUrl = chip.getAttribute('data-url');
           const q = chip.getAttribute('data-query');
 
-          if (action === 'open_winner' && targetUrl) {
+          if (action === 'open_winner') {
+            const destUrl = targetUrl || currentAnalysis?.winner?.url || 'https://www.tokopedia.com';
             chip.style.transform = 'scale(0.95)';
             chip.style.borderColor = 'var(--voice)';
-            chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: targetUrl });
+            chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
             speak('Opening the best deal store for you in a new tab.');
             return;
           }
@@ -3865,6 +3866,21 @@
     q = q.replace(/\s+(on|in|di)\s+(shopee|tokopedia|lazada|blibli|amazon|google|store|marketplace|web|olshop).*$/i, '');
     q = q.replace(/\s+/g, ' ').trim();
     return q;
+  }
+
+  function extractBudgetCeiling(q = '') {
+    if (!q) return 500000;
+    const cleanQ = q.replace(/\./g, '');
+    const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks)?\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m))?/i);
+    if (match) {
+      let num = parseInt(match[1], 10);
+      const unit = (match[2] || '').toLowerCase();
+      if (unit === 'juta' || unit === 'jt' || unit === 'm') num *= 1000000;
+      else if (unit === 'k' || unit === 'rb' || unit === 'ribu') num *= 1000;
+      if (num >= 1000) return num;
+      if (num > 0 && num < 100) return num * 1000000;
+    }
+    return 500000;
   }
 
   /**

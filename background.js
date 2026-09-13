@@ -1271,13 +1271,16 @@ function detectCategoryFromQuery(q = '') {
 }
 
 function extractBudgetCeiling(q = '') {
-  const match = q.match(/(?:under|budget|max|di\s*bawah|maksimal|maks)?\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m))?/i);
+  if (!q) return 500000;
+  const cleanQ = q.replace(/\./g, '');
+  const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks)?\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m))?/i);
   if (match) {
     let num = parseInt(match[1], 10);
     const unit = (match[2] || '').toLowerCase();
     if (unit === 'juta' || unit === 'jt' || unit === 'm') num *= 1000000;
     else if (unit === 'k' || unit === 'rb' || unit === 'ribu') num *= 1000;
-    if (num > 1000) return num;
+    if (num >= 1000) return num;
+    if (num > 0 && num < 100) return num * 1000000;
   }
   return 500000;
 }
