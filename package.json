@@ -1,0 +1,10 @@
+{
+  "name": "vox-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vox Agent - Autonomous AI Shopping Copilot & Landing Page",
+  "scripts": {
+    "build": "npm --prefix \"Complete task\" install && npm --prefix \"Complete task\" run build",
+    "dev": "npm --prefix \"Complete task\" run dev"
+  }
+}

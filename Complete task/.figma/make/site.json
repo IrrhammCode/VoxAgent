@@ -1,0 +1,10 @@
+{
+  "description": "Streamline task management and collaboration for teams, enabling users to efficiently assign, track, and complete projects in one intuitive platform.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
