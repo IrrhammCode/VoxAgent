@@ -1730,6 +1730,7 @@
   const btnClearHistory = shadow.getElementById('btn-clear-history');
 
   let currentAnalysis = null;
+  let lastMissionWinner = null;
   let isListening = false;
   let isMuted = false;
   let isSpeaking = false;          // Lock: true while Vox is speaking (prevents mic echo)
@@ -2053,11 +2054,9 @@
             return;
           }
           if (action === 'buy_winner') {
-            const destUrl = targetUrl || currentAnalysis?.winner?.url || 'https://www.tokopedia.com';
             chip.style.transform = 'scale(0.95)';
             chip.style.borderColor = '#10b981';
-            chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
-            speak('Navigating to product page to proceed with order and shipping details.');
+            executeBuyAndCheckoutWinner(currentAnalysis?.winner || lastMissionWinner);
             return;
           }
           if (action === 'autofill') {
@@ -2163,11 +2162,9 @@
                 return;
               }
               if (action === 'buy_winner') {
-                const destUrl = targetUrl || 'https://www.tokopedia.com';
                 chip.style.transform = 'scale(0.95)';
                 chip.style.borderColor = '#10b981';
-                chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
-                speak('Navigating to product page to proceed with order and shipping details.');
+                executeBuyAndCheckoutWinner(currentAnalysis?.winner || lastMissionWinner);
                 return;
               }
               if (q) {
@@ -4043,6 +4040,105 @@
   }
 
   /**
+   * End-to-End Autonomous Buy & Checkout for Winner Candidate
+   * Supports:
+   * 1. Direct 1-Click checkout if currently on PDP (Add to Cart -> Autofill -> Coupons -> Confirmation)
+   * 2. Intelligent on-screen card detection & auto-navigation with session continuity
+   * 3. Cross-store navigation bridge with guidance
+   */
+  async function executeBuyAndCheckoutWinner(winnerObj = null) {
+    const winner = winnerObj || currentAnalysis?.winner || lastMissionWinner;
+    const winnerTitle = winner?.title || '';
+    const destUrl = winner?.url || 'https://www.tokopedia.com';
+
+    setCapsuleState('reasoning', 'Processing buy order…');
+    openDialog();
+
+    // 1. Check if current page is already a Product Detail Page (PDP)
+    const pdpButton = document.querySelector(
+      '#add-to-cart-button, #buy-now-button, #btn-add-cart, #btn-buy-now, #cs-add-to-cart, #cs-buy-now, ' +
+      '[data-testid*="add-to-cart" i], [data-testid*="buy-now" i], [data-testid*="pdp-buy-button" i], ' +
+      'button[name="add"], form[action*="/cart/add"] button, [aria-label*="add to cart" i], ' +
+      '[aria-label*="tambah ke keranjang" i], [aria-label*="beli sekarang" i], .add-to-cart, .buy-now'
+    );
+
+    if (pdpButton) {
+      speak(`Mengeksekusi pembelian dan checkout otomatis untuk produk pemenang.`);
+      appendChatMessage('agent', `🛒 **Autonomous Checkout Started**\n\nInitiating 1-Click purchase for **${escapeHtml(winnerTitle || document.title)}**. Adding to cart, autofilling shipping address, and checking coupons…`);
+      await executeAutonomousCheckout('checkout');
+      return;
+    }
+
+    // 2. If on search result page, locate the winner product card on screen
+    const cardSelectors = [
+      '.shopee-search-item-result__item',
+      'div[data-sqi]',
+      'ul.shopee-search-item-result__items > li',
+      'div[data-testid="divSRPContentItem"]',
+      'div[data-testid="master-product-card"]',
+      'div[data-component-type="s-search-result"]',
+      '.product-card',
+      'div[class*="ProductCard"]',
+      'div[class*="product-item"]',
+      'article[data-qa-id="product-item"]'
+    ];
+
+    let winnerCard = null;
+    const allCards = Array.from(document.querySelectorAll(cardSelectors.join(', '))).filter(el => el.offsetHeight > 60);
+
+    if (winnerTitle && allCards.length > 0) {
+      const wClean = winnerTitle.toLowerCase().slice(0, 18);
+      winnerCard = allCards.find(c => (c.innerText || '').toLowerCase().includes(wClean));
+    }
+
+    if (winnerCard) {
+      winnerCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+      winnerCard.classList.add('vox-halo-highlight');
+
+      speak(`Membuka produk pemenang di layar untuk checkout otomatis.`);
+      appendChatMessage('agent', `👆 **Winner Located On Screen: ${escapeHtml(winnerTitle || 'Product')}**\n\nOpening product detail page and initiating automated checkout pipeline…`);
+
+      try {
+        sessionStorage.setItem('vox_pending_auto_checkout', JSON.stringify({
+          winnerTitle: winner?.title,
+          store: winner?.store,
+          timestamp: Date.now()
+        }));
+      } catch (_) {}
+
+      await new Promise(r => setTimeout(r, 600));
+      const link = winnerCard.querySelector('a[href]') || winnerCard.closest('a[href]') || winnerCard;
+      try {
+        link.click();
+      } catch (_) {
+        if (winner?.url && winner.url !== '#') window.location.href = winner.url;
+      }
+      return;
+    }
+
+    // 3. If winner is same host
+    const isSameHost = destUrl.includes(window.location.hostname);
+    if (isSameHost && destUrl !== window.location.href && destUrl.startsWith('http')) {
+      try {
+        sessionStorage.setItem('vox_pending_auto_checkout', JSON.stringify({
+          winnerTitle: winner?.title,
+          store: winner?.store,
+          timestamp: Date.now()
+        }));
+      } catch (_) {}
+      speak(`Mengarahkan ke halaman produk pemenang.`);
+      window.location.href = destUrl;
+      return;
+    }
+
+    // 4. External store: open in new tab
+    speak(`Membuka toko ${winner?.store || 'marketplace'} pemenang untuk checkout.`);
+    appendChatMessage('agent', `🛍️ **Opening Winner Store (${escapeHtml(winner?.store || 'Marketplace')})**\n\nNavigating to **${escapeHtml(winner?.title || 'Winner Product')}** on ${escapeHtml(winner?.store || 'Store')}…`);
+    chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
+  }
+
+  /**
    * Autonomous Deal Hunter Workflow
    * Discovers promo codes & competitor deals, presents interactive cards with 1-click apply.
    */
@@ -4775,8 +4871,31 @@
         deliveryEst: '1-2 Days',
         warranty: bestOnScreen.official ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
         url: bestOnScreen.url || window.location.href,
-        tag: 'LIVE ON SCREEN'
+        tag: 'LIVE ON SCREEN',
+        isOnScreen: true
       });
+    }
+
+    if (activeStoreScraped?.items && Array.isArray(activeStoreScraped.items)) {
+      const otherOnScreen = activeStoreScraped.items.filter(it => it !== bestOnScreen && (!userBudgetCeiling || it.price.value <= userBudgetCeiling)).slice(0, 2);
+      for (const it of otherOnScreen) {
+        candidates.push({
+          store: storeDisplayName.toLowerCase().split(' ')[0],
+          storeName: storeDisplayName,
+          title: it.title,
+          priceStr: formatDomPrice(it.price.value, it.price.currency),
+          basePrice: it.price.value,
+          shipping: 0,
+          voucher: 0,
+          official: it.official || false,
+          rating: 4.8,
+          deliveryEst: '1-2 Days',
+          warranty: it.official ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
+          url: it.url || window.location.href,
+          tag: 'LIVE ON SCREEN',
+          isOnScreen: true
+        });
+      }
     }
 
     await new Promise(r => setTimeout(r, 1800));
@@ -4860,6 +4979,9 @@
     const winner = report?.winner || {};
     const runnerUp = report?.runnerUp || {};
     const third = report?.third || {};
+
+    lastMissionWinner = winner;
+    currentAnalysis = report || { winner, runnerUp, third, plan };
 
     let tableMarkdown = report?.comparisonTable;
     if (!tableMarkdown || !tableMarkdown.includes('|')) {
@@ -5069,8 +5191,8 @@
       { pattern: /\b(please\s+(find|search|look(\s+up)?|get)(\s+me)?(\s+up)?(\s+about)?)\s+/gi, replace: 'search ' },
       { pattern: /\b(search\s*me\s*up\s*(about)?)\s+/gi, replace: 'search ' },
       { pattern: /\b(search\s*up\s*(about)?|search\s*for|search\s*about|find\s*me\s*(a\s+|an\s+|the\s+)?|tolong\s*cari(in|kan)?|bisa\s*cari(in|kan)?|coba\s*cari(in|kan)?)\s+/gi, replace: 'search ' },
-      // When user says "beliin headset", "beli headset", "buy me a headset" (followed by a product name, NOT "ini/this"), it is a shopping search mission!
-      { pattern: /\b(beliin(\s*(aku|saya|gue|gw))?|belikan(\s*(aku|saya|gue|gw))?|beli|buy(\s*me)?)\s+(?!ini\b|itu\b|sekarang\b|barang\s*ini\b|produk\s*ini\b)/gi, replace: 'search ' },
+      // When user says "beliin headset", "beli headset", "buy me a headset" (followed by a product name, NOT "ini/this/yang ini/pemenang"), it is a shopping search mission!
+      { pattern: /\b(beliin(\s*(aku|saya|gue|gw))?|belikan(\s*(aku|saya|gue|gw))?|beli|buy(\s*me)?)\s+(?!ini\b|itu\b|sekarang\b|barang\s*ini\b|produk\s*ini\b|yang\s*ini\b|pemenang(nya)?\b|rekomendasi(nya)?\b)/gi, replace: 'search ' },
 
       // Sign In / Login intent
       { pattern: /\b(log\s*in|sign\s*in|login|masuk\s*akun|masuk\s*ke\s*akun|bisa\s+login\s*(nggak|gak|ga)?|tolong\s+login(in|kan)?|sign\s+me\s+in)\b/gi, replace: 'sign in to account' },
@@ -5087,8 +5209,8 @@
       { pattern: /\b(use\s+(my\s+)?office\s+address|switch\s+to\s+office)\b/gi, replace: 'switch profile office and fill address' },
       { pattern: /\b(use\s+(my\s+)?home\s+address|switch\s+to\s+home)\b/gi, replace: 'switch profile home and fill address' },
 
-      // Buy / Checkout intent (STRICTLY for current item on screen e.g. "beli ini", "checkout sekarang")
-      { pattern: /\b(beliin\s+(ini|barang\s*ini|produk\s*ini)|beli\s+(ini|barang\s*ini|produk\s*ini)|buy\s+this(\s+for\s+me)?|checkout\s+sekarang|beli\s+dan\s+checkout|buy\s+and\s+checkout)\b/gi, replace: 'buy this item and checkout' },
+      // Buy / Checkout intent (STRICTLY for winner item or current item e.g. "beli ini", "beli yang ini", "beli pemenang", "checkout sekarang")
+      { pattern: /\b(beliin\s+(ini|yang\s*ini|barang\s*ini|produk\s*ini|pemenang(nya)?)|beli\s+(ini|yang\s*ini|barang\s*ini|produk\s*ini|pemenang(nya)?|sekarang)|buy\s+(this(\s+for\s+me)?|winner|the\s*winner)|checkout\s+(sekarang|pemenang(nya)?)|beli\s+dan\s+checkout|buy\s+and\s+checkout)\b/gi, replace: 'buy this item and checkout' },
       { pattern: /\b(add\s+to\s+cart|tambah\s+ke\s+keranjang|masukin\s+keranjang|\+\s*keranjang)\b/gi, replace: 'add to cart' },
 
       // Deal Hunting intent
@@ -5140,6 +5262,29 @@
       console.warn('[Vox Agent] Mission resume error:', e);
     }
   }, 1200);
+
+  // Resume pending autonomous checkout across navigation (e.g. from candidate card click to PDP)
+  setTimeout(async () => {
+    try {
+      const pendingCheckout = sessionStorage.getItem('vox_pending_auto_checkout');
+      if (pendingCheckout) {
+        sessionStorage.removeItem('vox_pending_auto_checkout');
+        const parsed = JSON.parse(pendingCheckout);
+        if (Date.now() - (parsed.timestamp || 0) < 120000) {
+          console.log('[Vox Agent] Resuming autonomous checkout on PDP for:', parsed.winnerTitle);
+          openDialog();
+          showMainView();
+          setCapsuleState('reasoning', 'Executing 1-Click Buy…');
+          appendChatMessage('agent', `🛍️ **Resuming Autonomous Buy & Checkout**\n\nInitiating 1-Click order execution for **${escapeHtml(parsed.winnerTitle || 'Winner Product')}**.`);
+          speak(`Halaman produk dibuka. Memulai proses pembelian dan checkout otomatis.`);
+          await new Promise(r => setTimeout(r, 800));
+          await executeAutonomousCheckout('checkout');
+        }
+      }
+    } catch (e) {
+      console.warn('[Vox Agent] Auto-checkout resume error:', e);
+    }
+  }, 1400);
 
   // 8. Continuous Speech Recognition & "Hey Vox" Wake Detection
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -5894,7 +6039,7 @@
     }
 
     // 6. Buy / Checkout / Add to Cart
-    if (/(buy\s*this|beli\s*sekarang|checkout|beliin\s*ini|add\s*to\s*cart|tambah\s*ke\s*keranjang|masukin\s*keranjang|beli\s*dan\s*checkout)/i.test(q)) {
+    if (/(buy\s*(this|winner|the\s*winner)|beli\s*(sekarang|yang\s*ini|ini|pemenang(nya)?)|checkout(\s*pemenang)?|beliin\s*(ini|yang\s*ini)|add\s*to\s*cart|tambah\s*ke\s*keranjang|masukin\s*keranjang|beli\s*dan\s*checkout)/i.test(q)) {
       return { intent: 'CHECKOUT' };
     }
 
@@ -6013,7 +6158,11 @@
     // 8. Buy & Checkout
     if (classified.intent === 'CHECKOUT') {
       answerText.innerHTML = '<span style="color: var(--voice);">Starting checkout process…</span>';
-      await executeAutonomousCheckout(qLower);
+      if (lastMissionWinner || currentAnalysis?.winner) {
+        await executeBuyAndCheckoutWinner(lastMissionWinner || currentAnalysis?.winner);
+      } else {
+        await executeAutonomousCheckout(qLower);
+      }
       return;
     }
 

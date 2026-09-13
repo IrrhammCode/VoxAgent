@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS = {
   apiKey: (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_API_KEY) || '',
   liveScrape: (typeof self !== 'undefined' && self.VOX_ENV?.LIVE_SCRAPE) || false,
   groqApiKey: (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || '',
+  groqApiKeys: (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEYS) || [],
   groqModel: (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b',
   elevenlabsApiKey: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_API_KEY) || '',
   elevenlabsVoiceId: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || 'EXAVITQu4vr4xnSDxMaL',
@@ -27,6 +28,97 @@ const DEFAULT_SETTINGS = {
 };
 
 let settingsCache = { ...DEFAULT_SETTINGS };
+
+/**
+ * ─── 8-KEY GROQ ROTATOR ENGINE ───
+ * Eliminates rate limits across 38+ concurrent LLM calls per shopping mission.
+ * Rotates round-robin across all available Groq keys with instant failover on 429/503.
+ */
+let groqKeyIndex = 0;
+
+function getGroqKeyPool() {
+  const pool = [];
+  if (Array.isArray(self.VOX_ENV?.GROQ_API_KEYS)) {
+    pool.push(...self.VOX_ENV.GROQ_API_KEYS);
+  }
+  if (Array.isArray(settingsCache.groqApiKeys)) {
+    pool.push(...settingsCache.groqApiKeys);
+  }
+  if (settingsCache.groqApiKey) {
+    pool.push(settingsCache.groqApiKey);
+  }
+  if (self.VOX_ENV?.GROQ_API_KEY) {
+    pool.push(self.VOX_ENV.GROQ_API_KEY);
+  }
+  const validKeys = [...new Set(pool.map(k => (k || '').trim()).filter(k => k.startsWith('gsk_')))];
+  return validKeys;
+}
+
+function getNextGroqKey() {
+  const pool = getGroqKeyPool();
+  const key = pool[groqKeyIndex % pool.length];
+  groqKeyIndex = (groqKeyIndex + 1) % pool.length;
+  return key;
+}
+
+/**
+ * Robust Multi-Key Round-Robin Executor for Groq Chat Completions
+ * Auto-rotates on HTTP 429 / 503 / network errors across the 8-key pool.
+ */
+async function callGroqChatCompletions({ messages, model, response_format, temperature = 0.3, max_tokens = 1200 }) {
+  const pool = getGroqKeyPool();
+  const preferredModel = model || settingsCache.groqModel || 'qwen/qwen3.8-27b';
+  const candidateModels = [preferredModel, 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile'].filter(Boolean);
+  const modelsToTry = [...new Set(candidateModels)];
+
+  let lastError = null;
+  const maxAttempts = Math.max(pool.length * 2, 8);
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const key = getNextGroqKey();
+    const maskedKey = key.slice(0, 7) + '...' + key.slice(-4);
+    const m = modelsToTry[attempt % modelsToTry.length];
+
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: m,
+          messages,
+          temperature,
+          max_tokens,
+          ...(response_format ? { response_format } : {})
+        })
+      });
+
+      if (res.status === 429 || res.status === 503) {
+        console.warn(`[Vox Agent Rotator] Key ${maskedKey} returned HTTP ${res.status}. Rotating immediately...`);
+        lastError = new Error(`Groq HTTP ${res.status} on key ${maskedKey}`);
+        continue;
+      }
+
+      if (!res.ok) {
+        const errTxt = await res.text().catch(() => '');
+        throw new Error(`Groq ${m} HTTP ${res.status}: ${errTxt}`);
+      }
+
+      const data = await res.json();
+      const rawContent = data.choices?.[0]?.message?.content;
+      if (!rawContent) throw new Error('Empty Groq response content');
+
+      return rawContent;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Vox Agent Rotator] Attempt ${attempt + 1}/${maxAttempts} (${m} with key ${maskedKey}) error:`, err.message);
+    }
+  }
+
+  throw lastError || new Error('All Groq keys in rotator pool exhausted');
+}
 
 chrome.runtime.onInstalled.addListener(async () => {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -228,12 +320,11 @@ async function handleDynamicQueryAnalysis(payload) {
     }
   }
 
-  // 4. Dynamic LLM Reasoning via Groq (Ultra-Fast 500 tokens/sec)
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY);
-  if (groqKey) {
+  // 4. Dynamic LLM Reasoning via Groq Rotator (Ultra-Fast 500 tokens/sec)
+  const groqPool = getGroqKeyPool();
+  if (groqPool.length > 0) {
     try {
       const groqResult = await queryGroqLLM({
-        groqKey,
         model: settingsCache.groqModel || 'qwen/qwen3.8-27b',
         query,
         url,
@@ -668,7 +759,6 @@ async function handleGhostScrape(payload) {
 
 async function queryGroqLLM(params) {
   const {
-    groqKey,
     model,
     query,
     url,
@@ -756,60 +846,35 @@ CRITICAL RULES:
    - If the user asks "can you speak english", respond enthusiastically in English.
    - If user query does not ask for comparison and no competitors are relevant, you may set "competitors" to null.`;
 
-  const candidateModels = [model, 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b'].filter(Boolean);
-  let lastErr = null;
+  const rawJson = await callGroqChatCompletions({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: query }
+    ],
+    model: model || settingsCache.groqModel || 'qwen/qwen3.8-27b',
+    temperature: 0.5,
+    max_tokens: 1200,
+    response_format: { type: 'json_object' }
+  });
 
-  for (const m of [...new Set(candidateModels)]) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model: m,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: query }
-          ],
-          temperature: 0.5,
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (!res.ok) {
-        const errTxt = await res.text().catch(() => '');
-        throw new Error(`Groq ${m} HTTP ${res.status}: ${errTxt}`);
-      }
-      const data = await res.json();
-      const rawJson = data.choices?.[0]?.message?.content;
-      if (!rawJson) throw new Error('Empty Groq response');
-
-      const parsed = JSON.parse(rawJson);
-      console.log(`[Vox Agent] Groq query SUCCESS via model: ${m}`);
-      return {
-        domain,
-        url,
-        title,
-        query,
-        targetFocus: parsed.targetFocus || targetFocus,
-        targetKeywords: parsed.targetKeywords || headings.slice(0, 4),
-        ghostSource: `groq_${m.slice(0, 16)}`,
-        summary: parsed.summary,
-        spoken: parsed.spoken || parsed.summary,
-        followUpQuestion: parsed.followUpQuestion || null,
-        quickOptions: Array.isArray(parsed.quickOptions) ? parsed.quickOptions : [],
-        worthIt: parsed.worthIt,
-        competitors: parsed.competitors,
-        jargon: []
-      };
-    } catch (err) {
-      lastErr = err;
-      console.warn(`[Vox Agent] Groq model ${m} failed:`, err.message);
-    }
-  }
-  throw lastErr;
+  const parsed = JSON.parse(rawJson);
+  console.log(`[Vox Agent] Groq query SUCCESS via rotated key pool!`);
+  return {
+    domain,
+    url,
+    title,
+    query,
+    targetFocus: parsed.targetFocus || targetFocus,
+    targetKeywords: parsed.targetKeywords || headings.slice(0, 4),
+    ghostSource: 'groq_rotator',
+    summary: parsed.summary,
+    spoken: parsed.spoken || parsed.summary,
+    followUpQuestion: parsed.followUpQuestion || null,
+    quickOptions: Array.isArray(parsed.quickOptions) ? parsed.quickOptions : [],
+    worthIt: parsed.worthIt,
+    competitors: parsed.competitors,
+    jargon: []
+  };
 }
 
 /**
@@ -1128,38 +1193,27 @@ async function handleDealHunter({ productName, storeDomain, currentPrice }) {
     }
   }
 
-  // If we have a Groq key, ask LLM to synthesize deal insights
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY);
-  if (groqKey && (results.competitorPrices.length > 0 || results.promoCodes.length > 0)) {
+  // If we have Groq keys, ask LLM to synthesize deal insights
+  const dealPool = getGroqKeyPool();
+  if (dealPool.length > 0 && (results.competitorPrices.length > 0 || results.promoCodes.length > 0)) {
     try {
-      const model = settingsCache.groqModel || 'qwen/qwen3.8-27b';
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are Vox Agent, an expert AI Personal Shopper and Deal Hunter. Given competitor prices and promo codes, provide a brief spoken summary (2-3 sentences) about whether the current price is competitive and any discounts found. Be concise and conversational.'
-            },
-            {
-              role: 'user',
-              content: `Product: ${productName}\nStore: ${storeDomain || 'unknown'}\nCurrent Price: ${currentPrice || 'unknown'}\nCompetitor Prices: ${JSON.stringify(results.competitorPrices.slice(0, 5))}\nPromo Codes Found: ${JSON.stringify(results.promoCodes.slice(0, 5))}`
-            }
-          ],
-          temperature: 0.4,
-          max_tokens: 200
-        })
+      const content = await callGroqChatCompletions({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are Vox Agent, an expert AI Personal Shopper and Deal Hunter. Given competitor prices and promo codes, provide a brief spoken summary (2-3 sentences) about whether the current price is competitive and any discounts found. Be concise and conversational.'
+          },
+          {
+            role: 'user',
+            content: `Product: ${productName}\nStore: ${storeDomain || 'unknown'}\nCurrent Price: ${currentPrice || 'unknown'}\nCompetitor Prices: ${JSON.stringify(results.competitorPrices.slice(0, 5))}\nPromo Codes Found: ${JSON.stringify(results.promoCodes.slice(0, 5))}`
+          }
+        ],
+        model: settingsCache.groqModel || 'qwen/qwen3.8-27b',
+        temperature: 0.4,
+        max_tokens: 200
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content || '';
-        // Strip thinking tags from Qwen
+      if (content) {
         results.dealSummary = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
       }
     } catch (err) {
@@ -1188,7 +1242,6 @@ async function handleDealHunter({ productName, storeDomain, currentPrice }) {
  */
 async function handlePlanShoppingMission(payload = {}) {
   const { query = '', domain = '', connectedStores = [], targetKeyword = '' } = payload;
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.GROQ_API_KEY) || '';
   const model = settingsCache.groqModel || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b';
 
   const fallbackCategory = detectCategoryFromQuery(targetKeyword || query);
@@ -1213,7 +1266,8 @@ async function handlePlanShoppingMission(payload = {}) {
     ]
   };
 
-  if (groqKey) {
+  const groqPool = getGroqKeyPool();
+  if (groqPool.length > 0) {
     try {
       const systemPrompt = `You are the Brain of Vox Agent, an autonomous multi-agent personal shopping copilot.
 Analyze the user's shopping query in ANY natural language, slang, or phrasing and produce a serialized 5-Job-Desk execution plan in JSON.
@@ -1237,31 +1291,20 @@ Schema:
   ]
 }`;
 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Shopping Query: "${query}" (Target Entity: "${targetKeyword}") on site ${domain || 'web'}` }
-          ],
-          max_tokens: 900,
-          temperature: 0.2,
-          response_format: { type: 'json_object' }
-        })
+      const rawContent = await callGroqChatCompletions({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Shopping Query: "${query}" (Target Entity: "${targetKeyword}") on site ${domain || 'web'}` }
+        ],
+        model,
+        max_tokens: 900,
+        temperature: 0.2,
+        response_format: { type: 'json_object' }
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const rawContent = data.choices?.[0]?.message?.content;
-        if (rawContent) {
-          const parsed = JSON.parse(rawContent);
-          if (parsed && Array.isArray(parsed.jobDesks)) return parsed;
-        }
+      if (rawContent) {
+        const parsed = JSON.parse(rawContent);
+        if (parsed && Array.isArray(parsed.jobDesks)) return parsed;
       }
     } catch (err) {
       console.warn('[Vox Agent] Groq Job Planner fallback:', err.message);
@@ -1388,8 +1431,9 @@ async function handleMultiStoreSearch(payload = {}) {
     }
   }
 
-  // 2. Cognitive Cross-Store Discovery via Groq LLM (Handles ANY product: tech, fashion, accessories, etc.)
-  if (groqKey) {
+  // 2. Cognitive Cross-Store Discovery via Groq Rotator (Handles ANY product: tech, fashion, accessories, etc.)
+  const groqPool = getGroqKeyPool();
+  if (groqPool.length > 0) {
     try {
       const searchSystemPrompt = `You are the Multi-Store Discovery Scout of Vox Agent.
 You discover real marketplace candidate listings across: Tokopedia, Shopee, Blibli, Amazon Global.
@@ -1420,32 +1464,21 @@ Schema:
       }
       searchUserPrompt += `\nGenerate 4 candidate listings across: Tokopedia, Shopee, Blibli, Amazon Global.`;
 
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: searchSystemPrompt },
-            { role: 'user', content: searchUserPrompt }
-          ],
-          max_tokens: 1200,
-          temperature: 0.2,
-          response_format: { type: 'json_object' }
-        })
+      const rawContent = await callGroqChatCompletions({
+        messages: [
+          { role: 'system', content: searchSystemPrompt },
+          { role: 'user', content: searchUserPrompt }
+        ],
+        model,
+        max_tokens: 1200,
+        temperature: 0.2,
+        response_format: { type: 'json_object' }
       });
 
-      if (groqRes.ok) {
-        const groqData = await groqRes.json();
-        const rawContent = groqData.choices?.[0]?.message?.content;
-        if (rawContent) {
-          const parsed = JSON.parse(rawContent);
-          if (parsed && Array.isArray(parsed.candidates) && parsed.candidates.length >= 2) {
-            return parsed.candidates;
-          }
+      if (rawContent) {
+        const parsed = JSON.parse(rawContent);
+        if (parsed && Array.isArray(parsed.candidates) && parsed.candidates.length >= 2) {
+          return parsed.candidates;
         }
       }
     } catch (err) {
@@ -1879,18 +1912,21 @@ Schema:
  */
 async function handleSynthesizeMissionReport(payload = {}) {
   const { plan = {}, candidates = [], userPrompt = '' } = payload;
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.GROQ_API_KEY) || '';
   const model = settingsCache.groqModel || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b';
+  const groqPool = getGroqKeyPool();
 
-  if (groqKey && candidates.length > 0) {
+  if (groqPool.length > 0 && candidates.length > 0) {
     try {
-      const systemPrompt = `You are Vox Agent, the world's most intelligent autonomous personal shopping copilot.
-You have completed a 5-step Job Desk audit evaluating products across 4 stores (Shopee, Tokopedia, Blibli, Amazon).
-Crucially, you evaluated:
-1. Specifications & Performance (driver size, mic quality, chipset, hardware features)
-2. Store Trust & Warranty (Official Store vs reseller, Garansi Resmi Indonesia vs distributor)
-3. Buyer Sentiment & Rating (Star rating >=4.8, total sold count)
-4. True Landed Price (Checkout simulation including shipping fees and auto-applied vouchers)
+      const budgetMax = plan.constraints?.budgetMax || null;
+      const systemPrompt = `You are Vox Agent, an autonomous, highly discerning AI Personal Shopper & Spec Auditor.
+You have completed a 5-step Job Desk audit evaluating real products across online stores (Shopee, Tokopedia, Blibli, Amazon, and on-screen store).
+
+CRITICAL EVALUATION RULES:
+1. BUDGET COMPLIANCE: ${budgetMax ? `The user STRICTLY requested a budget ceiling of Rp ${budgetMax.toLocaleString('id-ID')} (or equivalent). Candidates with landed/base price under or around this limit MUST be prioritized over expensive ones!` : 'Evaluate best value-for-money within realistic consumer expectations.'}
+2. SPECIFICATIONS & PERFORMANCE: Evaluate real hardware specifications (e.g. driver size, audio quality, durability, microphone, connectivity, official certifications).
+3. SELLER TRUST & OFFICIAL WARRANTY: Official Store / Mall / Garansi Resmi Indonesia is strictly preferred over unverified sellers.
+4. TRUE LANDED CHECKOUT PRICE: Account for base price + shipping fees - vouchers.
+5. NO RIGID SCHEMAS: Reason dynamically about whichever product category the user is shopping for (headphones, clothes, phones, electronics, shoes, etc.).
 
 Produce a JSON response strictly matching this schema:
 {
@@ -1898,7 +1934,7 @@ Produce a JSON response strictly matching this schema:
     "title": "Full product title",
     "store": "Store name",
     "specs": "Key specifications summary",
-    "trust": "Official Store · Garansi Resmi 1 Tahun",
+    "trust": "Official Store · Garansi Resmi 1 Tahun or seller status",
     "rating": "4.9 ★",
     "listedPrice": "Rp 175.000",
     "landedPrice": "Rp 182.000",
@@ -1913,7 +1949,7 @@ Produce a JSON response strictly matching this schema:
     "rating": "4.8 ★",
     "listedPrice": "Rp 169.000",
     "landedPrice": "Rp 194.000",
-    "verdictBadge": "Cheaper Base but Higher Ongkir",
+    "verdictBadge": "Cheaper Base but Higher Ongkir or alternative pick",
     "url": "URL"
   },
   "third": {
@@ -1924,43 +1960,33 @@ Produce a JSON response strictly matching this schema:
     "rating": "4.6 ★",
     "listedPrice": "Rp 155.000",
     "landedPrice": "Rp 170.000",
-    "verdictBadge": "Avoid (Distributor Warranty)",
+    "verdictBadge": "Budget Alternate / Secondary Choice",
     "url": "URL"
   },
   "comparisonTable": "Markdown table with columns: Rank | Product & Store | Specifications | Warranty & Seller | Landed Checkout Price | Verdict",
   "spoken": "Conversational, clear, spoken English explanation (approx 3 sentences). Explain why the winner was chosen based on specs, official warranty, and true landed checkout price.",
   "aiRationale": "Analytical summary explaining trade-offs.",
   "quickOptions": [
+    { "label": "🛍️ Beli & Checkout", "action": "buy_winner" },
     { "label": "👉 Open Winner", "action": "open_winner" },
     { "label": "🛒 Autofill Shipping Address", "action": "autofill" },
     { "label": "📊 View Full Spec Details", "action": "view_specs" }
   ]
 }`;
 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `User query: "${userPrompt}"\nPlan: ${JSON.stringify(plan)}\nCandidates: ${JSON.stringify(candidates)}` }
-          ],
-          max_tokens: 1100,
-          temperature: 0.3,
-          response_format: { type: 'json_object' }
-        })
+      const rawContent = await callGroqChatCompletions({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `User Shopping Query: "${userPrompt}"\nMission Plan: ${JSON.stringify(plan)}\nCandidate Listings Audited: ${JSON.stringify(candidates)}` }
+        ],
+        model,
+        max_tokens: 1200,
+        temperature: 0.3,
+        response_format: { type: 'json_object' }
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const rawContent = data.choices?.[0]?.message?.content;
-        if (rawContent) {
-          return JSON.parse(rawContent);
-        }
+      if (rawContent) {
+        return JSON.parse(rawContent);
       }
     } catch (err) {
       console.warn('[Vox Agent] Groq Synthesizer fallback:', err.message);
@@ -2024,8 +2050,8 @@ Produce a JSON response strictly matching this schema:
  */
 async function handleTranscribeAudio(payload = {}) {
   const { audioBase64 = '', mimeType = 'audio/webm' } = payload;
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.GROQ_API_KEY) || '';
-  if (!groqKey) throw new Error('Groq API key required for Whisper transcription');
+  const pool = getGroqKeyPool();
+  if (pool.length === 0) throw new Error('Groq API key required for Whisper transcription');
   if (!audioBase64) throw new Error('No audio data provided');
 
   const byteChars = atob(audioBase64);
@@ -2036,25 +2062,45 @@ async function handleTranscribeAudio(payload = {}) {
   const byteArray = new Uint8Array(byteNums);
   const blob = new Blob([byteArray], { type: mimeType });
 
-  const formData = new FormData();
-  formData.append('file', blob, 'speech.webm');
-  formData.append('model', 'whisper-large-v3-turbo');
-  formData.append('prompt', 'Headset, earphone, laptop, Tokopedia, Shopee, Blibli, Amazon, cari, harga, under, murah, diskon, bando, sepatu.');
+  let lastErr = null;
+  const maxAttempts = Math.min(pool.length, 6);
 
-  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${groqKey}`
-    },
-    body: formData
-  });
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const key = getNextGroqKey();
+    const maskedKey = key.slice(0, 7) + '...' + key.slice(-4);
+    try {
+      const formData = new FormData();
+      formData.append('file', blob, 'speech.webm');
+      formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('prompt', 'Headset, earphone, laptop, Tokopedia, Shopee, Blibli, Amazon, cari, harga, under, murah, diskon, bando, sepatu, beli.');
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Whisper transcription failed: ${errText}`);
+      const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${key}`
+        },
+        body: formData
+      });
+
+      if (res.status === 429 || res.status === 503) {
+        console.warn(`[Vox Whisper] Key ${maskedKey} hit HTTP ${res.status}. Rotating...`);
+        lastErr = new Error(`Whisper rate limit HTTP ${res.status}`);
+        continue;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Whisper transcription failed: ${errText}`);
+      }
+
+      const data = await res.json();
+      return data.text || '';
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[Vox Whisper] Attempt ${attempt + 1}/${maxAttempts} failed:`, err.message);
+    }
   }
 
-  const data = await res.json();
-  return data.text || '';
+  throw lastErr || new Error('Whisper transcription failed across all rotated keys');
 }
 
