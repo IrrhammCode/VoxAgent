@@ -3128,9 +3128,11 @@
    * scrolls the lowest-priced / best deal item into view,
    * highlights it with the signature cyan halo, and announces findings.
    */
-  async function autonomousScanAndHighlightSearchResults(searchKeyword, storeName) {
+  async function autonomousScanAndHighlightSearchResults(searchKeyword, storeName, isSilent = false) {
     const cleanTerm = extractCleanSearchTerm(searchKeyword);
-    setCapsuleState('reasoning', `Scouting prices for "${cleanTerm.slice(0, 14)}"…`);
+    if (!isSilent) {
+      setCapsuleState('reasoning', `Scouting prices for "${cleanTerm.slice(0, 14)}"…`);
+    }
 
     // 1. Smoothly scroll down the page to trigger DOM hydration of search cards
     window.scrollBy({ top: 480, behavior: 'smooth' });
@@ -3185,8 +3187,8 @@
     for (const card of foundCards) {
       const fullText = card.innerText || card.textContent || '';
       const price = parseDomPrice(fullText);
-      // Filter out low prices like Rp 1.000 accessories or vouchers if searching laptops/phones
-      if (price && price.value > 10000) {
+      // Filter out low prices like vouchers or invalid cents (accept budget items >= 2000)
+      if (price && price.value >= 2000) {
         const titleEl = card.querySelector('div[class*="title" i], div[class*="name" i], span[class*="name" i], h2, h3, a[title]') || card;
         let title = (titleEl.getAttribute('title') || titleEl.innerText || titleEl.textContent || '').trim().replace(/\s+/g, ' ');
         if (title.length > 70) title = title.slice(0, 67) + '…';
@@ -3219,35 +3221,39 @@
       minItem.el.classList.add('vox-halo-highlight');
       setTimeout(() => minItem.el.classList.remove('vox-halo-highlight'), 10000);
 
-      const spoken = `I found ${parsedItems.length} listings for ${cleanTerm} on ${currentStore}. Prices start from ${minPriceStr} up to ${maxPriceStr}. I've scrolled down and highlighted the lowest price deal for you at ${minPriceStr}!`;
-      const content = `🔍 **Live Market Scan: "${escapeHtml(cleanTerm)}" on ${currentStore}**\n\n` +
-        `I've scrolled through the search results and analyzed **${parsedItems.length} listings**:\n\n` +
-        `• **🏷️ Lowest Price Deal**: **${minPriceStr}** *(Highlighted with cyan halo on screen)*\n` +
-        `• **📈 Market Range**: ${minPriceStr} — ${maxPriceStr}\n` +
-        `• **📦 Best Deal**: *${escapeHtml(minItem.title)}*\n\n` +
-        `*Would you like me to filter for Official Store only, or check product specifications?*`;
+      if (!isSilent) {
+        const spoken = `I found ${parsedItems.length} listings for ${cleanTerm} on ${currentStore}. Prices start from ${minPriceStr} up to ${maxPriceStr}. I've scrolled down and highlighted the lowest price deal for you at ${minPriceStr}!`;
+        const content = `🔍 **Live Market Scan: "${escapeHtml(cleanTerm)}" on ${currentStore}**\n\n` +
+          `I've scrolled through the search results and analyzed **${parsedItems.length} listings**:\n\n` +
+          `• **🏷️ Lowest Price Deal**: **${minPriceStr}** *(Highlighted with cyan halo on screen)*\n` +
+          `• **📈 Market Range**: ${minPriceStr} — ${maxPriceStr}\n` +
+          `• **📦 Best Deal**: *${escapeHtml(minItem.title)}*\n\n` +
+          `*Would you like me to filter for Official Store only, or check product specifications?*`;
 
-      const quickOptions = [
-        { label: `⚡ Lowest Price (${minPriceStr})`, query: `${cleanTerm} termurah` },
-        { label: "⭐ Official Store Only", query: `${cleanTerm} official store` },
-        { label: "🔥 Top Rated & Terlaris", query: `${cleanTerm} terlaris` },
-        { label: "🎯 Under " + maxPriceStr, query: `${cleanTerm} diskon promo` }
-      ];
+        const quickOptions = [
+          { label: `⚡ Lowest Price (${minPriceStr})`, query: `${cleanTerm} termurah` },
+          { label: "⭐ Official Store Only", query: `${cleanTerm} official store` },
+          { label: "🔥 Top Rated & Terlaris", query: `${cleanTerm} terlaris` },
+          { label: "🎯 Under " + maxPriceStr, query: `${cleanTerm} diskon promo` }
+        ];
 
-      appendChatMessage('agent', content, { quickOptions, spoken });
-      speak(spoken);
-      setCapsuleState('idle', 'Price scan complete');
+        appendChatMessage('agent', content, { quickOptions, spoken });
+        speak(spoken);
+        setCapsuleState('idle', 'Price scan complete');
+      }
       return { minItem, maxItem, count: parsedItems.length };
     } else {
-      // If products haven't loaded yet or none matched, fallback to interactive clarification
-      const fallback = generateSearchInteractiveFollowUp(cleanTerm, currentStore);
-      appendChatMessage('agent', fallback.content, {
-        quickOptions: fallback.quickOptions,
-        spoken: fallback.spoken,
-        followUpQuestion: fallback.followUpQuestion
-      });
-      speak(fallback.spoken);
-      setCapsuleState('idle', 'Search ready');
+      if (!isSilent) {
+        // If products haven't loaded yet or none matched, fallback to interactive clarification
+        const fallback = generateSearchInteractiveFollowUp(cleanTerm, currentStore);
+        appendChatMessage('agent', fallback.content, {
+          quickOptions: fallback.quickOptions,
+          spoken: fallback.spoken,
+          followUpQuestion: fallback.followUpQuestion
+        });
+        speak(fallback.spoken);
+        setCapsuleState('idle', 'Search ready');
+      }
       return null;
     }
   }
@@ -3857,10 +3863,17 @@
     let q = rawQuery.toLowerCase().trim();
     // Strip wake words
     q = q.replace(/^(hey|halo|hai|ok)?\s*(vox|fox|copilot)?\s*[,.]?\s*/i, '');
-    // Strip conversational intros
-    q = q.replace(/\b(tolong|coba|bantu|bisa|mohon|please|help\s*me|aku\s*mau|saya\s*mau|mau|pengen|ingin|i\s*want\s*to|i\s*wanna|looking\s*for|cariin|carikan|cari|search(\s*for|\s*up)?|find|buy|beliin|beli|rekomendasi(kan)?|recommend)\b/gi, '');
-    // Strip budget patterns
-    q = q.replace(/(di\s*bawah|under|budget|maksimal|max|harga|rp\.?|idr)\s*[\d.,]+\s*(juta|jt|k|rb|ribu|m)?/gi, '');
+    // Normalize phonetic speech-to-text typos
+    q = q.replace(/\bhad\s*set\b/gi, 'headset');
+    q = q.replace(/\bhead\s*set\b/gi, 'headset');
+    // Strip conversational intros (Indonesian & English)
+    q = q.replace(/\b(can\s*you|could\s*you|would\s*you|please|help\s*me|i\s*want\s*to|i\s*wanna|looking\s*for|tolong|coba|bantu|bisa|mohon|aku\s*mau|saya\s*mau|mau|pengen|ingin)\b/gi, '');
+    q = q.replace(/\b(find|search|give|get|look|buy|rekomendasi(kan)?|recommend)\s+(me\s+up\s+|me\s+)?(a\s+|an\s+|the\s+)?/gi, '');
+    q = q.replace(/\b(search(\s*for|\s*up)?|cariin|carikan|cari|find|buy|beliin|beli)\b/gi, '');
+    q = q.replace(/\b(about|for|me\s*up|search\s*me\s*up)\b/gi, '');
+    // Strip budget patterns & currency words
+    q = q.replace(/(di\s*bawah|under|budget|maksimal|max|harga|rp\.?|idr)\s*[\d.,]+\s*(juta|jt|k|rb|ribu|m|rupiah)?/gi, '');
+    q = q.replace(/\b(rupiah|idr|rp)\b/gi, '');
     // Strip evaluation & filler phrases
     q = q.replace(/\b(yang\s*bagus|yang\s*murah|yang\s*terbaik|paling\s*bagus|paling\s*murah|terbaik|termurah|murah|bagus|budget\s*friendly|berkualitas|mantap|resmi|garansi\s*resmi|official\s*store|official|mall|original|ori|dong|ya|deh|nih|lah|kan|kah|please|dan|tapi|mana\s*yang|mana|ada)\b/gi, '');
     q = q.replace(/\s+(on|in|di)\s+(shopee|tokopedia|lazada|blibli|amazon|google|store|marketplace|web|olshop).*$/i, '');
@@ -3869,9 +3882,10 @@
   }
 
   function extractBudgetCeiling(q = '') {
-    if (!q) return 500000;
-    const cleanQ = q.replace(/\./g, '');
-    const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks)?\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m))?/i);
+    if (!q) return null;
+    const cleanQ = q.replace(/[,.]/g, '');
+    const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga)\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i)
+      || cleanQ.match(/(?:rp\.?|idr)\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i);
     if (match) {
       let num = parseInt(match[1], 10);
       const unit = (match[2] || '').toLowerCase();
@@ -3880,7 +3894,7 @@
       if (num >= 1000) return num;
       if (num > 0 && num < 100) return num * 1000000;
     }
-    return 500000;
+    return null;
   }
 
   /**
@@ -4116,11 +4130,11 @@
 
     speak(`Deconstructing shopping constraints and benchmarking specifications for ${displaySubject}.`);
 
-    // REAL STEP 1 WORK: Scan active DOM search results if on e-commerce store
+    // REAL STEP 1 WORK: Scan active DOM search results if on e-commerce store (in silent background mode)
     const isEcommerceSite = /shopee|tokopedia|blibli|amazon|lazada/i.test(window.location.hostname);
     if (isEcommerceSite) {
       try {
-        await autonomousScanAndHighlightSearchResults(targetSubject);
+        await autonomousScanAndHighlightSearchResults(targetSubject, null, true);
       } catch (scanErr) {
         console.warn('[Vox Agent] Active page DOM scan fallback:', scanErr);
       }
@@ -4144,6 +4158,7 @@
           payload: {
             query: targetSubject,
             userPrompt: userPrompt,
+            budgetMax: plan.constraints?.budgetMax || extractBudgetCeiling(userPrompt),
             targetCategory: plan.category || 'General',
             stores: ['tokopedia', 'shopee', 'blibli', 'amazon']
           }

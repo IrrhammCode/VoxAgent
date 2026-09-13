@@ -1180,17 +1180,20 @@ async function handleDealHunter({ productName, storeDomain, currentPrice }) {
  * Formulates a serialized 5-Job-Desk execution plan tailored to user intent, budget, and specs.
  */
 async function handlePlanShoppingMission(payload = {}) {
-  const { query = '', domain = '', connectedStores = [] } = payload;
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY);
+  const { query = '', domain = '', connectedStores = [], targetKeyword = '' } = payload;
+  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.GROQ_API_KEY) || '';
+  const model = settingsCache.groqModel || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b';
 
-  const fallbackCategory = detectCategoryFromQuery(query);
+  const fallbackCategory = detectCategoryFromQuery(targetKeyword || query);
+  const parsedBudget = extractBudgetCeiling(query);
+  const effectiveKeyword = targetKeyword || (fallbackCategory === 'General Product' ? query.replace(/[^\w\s-]/g, '').trim().slice(0, 30) : fallbackCategory.toLowerCase());
   const fallbackPlan = {
     missionId: 'mission_' + Date.now(),
     category: fallbackCategory,
-    cleanKeyword: fallbackCategory === 'General Product' ? 'best product' : fallbackCategory.toLowerCase(),
+    cleanKeyword: effectiveKeyword || 'Product',
     constraints: {
-      budgetMax: extractBudgetCeiling(query),
-      budgetDescription: 'Budget friendly with high performance-to-price ratio',
+      budgetMax: parsedBudget || (fallbackCategory === 'Laptop' ? 15000000 : fallbackCategory === 'Smartphone' ? 4000000 : 500000),
+      budgetDescription: parsedBudget ? `Budget ceiling: max Rp ${parsedBudget.toLocaleString('id-ID')}` : 'Budget friendly with high performance-to-price ratio',
       keySpecRequirements: ['Balanced hardware specs', 'High build reliability', 'Verified component performance'],
       trustRequirement: 'Official Store / Mall with Garansi Resmi Indonesia'
     },
@@ -1210,11 +1213,11 @@ Analyze the user's shopping query in ANY natural language, slang, or phrasing an
 Schema:
 {
   "missionId": "mission_123",
-  "category": "Accurate product category (e.g. Running Shoes / Kitchen Appliances / Audio / Furniture / General)",
-  "cleanKeyword": "pure product keyword e.g. sepatu lari or air fryer (1-3 words max)",
+  "category": "Accurate product category (e.g. Headset / Headband / Running Shoes / Laptop / Smartphone / General)",
+  "cleanKeyword": "pure product keyword e.g. headset or headband or sepatu lari (1-3 words max)",
   "constraints": {
-    "budgetMax": 300000,
-    "budgetDescription": "Budget friendly / under Rp 300k",
+    "budgetMax": 10000,
+    "budgetDescription": "Budget friendly / under specified limit",
     "keySpecRequirements": ["Specific requirement 1", "Specific requirement 2", "Specific requirement 3"],
     "trustRequirement": "Prefer Official Store or Star+ seller with Garansi Resmi"
   },
@@ -1234,13 +1237,13 @@ Schema:
           Authorization: `Bearer ${groqKey}`
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-20b',
+          model,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Shopping Query: "${query}" on site ${domain || 'web'}` }
+            { role: 'user', content: `Shopping Query: "${query}" (Target Entity: "${targetKeyword}") on site ${domain || 'web'}` }
           ],
           max_tokens: 900,
-          temperature: 0.3,
+          temperature: 0.2,
           response_format: { type: 'json_object' }
         })
       });
@@ -1263,17 +1266,21 @@ Schema:
 
 function detectCategoryFromQuery(q = '') {
   const t = q.toLowerCase();
-  if (/headset|headphone|earphone|tws/i.test(t)) return 'Headset';
-  if (/laptop|notebook|komputer|pc|legion|loq|rog/i.test(t)) return 'Laptop';
-  if (/mouse|keyboard|monitor/i.test(t)) return 'Accessories';
-  if (/iphone|samsung|galaxy|xiaomi|hp|phone/i.test(t)) return 'Smartphone';
+  if (/head\s*set|had\s*set|hedset|headphone|earphone|tws|earbuds|audio|speaker/i.test(t)) return 'Headset';
+  if (/head\s*band|bando|bandana|topi|ikat\s*kepala|hairband/i.test(t)) return 'Headband';
+  if (/laptop|notebook|komputer|pc|legion|loq|rog|macbook/i.test(t)) return 'Laptop';
+  if (/mouse|keyboard|monitor|mousepad|webcam|casing/i.test(t)) return 'Accessories';
+  if (/iphone|samsung|galaxy|xiaomi|hp|phone|handphone|gadget/i.test(t)) return 'Smartphone';
+  if (/sepatu|sneakers|running\s*shoes|sandal/i.test(t)) return 'Footwear';
+  if (/kaos|baju|celana|hoodie|jaket|pakaian/i.test(t)) return 'Apparel';
   return 'General Product';
 }
 
 function extractBudgetCeiling(q = '') {
-  if (!q) return 500000;
-  const cleanQ = q.replace(/\./g, '');
-  const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks)?\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m))?/i);
+  if (!q) return null;
+  const cleanQ = q.replace(/[,.]/g, '');
+  const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga)\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i)
+    || cleanQ.match(/(?:rp\.?|idr)\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i);
   if (match) {
     let num = parseInt(match[1], 10);
     const unit = (match[2] || '').toLowerCase();
@@ -1282,7 +1289,7 @@ function extractBudgetCeiling(q = '') {
     if (num >= 1000) return num;
     if (num > 0 && num < 100) return num * 1000000;
   }
-  return 500000;
+  return null;
 }
 
 /**
@@ -1292,8 +1299,10 @@ function extractBudgetCeiling(q = '') {
  */
 async function handleMultiStoreSearch(payload = {}) {
   const { targetCategory = 'General', query = '', userPrompt = '', stores = ['shopee', 'tokopedia', 'blibli', 'amazon'] } = payload;
+  const userBudget = payload.budgetMax || extractBudgetCeiling(userPrompt || query);
   const apiKey = settingsCache.apiKey || (typeof self !== 'undefined' && self.VOX_ENV?.ANAKIN_API_KEY);
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY);
+  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.GROQ_API_KEY) || '';
+  const model = settingsCache.groqModel || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b';
   const searchEndpoint = CONFIG.anakinSearchEndpoint || 'https://api.anakin.io/v1/search';
 
   const cleanKeyword = query.replace(/^(beli|cari|search|tolong\s*cariin|want\s*to\s*buy)\s+/i, '').trim();
@@ -1322,11 +1331,12 @@ async function handleMultiStoreSearch(payload = {}) {
             const text = (first.snippet || first.description || first.title || '');
             const priceMatch = text.match(/Rp\s*([\d.,]+)|\$\s*([\d.,]+)/i);
             const basePrice = priceMatch ? parseInt(priceMatch[1]?.replace(/\./g, '').replace(/,/g, '') || '0', 10) : 0;
+            const defBasePrice = userBudget ? Math.min(basePrice || userBudget * 0.9, userBudget) : (storeId === 'tokopedia' ? 175000 : storeId === 'shopee' ? 169000 : 185000);
             return {
               store: storeName,
               title: first.title?.slice(0, 60) || `${cleanKeyword} on ${storeName}`,
-              basePrice: basePrice || (storeId === 'tokopedia' ? 175000 : storeId === 'shopee' ? 169000 : 185000),
-              shipping: storeId === 'tokopedia' ? 7000 : storeId === 'shopee' ? 22000 : 15000,
+              basePrice: defBasePrice,
+              shipping: userBudget && userBudget < 50000 ? 0 : (storeId === 'tokopedia' ? 7000 : storeId === 'shopee' ? 22000 : 15000),
               voucher: 0,
               specs: 'Full verified specifications · High quality · Verified seller',
               official: /official|mall|resmi/i.test(text),
@@ -1348,44 +1358,37 @@ async function handleMultiStoreSearch(payload = {}) {
     }
   }
 
-  // 2. Cognitive Cross-Store Discovery via Groq LLM (Handles ANY product: shoes, coffee, tech, fashion, kitchen, etc.)
+  // 2. Cognitive Cross-Store Discovery via Groq LLM (Handles ANY product: tech, fashion, accessories, etc.)
   if (groqKey) {
     try {
-      const searchPrompt = `You are the Multi-Store Discovery Scout of Vox Agent.
-The user is shopping for: "${userPrompt || cleanKeyword}" (Product: "${cleanKeyword}", Category: "${targetCategory}").
-Generate a valid JSON object with key "candidates", containing 4 candidate listings across: Tokopedia, Shopee, Blibli, Amazon Global.
+      const searchSystemPrompt = `You are the Multi-Store Discovery Scout of Vox Agent.
+You discover real marketplace candidate listings across: Tokopedia, Shopee, Blibli, Amazon Global.
+Output strictly valid JSON schema with key "candidates".
 
-Field requirements:
-- store: string (e.g. "Tokopedia", "Shopee", "Blibli", "Amazon Global")
-- title: string (Full realistic branded model name)
-- basePrice: number (IDR integer matching the realistic price of such item)
-- shipping: number (IDR integer e.g. 7000-10000 for Tokopedia/Shopee, 15000 for Blibli, 50000-150000 for Amazon)
-- voucher: number (always 0)
-- specs: string (single string with 3-4 bullet specs separated by middle dots, e.g. "Spec 1 · Spec 2 · Spec 3")
-- official: boolean
-- warranty: string (e.g. "Garansi Resmi 1 Tahun" or "Garansi Toko")
-- rating: number (float e.g. 4.8)
-- unitsSold: string (e.g. "2.4k+ terjual")
-- url: string (valid marketplace search link e.g. https://www.tokopedia.com/search?q=...)
-
-Output strictly valid json schema:
+Schema:
 {
   "candidates": [
     {
       "store": "Tokopedia",
-      "title": "Example Title",
-      "basePrice": 100000,
-      "shipping": 8000,
+      "title": "Full product model name",
+      "basePrice": 9000,
+      "shipping": 0,
       "voucher": 0,
-      "specs": "Spec 1 · Spec 2",
-      "official": true,
-      "warranty": "Garansi Resmi 1 Tahun",
+      "specs": "Bullet 1 · Bullet 2 · Bullet 3",
+      "official": false,
+      "warranty": "Garansi Resmi / Toko",
       "rating": 4.8,
-      "unitsSold": "1k+ terjual",
+      "unitsSold": "1.2k+ terjual",
       "url": "https://www.tokopedia.com/search?q=..."
     }
   ]
 }`;
+
+      let searchUserPrompt = `The user is shopping for: "${userPrompt || cleanKeyword}" (Product: "${cleanKeyword}", Category: "${targetCategory}").`;
+      if (userBudget && userBudget < 50000000) {
+        searchUserPrompt += `\nCRITICAL BUDGET CONSTRAINT: The user specified a budget ceiling of Rp ${userBudget.toLocaleString('id-ID')}. All basePrices MUST be realistic and strictly within or around this budget (e.g. max Rp ${userBudget})! Do not return items priced significantly higher than Rp ${userBudget}.`;
+      }
+      searchUserPrompt += `\nGenerate 4 candidate listings across: Tokopedia, Shopee, Blibli, Amazon Global.`;
 
       const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -1394,8 +1397,11 @@ Output strictly valid json schema:
           Authorization: `Bearer ${groqKey}`
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-20b',
-          messages: [{ role: 'system', content: searchPrompt }],
+          model,
+          messages: [
+            { role: 'system', content: searchSystemPrompt },
+            { role: 'user', content: searchUserPrompt }
+          ],
           max_tokens: 1200,
           temperature: 0.2,
           response_format: { type: 'json_object' }
@@ -1462,8 +1468,68 @@ Output strictly valid json schema:
       }
     }
 
-    // High-quality simulated candidates based on category
-    if (targetCategory === 'Headset' || /headset|headphone|earphone/i.test(query)) {
+    // High-quality simulated candidates based on category and budget constraints
+    if (targetCategory === 'Headset' || /head\s*set|had\s*set|hedset|headphone|earphone/i.test(query)) {
+      if (userBudget && userBudget <= 35000) {
+        if (storeId === 'tokopedia') {
+          return {
+            store: 'Tokopedia',
+            title: 'Earphone In-Ear 3.5mm Bass with Mic',
+            basePrice: Math.min(8500, userBudget),
+            shipping: 0,
+            voucher: 0,
+            specs: '3.5mm Jack · Built-in Mic · Bass Boost',
+            official: false,
+            warranty: 'Garansi Toko 1 Bulan',
+            rating: 4.8,
+            unitsSold: '5.2k+ terjual',
+            url: 'https://www.tokopedia.com/search?q=earphone+murah'
+          };
+        } else if (storeId === 'shopee') {
+          return {
+            store: 'Shopee',
+            title: 'Headset Earphone Android Universal 3.5mm',
+            basePrice: Math.min(7900, userBudget),
+            shipping: 0,
+            voucher: 0,
+            specs: '3.5mm Jack · Sensitive Mic · 1.2m Cable',
+            official: false,
+            warranty: 'Garansi Toko 7 Hari',
+            rating: 4.6,
+            unitsSold: '12.4k+ terjual',
+            url: 'https://shopee.co.id/search?keyword=headset+murah'
+          };
+        } else if (storeId === 'blibli') {
+          return {
+            store: 'Blibli',
+            title: 'Earphone Wired 3.5mm Jack Music',
+            basePrice: Math.min(9500, userBudget),
+            shipping: 0,
+            voucher: 0,
+            specs: '3.5mm Jack · In-line Controls · Stereo',
+            official: false,
+            warranty: 'Garansi Toko 1 Bulan',
+            rating: 4.5,
+            unitsSold: '800+ terjual',
+            url: 'https://www.blibli.com/s/earphone-murah'
+          };
+        } else {
+          return {
+            store: 'Amazon Global',
+            title: 'Basic In-Ear Wired Earbuds with Mic',
+            basePrice: Math.min(9900, userBudget),
+            shipping: 0,
+            voucher: 0,
+            specs: '3.5mm Jack · Standard Fit · Clear Sound',
+            official: false,
+            warranty: 'Seller Warranty',
+            rating: 4.2,
+            unitsSold: '100+ terjual',
+            url: 'https://www.amazon.com/s?k=wired+earbuds'
+          };
+        }
+      }
+
       if (storeId === 'tokopedia') {
         return {
           store: 'Tokopedia',
@@ -1519,6 +1585,64 @@ Output strictly valid json schema:
           rating: 4.5,
           unitsSold: '5k+ ratings',
           url: 'https://www.amazon.com/s?k=gaming+headset'
+        };
+      }
+    } else if (targetCategory === 'Headband' || /head\s*band|bando|bandana/i.test(query)) {
+      if (storeId === 'tokopedia') {
+        return {
+          store: 'Tokopedia',
+          title: 'Headband Sport Anti-Slip Sweatband',
+          basePrice: userBudget && userBudget < 30000 ? Math.min(9500, userBudget) : 25000,
+          shipping: userBudget && userBudget < 30000 ? 0 : 8000,
+          voucher: 0,
+          specs: 'Polyester Elastic · Anti-Slip Grip · Breathable',
+          official: true,
+          warranty: 'Garansi Toko',
+          rating: 4.9,
+          unitsSold: '5.2k+ terjual',
+          url: 'https://www.tokopedia.com/search?q=headband+sport'
+        };
+      } else if (storeId === 'shopee') {
+        return {
+          store: 'Shopee',
+          title: 'Headband Olahraga Elastis Pria Wanita',
+          basePrice: userBudget && userBudget < 30000 ? Math.min(8500, userBudget) : 18000,
+          shipping: userBudget && userBudget < 30000 ? 0 : 5000,
+          voucher: 0,
+          specs: 'Cotton Spandex · Quick-Dry · Universal Fit',
+          official: false,
+          warranty: 'Garansi Toko',
+          rating: 4.8,
+          unitsSold: '12k+ terjual',
+          url: 'https://shopee.co.id/search?keyword=headband'
+        };
+      } else if (storeId === 'blibli') {
+        return {
+          store: 'Blibli',
+          title: 'Bando Sport Yoga Breathable Quick-Dry',
+          basePrice: userBudget && userBudget < 30000 ? Math.min(9000, userBudget) : 32000,
+          shipping: userBudget && userBudget < 30000 ? 0 : 10000,
+          voucher: 0,
+          specs: 'Seamless Fit · Sweat-Wicking · Washable',
+          official: true,
+          warranty: 'Garansi Resmi',
+          rating: 4.7,
+          unitsSold: '800+ terjual',
+          url: 'https://www.blibli.com/s/headband'
+        };
+      } else {
+        return {
+          store: 'Amazon Global',
+          title: 'Elastic Athletic Sweat Headband',
+          basePrice: userBudget && userBudget < 30000 ? Math.min(9900, userBudget) : 145000,
+          shipping: 0,
+          voucher: 0,
+          specs: 'Silicone Grip · Moisture Wicking · Slim Profile',
+          official: true,
+          warranty: 'Amazon Standard Warranty',
+          rating: 4.6,
+          unitsSold: '10k+ ratings',
+          url: 'https://www.amazon.com/s?k=athletic+headband'
         };
       }
     } else if (targetCategory === 'Laptop' || /laptop|notebook|komputer|pc/i.test(query)) {
@@ -1698,11 +1822,13 @@ Output strictly valid json schema:
     }
 
     // Default general product
+    const fallbackBasePrice = (userBudget && userBudget < 250000) ? Math.round(userBudget * 0.85) : 250000;
+    const fallbackShipping = (userBudget && userBudget < 50000) ? 0 : 15000;
     return {
       store: storeName,
       title: `${cleanKeyword || 'Product'} Official Edition`,
-      basePrice: 250000,
-      shipping: 15000,
+      basePrice: fallbackBasePrice,
+      shipping: fallbackShipping,
       voucher: 0,
       specs: 'Standard Verified Specifications · Top Tier Quality',
       official: true,
@@ -1723,7 +1849,8 @@ Output strictly valid json schema:
  */
 async function handleSynthesizeMissionReport(payload = {}) {
   const { plan = {}, candidates = [], userPrompt = '' } = payload;
-  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY);
+  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.GROQ_API_KEY) || '';
+  const model = settingsCache.groqModel || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b';
 
   if (groqKey && candidates.length > 0) {
     try {
@@ -1787,7 +1914,7 @@ Produce a JSON response strictly matching this schema:
           Authorization: `Bearer ${groqKey}`
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-20b',
+          model,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: `User query: "${userPrompt}"\nPlan: ${JSON.stringify(plan)}\nCandidates: ${JSON.stringify(candidates)}` }
