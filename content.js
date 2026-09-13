@@ -2062,35 +2062,21 @@
         const isSearchPage = /search|cari|catalog|find|s\?k=/i.test(window.location.pathname + window.location.search);
         if (isSearchPage) {
           const urlParams = new URLSearchParams(window.location.search);
-          const searchKeyword = urlParams.get('keyword') || urlParams.get('q') || urlParams.get('k') || '';
+          const rawKeyword = urlParams.get('keyword') || urlParams.get('q') || urlParams.get('k') || '';
+          const searchKeyword = extractCleanSearchTerm(rawKeyword);
           if (searchKeyword && searchKeyword.length >= 2) {
             const lastMsg = activeChatSession.messages[activeChatSession.messages.length - 1];
-            const alreadyPrompted = lastMsg && lastMsg.content && lastMsg.content.includes(searchKeyword) && lastMsg.role === 'agent' && lastMsg.extra?.quickOptions;
-            if (!alreadyPrompted) {
+            const alreadyScanned = lastMsg && lastMsg.content && lastMsg.content.includes(searchKeyword) && lastMsg.role === 'agent' && (lastMsg.content.includes('Live Market Scan') || lastMsg.content.includes('Market Price Scan'));
+            if (!alreadyScanned) {
               const currentHost = window.location.hostname.toLowerCase();
               const storeName = currentHost.includes('shopee') ? 'Shopee' :
                                currentHost.includes('tokopedia') ? 'Tokopedia' :
                                currentHost.includes('amazon') ? 'Amazon' :
                                currentHost.includes('blibli') ? 'Blibli' :
                                currentHost.includes('lazada') ? 'Lazada' : 'Store';
-              const interactive = generateSearchInteractiveFollowUp(searchKeyword, storeName);
-              const searchPrompt = {
-                id: 'proactive_search_' + Date.now(),
-                role: 'agent',
-                content: `Search results for **${escapeHtml(searchKeyword)}** are live on ${storeName}!\n\n${interactive.followUpQuestion}\n\n*Tap an option below or speak to refine:*`,
-                extra: {
-                  quickOptions: interactive.quickOptions,
-                  spoken: `Search results for ${searchKeyword} are ready on ${storeName}. ${interactive.followUpQuestion}`
-                },
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                url: currentUrl,
-                title: document.title
-              };
-              activeChatSession.messages.push(searchPrompt);
-              renderSingleMessageToStream(searchPrompt, stream);
-              setTimeout(() => {
-                speak(`Search results for ${searchKeyword} are ready. ${interactive.followUpQuestion}`);
-              }, 800);
+              setTimeout(async () => {
+                await autonomousScanAndHighlightSearchResults(searchKeyword, storeName);
+              }, 900);
             }
           }
         }
@@ -2979,6 +2965,204 @@
   }
 
   /**
+   * Intelligently strips conversational lead-ins, assistant wake words, polite phrases,
+   * modal verbs, and store suffixes, extracting purely the target product name.
+   */
+  function extractCleanSearchTerm(rawQuery) {
+    if (!rawQuery) return '';
+    let q = rawQuery.trim();
+
+    // 1. Remove wake words / assistant address
+    q = q.replace(/^(hey\s*vox\s*,?\s*|vox\s*,?\s*|hi\s*vox\s*,?\s*|hello\s*vox\s*,?\s*|ok\s*vox\s*,?\s*)/i, '');
+
+    // 2. Remove English conversational lead-ins & search requests
+    q = q.replace(/^(can\s*you\s*(please\s*)?|could\s*you\s*(please\s*)?|would\s*you\s*(please\s*)?|will\s*you\s*(please\s*)?|please\s*|help\s*me\s*(to\s*)?)/i, '');
+    q = q.replace(/^(i\s*want\s*to\s*(buy|get|find|order|purchase|see|check)|i\s*wanna\s*(buy|get|find|order|purchase|see|check)|i\s*need\s*to\s*(buy|get|find|order|purchase)|i('d| would)\s*like\s*to\s*(buy|get|find|order|purchase|see))\s+/i, '');
+    q = q.replace(/^(i\s*want|i\s*need|i('m| am)\s*looking\s*(for|to\s*buy)?|i('m| am)\s*searching\s*(for)?)\s+/i, '');
+    q = q.replace(/^(search\s*(me\s*)?(up|for)?|find\s*(me)?|look\s*(up|for)?|show\s*(me)?|check\s*(out)?|get\s*(me)?|buy\s*(me)?)\s+/i, '');
+
+    // 3. Remove Indonesian conversational lead-ins & search requests
+    q = q.replace(/^(tolong\s*|coba\s*|bantu\s*|bisa\s*(minta\s*tolong\s*)?|mohon\s*)/i, '');
+    q = q.replace(/^(aku\s*mau\s*(beli|cari|lihat|order|checkout|pesan)|saya\s*mau\s*(beli|cari|lihat|order|checkout|pesan)|mau\s*(beli|cari|lihat|order|checkout|pesan)|pengen\s*(beli|cari|lihat))\s+/i, '');
+    q = q.replace(/^(cari\s*(kan|in)?|cariin\s*(aku|saya)?|carikan\s*(aku|saya)?|beliin\s*(aku|saya)?|beli\s*(kan)?|temukan|lihat)\s+/i, '');
+
+    // 4. Remove leading articles: "a", "an", "the", "sebuah"
+    q = q.replace(/^(a|an|the|sebuah|satu)\s+/i, '');
+
+    // 5. Remove trailing platform suffixes, polite words & fillers
+    q = q.replace(/\s+(on|in|di)\s+(shopee|tokopedia|lazada|blibli|amazon|google|store|marketplace|web|olshop).*$/i, '');
+    q = q.replace(/\s+(please|dong|ya|deh|nih|lah|kan|kah|yang\s*bagus|terbaik|termurah|murah)$/i, '');
+
+    q = q.trim();
+
+    // 6. If query still has leading search/buy verbs after previous steps
+    q = q.replace(/^(search|cari|find|buy|beli)\s+/i, '').trim();
+
+    return q || rawQuery.trim();
+  }
+
+  /**
+   * Parse numerical price and currency from DOM text snippet.
+   */
+  function parseDomPrice(text) {
+    if (!text) return null;
+    const idrMatch = text.match(/Rp\s*([\d.,]+)/i);
+    if (idrMatch) {
+      const cleanNum = idrMatch[1].replace(/\./g, '').replace(/,/g, '');
+      const num = parseInt(cleanNum, 10);
+      if (!isNaN(num) && num > 1000) return { raw: idrMatch[0], value: num, currency: 'Rp' };
+    }
+    const usdMatch = text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
+    if (usdMatch) {
+      const cleanNum = usdMatch[1].replace(/,/g, '');
+      const num = parseFloat(cleanNum);
+      if (!isNaN(num)) return { raw: usdMatch[0], value: num, currency: '$' };
+    }
+    return null;
+  }
+
+  /**
+   * Format numerical price into localized currency string.
+   */
+  function formatDomPrice(val, currency = 'Rp') {
+    if (currency === 'Rp') {
+      return 'Rp ' + val.toLocaleString('id-ID');
+    }
+    return '$' + val.toLocaleString('en-US');
+  }
+
+  /**
+   * Autonomous Scan & Price Inspection of Search Results
+   * Visibly scrolls down the page to trigger lazy loading of product items,
+   * extracts product titles and prices across Shopee, Tokopedia, Amazon, etc.,
+   * scrolls the lowest-priced / best deal item into view,
+   * highlights it with the signature cyan halo, and announces findings.
+   */
+  async function autonomousScanAndHighlightSearchResults(searchKeyword, storeName) {
+    const cleanTerm = extractCleanSearchTerm(searchKeyword);
+    setCapsuleState('reasoning', `Scouting prices for "${cleanTerm.slice(0, 14)}"…`);
+
+    // 1. Smoothly scroll down the page to trigger DOM hydration of search cards
+    window.scrollBy({ top: 480, behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 700));
+
+    // 2. Discover product card elements across e-commerce platforms
+    const cardSelectors = [
+      // Shopee
+      '.shopee-search-item-result__item',
+      'div[data-sqi]',
+      'ul.shopee-search-item-result__items > li',
+      // Tokopedia
+      'div[data-testid="divSRPContentItem"]',
+      'div[data-testid="master-product-card"]',
+      // Amazon
+      'div[data-component-type="s-search-result"]',
+      // Blibli, Lazada, Generic
+      '.product-card',
+      'div[class*="ProductCard"]',
+      'div[class*="product-item"]',
+      'article[data-qa-id="product-item"]'
+    ];
+
+    let foundCards = [];
+    for (const sel of cardSelectors) {
+      const matches = Array.from(document.querySelectorAll(sel)).filter(el => {
+        return el.offsetHeight > 80 && el.offsetWidth > 80 && el.offsetParent !== null;
+      });
+      if (matches.length >= 2) {
+        foundCards = matches;
+        break;
+      }
+    }
+
+    // Generic fallback: inspect elements with price patterns and climb to parent cards
+    if (foundCards.length === 0) {
+      const allTextNodes = Array.from(document.querySelectorAll('span, div, b, strong, p'));
+      const seen = new Set();
+      for (const node of allTextNodes) {
+        if (node.children.length === 0 && /(?:Rp\s*[\d.,]{4,}|\$\s*[\d.,]{2,})/i.test(node.textContent || '')) {
+          const card = node.closest('div[class*="item"], div[class*="card"], div[class*="product"], article, li');
+          if (card && !seen.has(card) && card.offsetHeight > 100 && card.offsetWidth > 100 && card.offsetHeight < 850) {
+            seen.add(card);
+            foundCards.push(card);
+          }
+        }
+      }
+    }
+
+    // 3. Parse titles and prices
+    const parsedItems = [];
+    for (const card of foundCards) {
+      const fullText = card.innerText || card.textContent || '';
+      const price = parseDomPrice(fullText);
+      // Filter out low prices like Rp 1.000 accessories or vouchers if searching laptops/phones
+      if (price && price.value > 10000) {
+        const titleEl = card.querySelector('div[class*="title" i], div[class*="name" i], span[class*="name" i], h2, h3, a[title]') || card;
+        let title = (titleEl.getAttribute('title') || titleEl.innerText || titleEl.textContent || '').trim().replace(/\s+/g, ' ');
+        if (title.length > 70) title = title.slice(0, 67) + '…';
+        parsedItems.push({
+          el: card,
+          title: title || cleanTerm,
+          price: price
+        });
+      }
+    }
+
+    const currentStore = storeName || (
+      window.location.hostname.includes('shopee') ? 'Shopee' :
+      window.location.hostname.includes('tokopedia') ? 'Tokopedia' :
+      window.location.hostname.includes('amazon') ? 'Amazon' : 'Store'
+    );
+
+    if (parsedItems.length > 0) {
+      // Sort by price ascending
+      parsedItems.sort((a, b) => a.price.value - b.price.value);
+      const minItem = parsedItems[0];
+      const maxItem = parsedItems[parsedItems.length - 1];
+
+      const minPriceStr = formatDomPrice(minItem.price.value, minItem.price.currency);
+      const maxPriceStr = formatDomPrice(maxItem.price.value, maxItem.price.currency);
+
+      // Smoothly scroll to the lowest-price card and apply radiant halo
+      minItem.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+      minItem.el.classList.add('vox-halo-highlight');
+      setTimeout(() => minItem.el.classList.remove('vox-halo-highlight'), 10000);
+
+      const spoken = `I found ${parsedItems.length} listings for ${cleanTerm} on ${currentStore}. Prices start from ${minPriceStr} up to ${maxPriceStr}. I've scrolled down and highlighted the lowest price deal for you at ${minPriceStr}!`;
+      const content = `🔍 **Live Market Scan: "${escapeHtml(cleanTerm)}" on ${currentStore}**\n\n` +
+        `I've scrolled through the search results and analyzed **${parsedItems.length} listings**:\n\n` +
+        `• **🏷️ Lowest Price Deal**: **${minPriceStr}** *(Highlighted with cyan halo on screen)*\n` +
+        `• **📈 Market Range**: ${minPriceStr} — ${maxPriceStr}\n` +
+        `• **📦 Best Deal**: *${escapeHtml(minItem.title)}*\n\n` +
+        `*Would you like me to filter for Official Store only, or check product specifications?*`;
+
+      const quickOptions = [
+        { label: `⚡ Lowest Price (${minPriceStr})`, query: `${cleanTerm} termurah` },
+        { label: "⭐ Official Store Only", query: `${cleanTerm} official store` },
+        { label: "🔥 Top Rated & Terlaris", query: `${cleanTerm} terlaris` },
+        { label: "🎯 Under " + maxPriceStr, query: `${cleanTerm} diskon promo` }
+      ];
+
+      appendChatMessage('agent', content, { quickOptions, spoken });
+      speak(spoken);
+      setCapsuleState('idle', 'Price scan complete');
+      return { minItem, maxItem, count: parsedItems.length };
+    } else {
+      // If products haven't loaded yet or none matched, fallback to interactive clarification
+      const fallback = generateSearchInteractiveFollowUp(cleanTerm, currentStore);
+      appendChatMessage('agent', fallback.content, {
+        quickOptions: fallback.quickOptions,
+        spoken: fallback.spoken,
+        followUpQuestion: fallback.followUpQuestion
+      });
+      speak(fallback.spoken);
+      setCapsuleState('idle', 'Search ready');
+      return null;
+    }
+  }
+
+  /**
    * Generates interactive follow-up questions and quick-choice chips
    * tailored to the searched item and active store.
    */
@@ -3053,22 +3237,10 @@
    * and guarantees navigation to search results.
    */
   async function executeAutonomousSearch(rawQuery) {
-    // 1. Extract clean search keyword
-    let cleanTerm = (rawQuery || '').trim()
-      .replace(/^(hey\s*vox\s*,?\s*|vox\s*,?\s*)/i, '')
-      .replace(/^(search\s*(up|for)?|cari\s*(kan|in)?|cariin|find\s*(me)?|look\s*(up|for)?|tolong\s*cari\s*(kan|in)?|bantu\s*cari\s*(kan|in)?|coba\s*cari\s*(kan|in)?|aku\s*mau\s*cari\s*(kan|in)?|mau\s*cari\s*(kan|in)?|bisa\s*cari\s*(kan|in)?)\s+/i, '')
-      .replace(/\s+(on|in|di)\s+(shopee|tokopedia|lazada|blibli|amazon|google|store|web).*$/i, '')
-      .trim();
-
-    if (!cleanTerm) {
-      cleanTerm = rawQuery.replace(/^(search\s*(up|for)?|cari)\s*/i, '').trim();
-    }
-    if (!cleanTerm) {
-      cleanTerm = rawQuery.trim();
-    }
+    // 1. Extract pure product keyword using smart entity extractor
+    const cleanTerm = extractCleanSearchTerm(rawQuery) || (rawQuery || '').trim();
 
     setCapsuleState('reasoning', `🔍 Searching "${cleanTerm.slice(0, 16)}"…`);
-    appendChatMessage('user', `🔍 Search: "${cleanTerm}"`);
 
     const currentHost = window.location.hostname.toLowerCase();
     const storeName = currentHost.includes('shopee') ? 'Shopee' :
@@ -3298,6 +3470,10 @@
         window.location.assign(searchUrl);
       } else {
         setCapsuleState('idle', 'Search dispatched');
+        // If we stayed on the page (SPA search or already on search view), scan and highlight live DOM prices
+        setTimeout(async () => {
+          await autonomousScanAndHighlightSearchResults(cleanTerm, storeName);
+        }, 800);
       }
     }, inputSubmitted ? 650 : 250);
   }
@@ -4529,7 +4705,7 @@
 
     // 0. Autonomous Product / Store Search (e.g. "search up Lenovo Gaming", "cari laptop lenovo", "Lenovo Gaming" on store)
     const isStoreSite = /shopee|tokopedia|lazada|blibli|amazon|bukalapak|aliexpress|ebay|walmart/i.test(window.location.hostname);
-    const hasSearchKeywords = /\b(search(\s*up|\s*for)?|cari(kan|in)?|find(\s*me)?|look(\s*up|\s*for)?|looking\s*for|mau\s*cari|tolong\s*cari|bantu\s*cari|coba\s*cari|aku\s*mau\s*cari|mau\s*beli|bisa\s*cari)\b/i.test(qLower);
+    const hasSearchKeywords = /\b(search(\s*up|\s*for|\s*me\s*up)?|cari(kan|in)?|find(\s*me)?|look(\s*up|\s*for)?|looking\s*for|want\s*to\s*buy|wanna\s*buy|need\s*to\s*buy|like\s*to\s*buy|mau\s*(beli|cari|order)|pengen\s*(beli|cari)|tolong\s*(cari|beli)|bantu\s*(cari|beli)|coba\s*(cari|beli)|aku\s*mau\s*(cari|beli)|beliin|belikan|bisa\s*(cari|beli))\b/i.test(qLower);
     const isMetaOrCheckout = /^(hi|hai|halo|hello|help|bantuan|who\s*are\s*you|what\s*can\s*you\s*do|terima\s*kasih|thank\s*you|thanks|confirm|cancel|sign\s*in|login|logout|autofill|deal|coupon|voucher)\b/i.test(qLower) ||
       /^confirm\s*order$/i.test(qLower) || /^cancel\s*(checkout|order)?$/i.test(qLower) || /hunt\s*deals|compare\s*product/i.test(qLower);
     const isGeneralProductQueryOnStore = isStoreSite && !isMetaOrCheckout && qLower.length >= 3;
