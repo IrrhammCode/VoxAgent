@@ -3326,14 +3326,209 @@
   }
 
   /**
+   * Autonomous Physical Store Search
+   * Discovers the active marketplace's search bar, smoothly scrolls into view,
+   * focuses and types the query with React/Vue synthetic event compatibility,
+   * highlights the physical search button with cyan halo, depresses it with tactile animation,
+   * and dispatches pointer/mouse/keyboard events to physically search on the website.
+   */
+  async function physicallyTypeAndClickStoreSearch(queryText) {
+    const cleanTerm = (queryText || '').trim();
+    if (!cleanTerm) return false;
+
+    // 1. Search input selectors covering Shopee, Tokopedia, Blibli, Amazon, Lazada & generic
+    const searchSelectors = [
+      // Shopee
+      'input.shopee-searchbar-input__input',
+      '.shopee-searchbar-input input',
+      '.shopee-searchbar input',
+      'input[placeholder*="shopee" i]',
+      'input[placeholder*="voucher" i]',
+      'input[placeholder*="daftar" i]',
+      // Tokopedia
+      'input[data-unify="Search"]',
+      'input[data-testid="txtHeaderSearchBar"]',
+      'input[placeholder*="Tokopedia" i]',
+      'input[placeholder*="Cari di Tokopedia" i]',
+      'input[aria-label*="tokopedia" i]',
+      // Amazon
+      '#twotabsearchtextbox',
+      'input[name="field-keywords"]',
+      'input#nav-bb-search',
+      // Blibli
+      'input[data-testid="header-search-input"]',
+      'input[placeholder*="blibli" i]',
+      'input.search-input',
+      // Lazada
+      'input.search-box__input',
+      'input[placeholder*="lazada" i]',
+      // Generic
+      'input[type="search"]',
+      'input[name="q"]',
+      'input[name="query"]',
+      'input[name="keyword"]',
+      'input[name="keywords"]',
+      'input[name="search"]',
+      'input[id*="search" i]',
+      'input[class*="search" i]',
+      'input[placeholder*="search" i]',
+      'input[placeholder*="cari" i]',
+      'input[aria-label*="search" i]',
+      'input[aria-label*="cari" i]'
+    ];
+
+    let searchInput = null;
+    for (const sel of searchSelectors) {
+      const el = document.querySelector(sel);
+      if (el && (el.offsetParent !== null || el.offsetWidth > 0 || el.getClientRects().length > 0)) {
+        searchInput = el;
+        break;
+      }
+    }
+
+    if (!searchInput) return false;
+
+    try {
+      // 2. Bring search bar into view and highlight
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      searchInput.classList.add('vox-halo-highlight');
+      searchInput.focus();
+
+      // 3. React / Vue / Angular synthetic event compatibility:
+      if (searchInput._valueTracker) {
+        searchInput._valueTracker.setValue('');
+      }
+
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value'
+      )?.set;
+
+      if (nativeSetter) {
+        nativeSetter.call(searchInput, cleanTerm);
+      } else {
+        searchInput.value = cleanTerm;
+      }
+
+      if (searchInput._valueTracker) {
+        searchInput._valueTracker.setValue('');
+      }
+
+      // Dispatch input, change, and keyup events
+      searchInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      searchInput.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
+      await new Promise(r => setTimeout(r, 200));
+
+      // 4. Find the store's physical search button
+      const container = searchInput.closest('form, .shopee-searchbar, .shopee-searchbar-input, [role="search"], .search-box, .search-bar, nav, header') || document;
+      const submitSelectors = [
+        // Shopee
+        'button.shopee-searchbar__search-button',
+        '.shopee-searchbar__search-button',
+        '.shopee-searchbar button',
+        // Tokopedia
+        'button[data-unify="Search"]',
+        'button[data-testid="btnHeaderSearch"]',
+        'button[aria-label*="pencarian" i]',
+        'button[aria-label*="search" i]',
+        'button[aria-label*="cari" i]',
+        // Amazon
+        '#nav-search-submit-button',
+        'input#nav-search-submit-button',
+        // Blibli & Lazada
+        'button[aria-label*="search" i]',
+        'button.search-button',
+        'button.btn-search',
+        // Generic
+        'button[type="submit"]',
+        'input[type="submit"]',
+        'button.search-btn',
+        'button.search',
+        '[role="search"] button',
+        'form button:last-of-type'
+      ];
+
+      let submitBtn = null;
+      for (const sel of submitSelectors) {
+        const btn = container.querySelector(sel);
+        if (btn && (btn.offsetParent !== null || btn.offsetWidth > 0 || btn.getClientRects().length > 0)) {
+          submitBtn = btn;
+          break;
+        }
+      }
+      if (!submitBtn) {
+        for (const sel of submitSelectors) {
+          const btn = document.querySelector(sel);
+          if (btn && (btn.offsetParent !== null || btn.offsetWidth > 0 || btn.getClientRects().length > 0)) {
+            submitBtn = btn;
+            break;
+          }
+        }
+      }
+
+      // 5. Trigger keyboard Enter key events on input
+      const enterOpts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+      searchInput.dispatchEvent(new KeyboardEvent('keydown', enterOpts));
+      searchInput.dispatchEvent(new KeyboardEvent('keypress', enterOpts));
+      searchInput.dispatchEvent(new KeyboardEvent('keyup', enterOpts));
+
+      // 6. Physically click the search button with realistic pointer + mouse events & tactile animation
+      if (submitBtn) {
+        submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        submitBtn.classList.add('vox-halo-highlight');
+        submitBtn.style.transition = 'transform 0.15s ease, box-shadow 0.15s ease';
+        submitBtn.style.transform = 'scale(0.92)';
+        submitBtn.style.boxShadow = '0 0 25px rgba(0, 242, 254, 0.95)';
+
+        await new Promise(r => setTimeout(r, 220));
+
+        const rect = submitBtn.getBoundingClientRect();
+        const clickCoords = {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: rect.left + rect.width / 2,
+          clientY: rect.top + rect.height / 2
+        };
+
+        submitBtn.dispatchEvent(new PointerEvent('pointerdown', clickCoords));
+        submitBtn.dispatchEvent(new MouseEvent('mousedown', clickCoords));
+        submitBtn.dispatchEvent(new PointerEvent('pointerup', clickCoords));
+        submitBtn.dispatchEvent(new MouseEvent('mouseup', clickCoords));
+        submitBtn.dispatchEvent(new MouseEvent('click', clickCoords));
+        try { submitBtn.click(); } catch (_) {}
+
+        setTimeout(() => {
+          submitBtn.style.transform = '';
+          submitBtn.style.boxShadow = '';
+          submitBtn.classList.remove('vox-halo-highlight');
+        }, 1500);
+      }
+
+      // Also if inside a form, submit form as fallback
+      const form = searchInput.closest('form');
+      if (form && typeof form.requestSubmit === 'function') {
+        try { form.requestSubmit(); } catch (_) {}
+      }
+
+      setTimeout(() => searchInput.classList.remove('vox-halo-highlight'), 3000);
+      return true;
+    } catch (err) {
+      console.warn('[Vox Agent] Physical store search execution error:', err);
+      return false;
+    }
+  }
+
+  /**
    * Autonomous E-Commerce Search Execution
    * Discovers the store's search input, types search term with React/Vue-compatible events,
    * highlights and physically presses the search button with tactile animation,
-   * engages the user in an interactive clarifying dialogue with clickable quick-option chips,
-   * and guarantees navigation to search results.
+   * and executes the 5-Layer Cognitive Multi-Agent Shopping Engine.
    */
   async function executeAutonomousSearch(rawQuery) {
-    // All searches in Vox Agent execute the 5-Layer Cognitive Multi-Agent Shopping Engine
+    const cleanTerm = extractProductEntity(rawQuery) || extractCleanSearchTerm(rawQuery) || (rawQuery || '').trim();
+    await physicallyTypeAndClickStoreSearch(cleanTerm);
     return executeAutonomousLiveCompare(rawQuery);
   }
 
@@ -3863,8 +4058,10 @@
     let q = rawQuery.toLowerCase().trim();
     // Strip wake words
     q = q.replace(/^(hey|halo|hai|ok)?\s*(vox|fox|copilot)?\s*[,.]?\s*/i, '');
-    // Normalize phonetic speech-to-text typos
-    q = q.replace(/\bhad\s*set\b/gi, 'headset');
+    // Normalize phonetic speech-to-text typos & acoustic mishearings
+    q = q.replace(/\b(head\s*band|headband|had\s*set|hed\s*set|het\s*set|head\s*sad|head\s*sat|hate\s*set)\b/gi, 'headset');
+    q = q.replace(/\b(airport|air\s*pot|er\s*fon|ir\s*fon|ear\s*fon)\b/gi, 'earphone');
+    q = q.replace(/\b(leptop|lektop|labtop)\b/gi, 'laptop');
     q = q.replace(/\bhead\s*set\b/gi, 'headset');
     // Strip conversational intros (Indonesian & English)
     q = q.replace(/\b(can\s*you|could\s*you|would\s*you|please|help\s*me|i\s*want\s*to|i\s*wanna|looking\s*for|tolong|coba|bantu|bisa|mohon|aku\s*mau|saya\s*mau|mau|pengen|ingin)\b/gi, '');
@@ -4130,17 +4327,15 @@
 
     speak(`Deconstructing shopping constraints and benchmarking specifications for ${displaySubject}.`);
 
-    // REAL STEP 1 WORK: Scan active DOM search results if on e-commerce store (in silent background mode)
-    const isEcommerceSite = /shopee|tokopedia|blibli|amazon|lazada/i.test(window.location.hostname);
-    if (isEcommerceSite) {
-      try {
+    // REAL STEP 1 WORK: Physically type query into store search bar and click search button
+    try {
+      await physicallyTypeAndClickStoreSearch(displaySubject || targetSubject);
+      const isEcommerceSite = /shopee|tokopedia|blibli|amazon|lazada/i.test(window.location.hostname);
+      if (isEcommerceSite) {
         await autonomousScanAndHighlightSearchResults(targetSubject, null, true);
-      } catch (scanErr) {
-        console.warn('[Vox Agent] Active page DOM scan fallback:', scanErr);
       }
-    } else {
-      // Small pause to allow speech synthesis to initiate cleanly
-      await new Promise(r => setTimeout(r, 400));
+    } catch (scanErr) {
+      console.warn('[Vox Agent] Active page DOM search & scan fallback:', scanErr);
     }
 
     // ADVANCE TO STEP 2: Multi-Store Cross Search (Shopee, Tokopedia, Blibli, Amazon)
@@ -4441,10 +4636,23 @@
       { pattern: /\b(wat\s+dis\s+web|dis\s+web\s+about\s+wat|wat\s+dis|what\s+is\s+dis|dis\s+web|website\s+apa\s+ini|ini\s+apa|apa\s+ini|explain\s+dis|jelasin)\b/gi, replace: 'what is this website about' },
       { pattern: /\b(tel\s+me\s+about|tell\s+about|overview|summary)\b/gi, replace: 'explain this website' },
 
-      // ─── AUTONOMOUS ACTION INTENTS ───
+      // ─── ACOUSTIC & ACCENT MISHEARING NORMALIZATION ───
+      // When ESL/Indonesian speakers say "headset", Web Speech API in en-US frequently transcribes "headband", "had set", "hed set", "het set", etc.
+      { pattern: /\b(head\s*band|headband|had\s*set|hed\s*set|het\s*set|head\s*sad|head\s*sat|hate\s*set)\b/gi, replace: 'headset' },
+      // When user says "earphone" or "airpod", Web Speech API frequently transcribes "airport", "air pod", "er fon"
+      { pattern: /\b(airport|air\s*pot|er\s*fon|ir\s*fon|ear\s*fon)\b/gi, replace: 'earphone' },
+      { pattern: /\b(leptop|lektop|labtop)\b/gi, replace: 'laptop' },
+      { pattern: /\b(mous|maus|maos)\b/gi, replace: 'mouse' },
+      { pattern: /\b(kibor|keybord)\b/gi, replace: 'keyboard' },
+      { pattern: /\b(spiker|spikur)\b/gi, replace: 'speaker' },
+      { pattern: /\b(casan|cargel)\b/gi, replace: 'charger' },
 
-      // Search / Find product intent
-      { pattern: /\b(search\s*up|search\s*for|tolong\s*cari(in|kan)?|bisa\s*cari(in|kan)?|coba\s*cari(in|kan)?)\s+/gi, replace: 'search ' },
+      // Natural language conversational search intents (both English & Indonesian)
+      { pattern: /\b(can\s+you\s+(please\s+)?(find|search|look(\s+up)?|get)(\s+me)?(\s+up)?(\s+about)?)\s+/gi, replace: 'search ' },
+      { pattern: /\b(could\s+you\s+(please\s+)?(find|search|look(\s+up)?|get)(\s+me)?(\s+up)?(\s+about)?)\s+/gi, replace: 'search ' },
+      { pattern: /\b(please\s+(find|search|look(\s+up)?|get)(\s+me)?(\s+up)?(\s+about)?)\s+/gi, replace: 'search ' },
+      { pattern: /\b(search\s*me\s*up\s*(about)?)\s+/gi, replace: 'search ' },
+      { pattern: /\b(search\s*up\s*(about)?|search\s*for|search\s*about|find\s*me\s*(a\s+|an\s+|the\s+)?|tolong\s*cari(in|kan)?|bisa\s*cari(in|kan)?|coba\s*cari(in|kan)?)\s+/gi, replace: 'search ' },
 
       // Sign In / Login intent
       { pattern: /\b(log\s*in|sign\s*in|login|masuk\s*akun|masuk\s*ke\s*akun|bisa\s+login\s*(nggak|gak|ga)?|tolong\s+login(in|kan)?|sign\s+me\s+in)\b/gi, replace: 'sign in to account' },
@@ -4503,8 +4711,8 @@
       recognition.continuous = true;
       recognition.interimResults = true;
 
-      // English-focused recognition with ESL harmonization
-      const defaultLang = window.VOX_ENV?.VOX_LANGUAGE === 'id' ? 'id-ID' : 'en-US';
+      // Multi-lingual recognition with Indonesian & ESL harmonization
+      const defaultLang = (window.VOX_ENV?.VOX_LANGUAGE === 'id' || window.VOX_ENV?.VOX_LANGUAGE === 'id-ID') ? 'id-ID' : (localStorage.getItem('vox_speech_lang') || 'id-ID');
       recognition.lang = defaultLang;
 
       recognition.onstart = () => {
@@ -4558,8 +4766,27 @@
           // Real question asked
           if (withoutWake.length >= 2 && withoutWake !== lastProcessedQuery) {
             lastProcessedQuery = withoutWake;
-            stopListening();
-            processNaturalQuery(withoutWake);
+            if (recognition && isListening) {
+              try { recognition.stop(); } catch (_) {}
+            }
+            isListening = false;
+            setCapsuleState('reasoning', 'Thinking…');
+
+            // Attempt high-accuracy Groq Whisper transcription if recorded audio exists
+            stopAudioRecordingAndTranscribe().then((whisperText) => {
+              let finalText = withoutWake;
+              if (whisperText && whisperText.length >= 3) {
+                console.log(`[Vox Agent] Groq Whisper transcribed: "${whisperText}" (WebSpeech was: "${withoutWake}")`);
+                let cleanWhisper = harmonizeUserVocab(whisperText);
+                cleanWhisper = cleanWhisper.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks)[,.]?\s*/i, '').trim();
+                if (cleanWhisper.length >= 2) {
+                  finalText = cleanWhisper;
+                }
+              }
+              processNaturalQuery(finalText);
+            }).catch(() => {
+              processNaturalQuery(withoutWake);
+            });
           }
         }
       };
@@ -4606,9 +4833,104 @@
     } catch (_) {}
   }
 
+  // 8b. High-Accuracy Audio Recording & Groq Whisper Integration
+  let audioRecorder = null;
+  let recordedAudioChunks = [];
+  let audioStream = null;
+  let isRecordingAudio = false;
+
+  async function startAudioRecording() {
+    try {
+      if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        return;
+      }
+      if (isRecordingAudio && audioRecorder && audioRecorder.state === 'recording') {
+        return;
+      }
+      recordedAudioChunks = [];
+      if (!audioStream || !audioStream.active) {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+      
+      audioRecorder = mimeType ? new MediaRecorder(audioStream, { mimeType }) : new MediaRecorder(audioStream);
+      audioRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedAudioChunks.push(e.data);
+        }
+      };
+      audioRecorder.start(100);
+      isRecordingAudio = true;
+    } catch (err) {
+      console.warn('[Vox Agent] Audio recording initialization note:', err.message);
+    }
+  }
+
+  async function stopAudioRecordingAndTranscribe() {
+    return new Promise((resolve) => {
+      if (!audioRecorder || audioRecorder.state === 'inactive') {
+        return resolve('');
+      }
+
+      const timeout = setTimeout(() => {
+        resolve('');
+      }, 3500);
+
+      audioRecorder.onstop = async () => {
+        clearTimeout(timeout);
+        isRecordingAudio = false;
+        try {
+          if (!recordedAudioChunks || recordedAudioChunks.length === 0) {
+            return resolve('');
+          }
+          const mime = audioRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(recordedAudioChunks, { type: mime });
+          recordedAudioChunks = [];
+
+          if (audioBlob.size < 1000) {
+            return resolve('');
+          }
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = (reader.result || '').split(',')[1];
+            if (!base64Data) return resolve('');
+
+            chrome.runtime.sendMessage(
+              {
+                action: 'TRANSCRIBE_AUDIO',
+                payload: { audioBase64: base64Data, mimeType: mime }
+              },
+              (response) => {
+                if (chrome.runtime.lastError || !response || !response.success) {
+                  return resolve('');
+                }
+                resolve(response.data || '');
+              }
+            );
+          };
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(audioBlob);
+        } catch (e) {
+          resolve('');
+        }
+      };
+
+      try {
+        audioRecorder.stop();
+      } catch (_) {
+        clearTimeout(timeout);
+        resolve('');
+      }
+    });
+  }
+
   function startListening() {
     window.speechSynthesis && window.speechSynthesis.cancel();
     stopCurrentSpeech();
+    startAudioRecording();
     if (!recognition) {
       dialogTranscript.textContent = 'Microphone API unavailable in this browser. You can type in the box below!';
       quickInput.focus();
@@ -4632,7 +4954,11 @@
     if (recognition && isListening) {
       try { recognition.stop(); } catch (_) {}
     }
+    if (audioRecorder && audioRecorder.state === 'recording') {
+      try { audioRecorder.stop(); } catch (_) {}
+    }
     isListening = false;
+    isRecordingAudio = false;
     setCapsuleState('idle', 'Hey Vox or Ask');
   }
 

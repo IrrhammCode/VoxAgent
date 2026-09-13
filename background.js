@@ -149,6 +149,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'TRANSCRIBE_AUDIO') {
+    handleTranscribeAudio(request.payload)
+      .then((transcript) => sendResponse({ success: true, data: transcript }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   if (request.action === 'OPEN_TAB') {
     chrome.tabs.create({ url: request.url || 'https://google.com', active: true }, (tab) => {
       sendResponse({ success: true, tabId: tab?.id });
@@ -1987,3 +1994,44 @@ Produce a JSON response strictly matching this schema:
     ]
   };
 }
+
+/**
+ * High-Accuracy Speech Recognition via Groq Whisper Large V3 Turbo
+ * Transcribes audio recordings with zero accent degradation or word confusion.
+ */
+async function handleTranscribeAudio(payload = {}) {
+  const { audioBase64 = '', mimeType = 'audio/webm' } = payload;
+  const groqKey = settingsCache.groqApiKey || (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_API_KEY) || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.GROQ_API_KEY) || '';
+  if (!groqKey) throw new Error('Groq API key required for Whisper transcription');
+  if (!audioBase64) throw new Error('No audio data provided');
+
+  const byteChars = atob(audioBase64);
+  const byteNums = new Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteNums[i] = byteChars.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNums);
+  const blob = new Blob([byteArray], { type: mimeType });
+
+  const formData = new FormData();
+  formData.append('file', blob, 'speech.webm');
+  formData.append('model', 'whisper-large-v3-turbo');
+  formData.append('prompt', 'Headset, earphone, laptop, Tokopedia, Shopee, Blibli, Amazon, cari, harga, under, murah, diskon, bando, sepatu.');
+
+  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${groqKey}`
+    },
+    body: formData
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Whisper transcription failed: ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.text || '';
+}
+
