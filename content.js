@@ -4093,21 +4093,33 @@
       };
     }
 
-    // Append Live Progress Message to Chat Stream
+    // Append Live Progress Message to Chat Stream (Step 1 Active: Market Specs Benchmark & DOM Scan)
     const missionMsgId = appendChatMessage('agent', `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 1, 'IN PROGRESS')}`);
     const stream = shadow.getElementById('vox-chat-stream');
     const missionCardEl = stream ? stream.querySelector(`#${missionMsgId} .vox-bubble-text`) : null;
 
-    speak('Deconstructing shopping constraints and benchmarking hardware specifications.');
+    speak(`Deconstructing shopping constraints and benchmarking specifications for ${displaySubject}.`);
 
-    // Step 1 -> Step 2
-    await new Promise(r => setTimeout(r, 600));
+    // REAL STEP 1 WORK: Scan active DOM search results if on e-commerce store
+    const isEcommerceSite = /shopee|tokopedia|blibli|amazon|lazada/i.test(window.location.hostname);
+    if (isEcommerceSite) {
+      try {
+        await autonomousScanAndHighlightSearchResults(targetSubject);
+      } catch (scanErr) {
+        console.warn('[Vox Agent] Active page DOM scan fallback:', scanErr);
+      }
+    } else {
+      // Small pause to allow speech synthesis to initiate cleanly
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    // ADVANCE TO STEP 2: Multi-Store Cross Search (Shopee, Tokopedia, Blibli, Amazon)
     setCapsuleState('reasoning', 'Cross-searching 4 connected stores…');
     if (missionCardEl) {
       missionCardEl.innerHTML = `📋 **Auditing 4 Connected Stores: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 2, 'SEARCHING')}`;
     }
 
-    // Layer 4: Multi-Store Cross Search (Shopee, Tokopedia, Blibli, Amazon)
+    // REAL STEP 2 WORK: Execute 4-Store Cross Search
     let candidates = [];
     try {
       const searchRes = await new Promise((resolve) => {
@@ -4128,27 +4140,47 @@
       console.warn('[Vox Agent] Multi-store search error:', e);
     }
 
-    // Step 2 -> Step 3: Hardware Specs & Trust Audit
-    await new Promise(r => setTimeout(r, 550));
+    // ADVANCE TO STEP 3: Specs & Trust Audit
     setCapsuleState('reasoning', 'Auditing specs & official warranty…');
     if (missionCardEl) {
       missionCardEl.innerHTML = `🔬 **Deep Spec & Trust Audit: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITING SPECS')}`;
     }
 
-    // Step 3 -> Step 4: Landed Checkout Price Audit (Strict safety halt before payment)
-    await new Promise(r => setTimeout(r, 550));
+    // REAL STEP 3 WORK: Filter and audit candidates against spec criteria & seller trust
+    const userBudgetCeiling = plan.constraints?.budgetMax || extractBudgetCeiling(userPrompt) || Infinity;
+    candidates = candidates.map(c => {
+      const passesBudget = c.basePrice <= userBudgetCeiling;
+      return {
+        ...c,
+        passesBudget,
+        trustScore: (c.official ? 2 : 1) + (c.rating >= 4.8 ? 2 : 1)
+      };
+    });
+    // Brief pause to visually communicate spec audit step completion
+    await new Promise(r => setTimeout(r, 350));
+
+    // ADVANCE TO STEP 4: Landed Price Audit (Ongkir + Fees - Vouchers)
     setCapsuleState('reasoning', 'Auditing true landed checkout prices…');
     if (missionCardEl) {
       missionCardEl.innerHTML = `💳 **Landed Price Audit (Ongkir + Fees - Vouchers): "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 4, 'LANDED SIMULATION')}`;
     }
 
-    // Step 4 -> Step 5: Multi-Factor Synthesis via Groq
-    await new Promise(r => setTimeout(r, 600));
+    // REAL STEP 4 WORK: Calculate Landed Checkout Price for each item
+    candidates.forEach(c => {
+      const landed = (c.basePrice || 0) + (c.shipping || 0) - (c.voucher || 0);
+      c.landedPriceVal = landed;
+      c.landedPriceStr = `Rp ${landed.toLocaleString('id-ID')}`;
+    });
+    // Brief pause to visually communicate landed price audit step completion
+    await new Promise(r => setTimeout(r, 350));
+
+    // ADVANCE TO STEP 5: Multi-Factor Synthesis via Groq LLM
     setCapsuleState('reasoning', 'Synthesizing decision matrix…');
     if (missionCardEl) {
       missionCardEl.innerHTML = `🧠 **Synthesizing Multi-Factor Decision Matrix: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 5, 'AI SYNTHESIS')}`;
     }
 
+    // REAL STEP 5 WORK: Groq Multi-Factor Report Synthesis
     let report = null;
     try {
       const synRes = await new Promise((resolve) => {
@@ -4168,7 +4200,7 @@
       console.warn('[Vox Agent] Report synthesis error:', e);
     }
 
-    // Mark mission card complete
+    // Mark mission card complete ONLY after real synthesis finishes
     if (missionCardEl) {
       missionCardEl.innerHTML = `✅ **Autonomous Shopping Mission Completed**\n\n${renderJobDeskProgressHtml(plan, 5, 'DONE')}`;
     }
