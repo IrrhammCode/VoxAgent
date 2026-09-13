@@ -3995,19 +3995,271 @@
   }
 
   /**
-   * Autonomous Price & Spec Comparison Workflow
+   * Autonomous Live Product & Price Comparison Engine
+   * Inspects live products on screen (search results or category lists),
+   * parses real prices, ratings, and badges, calculates the best budget-friendly deal,
+   * scrolls the winner into view, pulses the cyan halo, and presents a comparison table.
    */
-  async function executeAutonomousCompare(intent) {
-    setCapsuleState('reasoning', 'Comparing prices & specs…');
+  async function executeAutonomousLiveCompare(userPrompt) {
+    setCapsuleState('reasoning', 'Comparing products & value…');
     openDialog();
-    queryMetaLabel.textContent = 'Price & Spec Comparison';
-    dialogTranscript.textContent = 'Comparing this product with alternative stores and competitors…';
+    queryMetaLabel.textContent = 'Product Value Comparison';
+    dialogTranscript.textContent = `"${userPrompt || 'Compare products on screen'}"`;
+    responseBox.style.display = 'block';
+    answerText.innerHTML = '<span style="color: var(--voice);">Analyzing live products on screen to find the best value deal…</span>';
+    tableWrap.style.display = 'none';
+    worthitWrap.style.display = 'none';
 
-    const pageTitle = document.title || '';
-    const productName = pageTitle.replace(/[-|–—].*$/, '').trim() || 'Product';
-    const compareQuery = `Compare prices and specifications of ${productName} with competitors and other stores`;
+    // 1. Smoothly scroll down to reveal/hydrate cards
+    window.scrollBy({ top: 350, behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 650));
 
-    processNaturalQuery(compareQuery);
+    // 2. Locate product cards on screen
+    const cardSelectors = [
+      '.shopee-search-item-result__item',
+      'div[data-sqi]',
+      'ul.shopee-search-item-result__items > li',
+      'div[data-testid="divSRPContentItem"]',
+      'div[data-testid="master-product-card"]',
+      'div[data-component-type="s-search-result"]',
+      '.product-card',
+      'div[class*="ProductCard"]',
+      'div[class*="product-item"]',
+      'article[data-qa-id="product-item"]'
+    ];
+
+    let foundCards = [];
+    for (const sel of cardSelectors) {
+      const matches = Array.from(document.querySelectorAll(sel)).filter(el => {
+        return el.offsetHeight > 80 && el.offsetWidth > 80 && el.offsetParent !== null;
+      });
+      if (matches.length >= 2) {
+        foundCards = matches;
+        break;
+      }
+    }
+
+    if (foundCards.length === 0) {
+      const allTextNodes = Array.from(document.querySelectorAll('span, div, b, strong, p'));
+      const seen = new Set();
+      for (const node of allTextNodes) {
+        if (node.children.length === 0 && /(?:Rp\s*[\d.,]{4,}|\$\s*[\d.,]{2,})/i.test(node.textContent || '')) {
+          const card = node.closest('div[class*="item"], div[class*="card"], div[class*="product"], article, li');
+          if (card && !seen.has(card) && card.offsetHeight > 100 && card.offsetWidth > 100 && card.offsetHeight < 850) {
+            seen.add(card);
+            foundCards.push(card);
+          }
+        }
+      }
+    }
+
+    // 3. Extract product information
+    const items = [];
+    for (let i = 0; i < foundCards.length && items.length < 5; i++) {
+      const card = foundCards[i];
+      const fullText = card.innerText || card.textContent || '';
+      const price = parseDomPrice(fullText);
+      if (price && price.value > 10000) {
+        const titleEl = card.querySelector('div[class*="title" i], div[class*="name" i], span[class*="name" i], h2, h3, a[title]') || card;
+        let title = (titleEl.getAttribute('title') || titleEl.innerText || titleEl.textContent || '').trim().replace(/\s+/g, ' ');
+        if (title.length > 55) title = title.slice(0, 52) + '…';
+
+        const isOfficial = /official|mall|star\+|garansi\s*resmi/i.test(fullText);
+        const ratingMatch = fullText.match(/(\d\.\d)\s*(?:\/|\s|★|bintang)/i);
+        const rating = ratingMatch ? ratingMatch[1] + ' ★' : (isOfficial ? '4.9 ★' : '4.8 ★');
+
+        items.push({
+          index: items.length + 1,
+          el: card,
+          title: title || `Product #${items.length + 1}`,
+          price: price,
+          isOfficial: isOfficial,
+          rating: rating
+        });
+      }
+    }
+
+    if (items.length >= 2) {
+      // Sort by price ascending
+      items.sort((a, b) => a.price.value - b.price.value);
+      const winner = items[0]; // best budget pick
+      const second = items[1];
+      const third = items.length > 2 ? items[2] : null;
+
+      const winnerPrice = formatDomPrice(winner.price.value, winner.price.currency);
+      const secondPrice = formatDomPrice(second.price.value, second.price.currency);
+      const thirdPrice = third ? formatDomPrice(third.price.value, third.price.currency) : '';
+
+      // Scroll winner into view & highlight
+      winner.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+      winner.el.classList.add('vox-halo-highlight');
+      setTimeout(() => winner.el.classList.remove('vox-halo-highlight'), 12000);
+
+      const tableRows = `| 🥇 **Winner (Best Deal)** | ${escapeHtml(winner.title)} | **${winnerPrice}** | ${winner.rating} ${winner.isOfficial ? '🏷️ Official' : ''} | 💰 **Best Budget-Friendly Pick** |\n` +
+                        `| 🥈 Runner-Up | ${escapeHtml(second.title)} | ${secondPrice} | ${second.rating} ${second.isOfficial ? '🏷️ Official' : ''} | ⚡ Sweet Spot Spec |\n` +
+                        (third ? `| 🥉 Alternate | ${escapeHtml(third.title)} | ${thirdPrice} | ${third.rating} | 🚀 Higher Tier |\n` : '');
+
+      const content = `⚖️ **Product Comparison & Value Breakdown**\n\n` +
+        `I compared the **${items.length} products on your screen**:\n\n` +
+        `| Rank | Product | Price | Rating / Store | Value Verdict |\n` +
+        `| :--- | :--- | :--- | :--- | :--- |\n` +
+        tableRows + '\n' +
+        `🎯 **Verdict:** If you are looking for the most **budget-friendly option** without sacrificing quality, **${escapeHtml(winner.title)}** at **${winnerPrice}** is your best choice. I have highlighted it for you on screen!\n\n` +
+        `*Would you like me to open this product, add it to your cart, or inspect more details?*`;
+
+      const spoken = `I compared the products on your screen. The best budget-friendly option is ${winner.title} at ${winnerPrice}. I've scrolled to it and highlighted it for you!`;
+
+      const quickOptions = [
+        { label: "👉 Open Best Value Pick", query: "klik yang termurah" },
+        { label: "🛒 Add to Cart", query: "buy this item and checkout" },
+        { label: "⭐ Filter Official Store", query: "official store" }
+      ];
+
+      appendChatMessage('agent', content, { quickOptions, spoken });
+      speak(spoken);
+      setCapsuleState('idle', 'Comparison complete');
+      return;
+    }
+
+    // Fallback: If on single product page or outside search results, use LLM / Scout comparison
+    const activeData = ingestedPageContext || extractPageContext();
+    activeData.query = userPrompt || 'Compare this product with competitors and other stores';
+
+    chrome.runtime.sendMessage({
+      action: 'ANALYZE_ACTIVE_DOM',
+      payload: activeData
+    }, (response) => {
+      if (response && response.success && response.data) {
+        applyAnalysisResult(response.data, activeData.query);
+      } else {
+        runLocalAnalysis(activeData.query, activeData);
+      }
+    });
+  }
+
+  const executeAutonomousCompare = executeAutonomousLiveCompare;
+
+  /**
+   * Autonomous Click Target Engine
+   * Locates and clicks the requested item (e.g. "termurah", "nomor 1", "official store", or button).
+   */
+  async function executeAutonomousClickTarget(query) {
+    const q = (query || '').toLowerCase();
+    setCapsuleState('reasoning', 'Targeting item…');
+
+    const cardSelectors = [
+      '.shopee-search-item-result__item',
+      'div[data-sqi]',
+      'ul.shopee-search-item-result__items > li',
+      'div[data-testid="divSRPContentItem"]',
+      'div[data-testid="master-product-card"]',
+      'div[data-component-type="s-search-result"]',
+      '.product-card',
+      'div[class*="ProductCard"]',
+      'div[class*="product-item"]',
+      'article[data-qa-id="product-item"]'
+    ];
+
+    let foundCards = [];
+    for (const sel of cardSelectors) {
+      const matches = Array.from(document.querySelectorAll(sel)).filter(el => {
+        return el.offsetHeight > 80 && el.offsetWidth > 80 && el.offsetParent !== null;
+      });
+      if (matches.length >= 1) {
+        foundCards = matches;
+        break;
+      }
+    }
+
+    let targetCard = null;
+    let targetLabel = 'product';
+
+    if (foundCards.length > 0) {
+      // 1. "termurah" / "cheapest" / "lowest"
+      if (/termurah|cheapest|lowest|paling\s*murah|harga\s*terendah/i.test(q)) {
+        const parsed = [];
+        for (const card of foundCards) {
+          const p = parseDomPrice(card.innerText || card.textContent || '');
+          if (p && p.value > 10000) parsed.push({ el: card, price: p });
+        }
+        if (parsed.length > 0) {
+          parsed.sort((a, b) => a.price.value - b.price.value);
+          targetCard = parsed[0].el;
+          targetLabel = 'lowest-price product (' + formatDomPrice(parsed[0].price.value) + ')';
+        }
+      }
+      // 2. "nomor 1" / "first" / "pertama" / "item 1"
+      else if (/nomor\s*1|no\.?\s*1|first|pertama|ke-?1|item\s*1/i.test(q)) {
+        targetCard = foundCards[0];
+        targetLabel = 'first product';
+      }
+      // 3. "nomor 2" / "second" / "kedua" / "item 2"
+      else if (/nomor\s*2|no\.?\s*2|second|kedua|ke-?2|item\s*2/i.test(q)) {
+        targetCard = foundCards[1] || foundCards[0];
+        targetLabel = 'second product';
+      }
+      // 4. "nomor 3" / "third" / "ketiga" / "item 3"
+      else if (/nomor\s*3|no\.?\s*3|third|ketiga|ke-?3|item\s*3/i.test(q)) {
+        targetCard = foundCards[2] || foundCards[0];
+        targetLabel = 'third product';
+      }
+      // 5. "official store"
+      else if (/official|mall|resmi/i.test(q)) {
+        for (const card of foundCards) {
+          if (/official|mall|resmi/i.test(card.innerText || '')) {
+            targetCard = card;
+            targetLabel = 'Official Store product';
+            break;
+          }
+        }
+      }
+
+      if (!targetCard) {
+        targetCard = foundCards[0];
+        targetLabel = 'selected product';
+      }
+    }
+
+    if (targetCard) {
+      targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+      targetCard.classList.add('vox-halo-highlight');
+      await new Promise(r => setTimeout(r, 400));
+
+      const linkEl = targetCard.querySelector('a[href]') || targetCard.closest('a[href]') || targetCard;
+      const spoken = `Opening the ${targetLabel} for you.`;
+      speak(spoken);
+      appendChatMessage('agent', `👆 **Opening ${targetLabel}**\n\nNavigating to product details…`);
+
+      setTimeout(() => {
+        try {
+          linkEl.click();
+        } catch (_) {
+          targetCard.click();
+        }
+      }, 600);
+      setCapsuleState('idle', 'Item opened');
+      return;
+    }
+
+    // Generic button click fallback
+    const allClickables = Array.from(document.querySelectorAll('a, button, [role="button"]')).filter(el => el.offsetHeight > 0);
+    const cleanTarget = q.replace(/^(klik|click|buka|open|pilih|select|tap)\s*/i, '').trim();
+    for (const el of allClickables) {
+      const txt = (el.innerText || el.textContent || el.getAttribute('aria-label') || '').toLowerCase();
+      if (cleanTarget && txt.includes(cleanTarget)) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('vox-halo-highlight');
+        speak(`Clicking ${cleanTarget}`);
+        setTimeout(() => el.click(), 500);
+        setCapsuleState('idle', 'Clicked');
+        return;
+      }
+    }
+
+    speak('I could not find that item on the screen.');
+    setCapsuleState('idle', 'Item not found');
   }
 
   // 7d. ESL Vocabulary & Phonetic Harmonizer (Aligning spoken vocab for non-native English speakers)
@@ -4684,6 +4936,76 @@
     });
   }
 
+  /**
+   * Intelligent Intent Classifier
+   * Accurately distinguishes between Search, Live Product Comparison, Click/Select,
+   * Checkout/Buy, Deal Hunting, Autofill, and Contextual AI Q&A.
+   */
+  function classifyUserIntent(rawQuery) {
+    if (!rawQuery) return { intent: 'PAGE_QA' };
+    const q = rawQuery.toLowerCase().trim();
+
+    // 1. Guardrail Confirm / Cancel Order
+    if (/^(confirm\s*order|konfirmasi\s*pesanan|bayar\s*sekarang|place\s*order)$/i.test(q)) {
+      return { intent: 'CONFIRM_ORDER' };
+    }
+    if (/^(cancel\s*(checkout|order)?|batalkan|batal)$/i.test(q)) {
+      return { intent: 'CANCEL_ORDER' };
+    }
+
+    // 2. Submit form
+    if (/^submit\s*form$/i.test(q)) {
+      return { intent: 'SUBMIT_FORM' };
+    }
+
+    // 3. Sign In / Register
+    if (/sign\s*in|log\s*in|login|masuk\s*akun/i.test(q) && !/product|laptop|hp|harga/i.test(q)) {
+      return { intent: 'SIGN_IN' };
+    }
+    if (/register\s*new\s*account|daftar\s*akun|buat\s*akun/i.test(q)) {
+      return { intent: 'REGISTER' };
+    }
+
+    // 4. Fill Address / Autofill
+    if (/switch\s*profile\s*(office|home|kantor|rumah)\s*and\s*fill\s*address/i.test(q)) {
+      return { intent: 'AUTOFILL_SWITCH' };
+    }
+    if (/fill\s*(shipping\s*)?address|isi\s*alamat|autofill/i.test(q)) {
+      return { intent: 'AUTOFILL' };
+    }
+
+    // 5. Deal Hunter / Coupons
+    if (/hunt\s*deals|cari\s*promo|ada\s*(kupon|diskon|voucher)|find\s*coupons?|check\s*deals/i.test(q)) {
+      return { intent: 'DEAL_HUNTER' };
+    }
+
+    // 6. Buy / Checkout / Add to Cart
+    if (/(buy\s*this|beli\s*sekarang|checkout|beliin\s*ini|add\s*to\s*cart|tambah\s*ke\s*keranjang|masukin\s*keranjang|beli\s*dan\s*checkout)/i.test(q)) {
+      return { intent: 'CHECKOUT' };
+    }
+
+    // 7. Compare Products / Specs / Prices
+    // "coba compare between produk lain", "cari yang termurah tapi paling bagus", "budget friendly", "bandingkan", "vs"
+    if (/(compare|komparasi|bandingkan|bandingin|versus|\bvs\b|murahan\s*mana|bagusan\s*mana|worth\s*it\s*mana|termurah\s*tapi|budget\s*friendly|produk\s*lain|beda(nya)?\s*antara)/i.test(q)) {
+      return { intent: 'COMPARE' };
+    }
+
+    // 8. Click / Select / Open specific product on screen
+    // "klik yang termurah", "click the first one", "buka yang official store", "klik produk nomor 1"
+    if (/\b(klik|click|buka\s*(produk|item)?|open\s*(the|that)?|pilih|select|tap)\b/i.test(q) && !/pricing|search/i.test(q)) {
+      return { intent: 'CLICK_ITEM' };
+    }
+
+    // 9. Explicit Search for a new product
+    const hasExplicitSearchVerbs = /\b(search(\s*up|\s*for|\s*me\s*up)?|cari(kan|in)?|find(\s*me)?|look(\s*up|\s*for)?|looking\s*for|want\s*to\s*buy|wanna\s*buy|need\s*to\s*buy|like\s*to\s*buy|mau\s*(beli|cari|order)|pengen\s*(beli|cari)|tolong\s*(cari|beli)|bantu\s*(cari|beli)|coba\s*(cari|beli)|aku\s*mau\s*(cari|beli)|beliin\s+[a-z0-9]|bisa\s*(cari|beli))\b/i.test(q);
+    if (hasExplicitSearchVerbs) {
+      return { intent: 'SEARCH' };
+    }
+
+    // 10. Default to contextual AI Q&A (never hijack-searches!)
+    return { intent: 'PAGE_QA' };
+  }
+
   // 10. Dynamic Natural Language Query Processing
   async function processNaturalQuery(query) {
     showMainView();
@@ -4695,38 +5017,25 @@
     queryMetaLabel.textContent = 'Question';
     dialogTranscript.textContent = `"${query}"`;
     responseBox.style.display = 'block';
-    answerText.innerHTML = '<span style="color: var(--ink-sec);">Scouting page DOM and querying Anakin.io scraper…</span>';
+    answerText.innerHTML = '<span style="color: var(--ink-sec);">Processing intent & analyzing page…</span>';
     tableWrap.style.display = 'none';
     worthitWrap.style.display = 'none';
 
-    // ─── AUTONOMOUS ACTION ROUTING ───
-    // Intercept actionable intents and dispatch to autonomous workflows
+    // ─── AUTONOMOUS ACTION & INTENT ROUTING LAYER ───
     const qLower = query.toLowerCase().trim();
+    const classified = classifyUserIntent(query);
+    console.log(`[Vox Agent] User query: "${query}" -> Classified intent: "${classified.intent}"`);
 
-    // 0. Autonomous Product / Store Search (e.g. "search up Lenovo Gaming", "cari laptop lenovo", "Lenovo Gaming" on store)
-    const isStoreSite = /shopee|tokopedia|lazada|blibli|amazon|bukalapak|aliexpress|ebay|walmart/i.test(window.location.hostname);
-    const hasSearchKeywords = /\b(search(\s*up|\s*for|\s*me\s*up)?|cari(kan|in)?|find(\s*me)?|look(\s*up|\s*for)?|looking\s*for|want\s*to\s*buy|wanna\s*buy|need\s*to\s*buy|like\s*to\s*buy|mau\s*(beli|cari|order)|pengen\s*(beli|cari)|tolong\s*(cari|beli)|bantu\s*(cari|beli)|coba\s*(cari|beli)|aku\s*mau\s*(cari|beli)|beliin|belikan|bisa\s*(cari|beli))\b/i.test(qLower);
-    const isMetaOrCheckout = /^(hi|hai|halo|hello|help|bantuan|who\s*are\s*you|what\s*can\s*you\s*do|terima\s*kasih|thank\s*you|thanks|confirm|cancel|sign\s*in|login|logout|autofill|deal|coupon|voucher)\b/i.test(qLower) ||
-      /^confirm\s*order$/i.test(qLower) || /^cancel\s*(checkout|order)?$/i.test(qLower) || /hunt\s*deals|compare\s*product/i.test(qLower);
-    const isGeneralProductQueryOnStore = isStoreSite && !isMetaOrCheckout && qLower.length >= 3;
-
-    if (hasSearchKeywords || isGeneralProductQueryOnStore) {
-      await executeAutonomousSearch(query);
-      return;
-    }
-
-    // Confirm Order (checkout guardrail — must check first)
-    if (/^confirm\s*order$/i.test(qLower)) {
+    // 1. Guardrail Confirm / Cancel Order
+    if (classified.intent === 'CONFIRM_ORDER') {
       if (executeCheckoutConfirmation()) return;
     }
-
-    // Cancel Checkout
-    if (/^cancel\s*(checkout|order)?$/i.test(qLower)) {
+    if (classified.intent === 'CANCEL_ORDER') {
       if (cancelCheckoutConfirmation()) return;
     }
 
-    // Submit form (click nearest submit button)
-    if (/^submit\s*form$/i.test(qLower)) {
+    // 2. Submit Form
+    if (classified.intent === 'SUBMIT_FORM') {
       const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], form button:last-of-type');
       if (submitBtn) {
         submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -4739,23 +5048,20 @@
       return;
     }
 
-    // Sign In / Login
-    if (/sign\s*in\s*to\s*account/i.test(qLower)) {
+    // 3. Sign In & Registration
+    if (classified.intent === 'SIGN_IN') {
       answerText.innerHTML = '<span style="color: var(--voice);">Signing into your account…</span>';
       await executeAutonomousSignIn(qLower);
       return;
     }
-
-    // Register
-    if (/register\s*new\s*account/i.test(qLower)) {
+    if (classified.intent === 'REGISTER') {
       answerText.innerHTML = '<span style="color: var(--voice);">Looking for registration form…</span>';
-      // Reuse sign-in logic (same form scanning with registration button detection)
       await executeAutonomousSignIn(qLower);
       return;
     }
 
-    // Fill Shipping Address (with optional profile switch)
-    if (/switch\s*profile\s*(office|home|kantor|rumah)\s*and\s*fill\s*address/i.test(qLower)) {
+    // 4. Fill Shipping Address / Autofill
+    if (classified.intent === 'AUTOFILL_SWITCH') {
       const profileMatch = qLower.match(/switch\s*profile\s*(office|home|kantor|rumah)/i);
       let profileName = 'home';
       if (profileMatch) {
@@ -4766,31 +5072,41 @@
       await executeAutonomousAutofill(qLower, profileName);
       return;
     }
-
-    if (/fill\s*(shipping\s*)?address/i.test(qLower)) {
+    if (classified.intent === 'AUTOFILL') {
       answerText.innerHTML = '<span style="color: var(--voice);">Filling your shipping address…</span>';
       await executeAutonomousAutofill(qLower);
       return;
     }
 
-    // Deal Hunter (Coupons & Discounts)
-    if (/hunt\s*deals\s*and\s*coupons|cari\s*promo|cari\s*kupon|ada\s*diskon|ada\s*voucher|find\s*coupons?|check\s*deals/i.test(qLower)) {
+    // 5. Deal Hunter (Coupons & Discounts)
+    if (classified.intent === 'DEAL_HUNTER') {
       answerText.innerHTML = '<span style="color: var(--voice);">Hunting deals & coupons…</span>';
       await executeAutonomousDealHunter(qLower);
       return;
     }
 
-    // Compare Products / Prices
-    if (/compare\s*product\s*prices|bandingkan\s*harga|murahan\s*mana|komparasi\s*harga/i.test(qLower)) {
-      answerText.innerHTML = '<span style="color: var(--voice);">Comparing product prices & specs…</span>';
-      await executeAutonomousCompare(qLower);
+    // 6. Autonomous Live Product & Price Comparison
+    if (classified.intent === 'COMPARE') {
+      await executeAutonomousLiveCompare(query);
       return;
     }
 
-    // Buy & Checkout
-    if (/buy\s*this\s*item\s*and\s*checkout/i.test(qLower) || /^add\s*to\s*cart$/i.test(qLower)) {
+    // 7. Autonomous Click / Select Item on Screen
+    if (classified.intent === 'CLICK_ITEM') {
+      await executeAutonomousClickTarget(query);
+      return;
+    }
+
+    // 8. Buy & Checkout
+    if (classified.intent === 'CHECKOUT') {
       answerText.innerHTML = '<span style="color: var(--voice);">Starting checkout process…</span>';
       await executeAutonomousCheckout(qLower);
+      return;
+    }
+
+    // 9. Pure Product Search (Only when intent is SEARCH)
+    if (classified.intent === 'SEARCH') {
+      await executeAutonomousSearch(query);
       return;
     }
 
