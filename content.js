@@ -6517,15 +6517,13 @@
           // If the user JUST said the wake word or greeting without a question (e.g. only "Hey Vox", "Hey Vos", "Halo Vox", "Vox")
           const isWakeWordOnly = !withoutWake || /^(hey\s*(vox|fox|box|vos|voss|foss|folks)|heyvox|heyvos|halo\s*(vox|vos)|halovox|hai\s*(vox|vos)|haivox|hei\s*(vox|vos)|heivox|vox|vos|fox|hey\s*fox|heyfox|halo\s*asisten|hey\s*box|halo|hai|hey|hello|hi)$/i.test(clean);
           if (isWakeWordOnly) {
-            console.log('[Vox Agent] Wake word acknowledged:', clean);
+            console.log('[Vox Agent] Wake word acknowledged (chime & listen):', clean);
             playUiChime('ready');
-            expandCapsule('Halo! Ada yang bisa dibantu?', 3000);
+            expandCapsule('Mendengarkan… Siap membantu! 🎙', 3000);
             setCapsuleState('listening', 'Mendengarkan…');
-            dialogTranscript.textContent = 'Halo! Ada yang bisa dibantu?';
-            const isIndo = (voxLanguage.startsWith('id') || window.VOX_ENV?.VOX_LANGUAGE === 'id') ||
-                           /\b(halo|hai|bro|mas|gan)\b/i.test(clean);
-            const greeting = isIndo ? 'Ya bro?' : 'Yes?';
-            speak(greeting);
+            dialogTranscript.textContent = 'Mendengarkan… silakan bicara.';
+            // Do NOT call speak(greeting) here to prevent voice collisions and double-speaking
+            // when the user speaks their question right after the wake word!
             return;
           }
 
@@ -7129,12 +7127,15 @@
     };
 
     // Strategy 1: ElevenLabs / Background TTS Proxy (ultra-realistic human voice)
+    const elKey = (window.VOX_ENV?.ELEVENLABS_API_KEY || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.ELEVENLABS_API_KEY) || localStorage.getItem('elevenlabs_api_key') || '').trim();
+    const elVoice = (window.VOX_ENV?.ELEVENLABS_VOICE_ID || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.ELEVENLABS_VOICE_ID) || 'IKne3meq5aSn9XLyUdCD').trim();
+
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage && chrome.runtime?.id) {
         const proxyResult = await new Promise((resolve) => {
           try {
             chrome.runtime.sendMessage(
-              { action: 'TTS_GENERATE_AUDIO', payload: { text, lang: langCode } },
+              { action: 'TTS_GENERATE_AUDIO', payload: { text, lang: langCode, apiKey: elKey, voiceId: elVoice } },
               (response) => {
                 if (chrome.runtime?.lastError || !response?.success) {
                   resolve(null);
@@ -7170,17 +7171,15 @@
             audio.onended = onSpeechDone;
             audio.onerror = () => {
               if (thisSpeechId !== currentSpeechId) return;
-              console.warn('[Vox Agent] ElevenLabs audio playback error, trying fallback');
-              fallbackToNeuralOrWebSpeech(text, langCode, onSpeechDone, thisSpeechId);
+              console.warn('[Vox Agent] ElevenLabs audio playback error');
+              onSpeechDone();
             };
             try {
               await audio.play();
               return; // SUCCESS: ElevenLabs is playing. DO NOT continue to fallback!
             } catch (playErr) {
               if (thisSpeechId !== currentSpeechId) return;
-              console.warn('[Vox Agent] ElevenLabs play error, falling back to Web Speech:', playErr);
-              fallbackToNeuralOrWebSpeech(text, langCode, onSpeechDone, thisSpeechId);
-              return;
+              console.warn('[Vox Agent] ElevenLabs play error:', playErr);
             }
           } else if (proxyResult.source === 'google_neural' && proxyResult.audioChunks?.length) {
             stopCurrentSpeech(false);
@@ -7211,13 +7210,62 @@
 
     if (thisSpeechId !== currentSpeechId) return;
 
-    // Fallback chain ONLY when ElevenLabs proxy was not executed
+    // Strategy 1b: Direct Tab Fetch to ElevenLabs if background proxy was disconnected/failed
+    if (elKey) {
+      try {
+        const directRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${elVoice || 'IKne3meq5aSn9XLyUdCD'}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'xi-api-key': elKey
+          },
+          body: JSON.stringify({
+            text: text.slice(0, 4000),
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: {
+              stability: 0.38,
+              similarity_boost: 0.80,
+              style: 0.45,
+              use_speaker_boost: true
+            }
+          })
+        });
+        if (directRes.ok) {
+          if (thisSpeechId !== currentSpeechId) return;
+          const blob = await directRes.blob();
+          const audioUrl = URL.createObjectURL(blob);
+          stopCurrentSpeech(false);
+          const audio = new Audio(audioUrl);
+          currentAudio = audio;
+          audio.playbackRate = voiceSpeed;
+          audio.onended = () => { URL.revokeObjectURL(audioUrl); onSpeechDone(); };
+          audio.onerror = () => { URL.revokeObjectURL(audioUrl); onSpeechDone(); };
+          await audio.play();
+          return;
+        }
+      } catch (directErr) {
+        console.warn('[Vox Agent] Direct ElevenLabs fetch error:', directErr);
+      }
+    }
+
+    if (thisSpeechId !== currentSpeechId) return;
+
+    // Fallback chain ONLY when ElevenLabs is not configured
     fallbackToNeuralOrWebSpeech(text, langCode, onSpeechDone, thisSpeechId);
   }
 
   async function fallbackToNeuralOrWebSpeech(text, langCode, onDone, speechId) {
     if (speechId && speechId !== currentSpeechId) return;
     stopCurrentSpeech(false);
+
+    // If ElevenLabs is configured, NEVER fall back to the robotic browser SpeechSynthesis voice!
+    const hasElevenLabs = !!(window.VOX_ENV?.ELEVENLABS_API_KEY || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.ELEVENLABS_API_KEY) || localStorage.getItem('elevenlabs_api_key'));
+    if (hasElevenLabs) {
+      console.warn('[Vox Agent] ElevenLabs configured — suppressing robotic browser TTS to avoid unnatural speech.');
+      if (onDone) onDone();
+      return;
+    }
+
     speakViaWebSpeech(text, langCode === 'id' ? 'id-ID' : 'en-US', onDone);
   }
 

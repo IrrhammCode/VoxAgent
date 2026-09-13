@@ -3430,6 +3430,12 @@
       }
 
       if (thisVoiceSeqId !== currentVoiceSeqId) return;
+      const hasElevenLabs = !!(window.VOX_ENV?.ELEVENLABS_API_KEY || localStorage.getItem('elevenlabs_api_key'));
+      if (hasElevenLabs) {
+        console.warn('[Simulator] ElevenLabs configured — suppressing robotic browser TTS.');
+        finish();
+        return;
+      }
       speakWebSpeech(text, isIndonesian ? 'id-ID' : 'en-US', finish);
     }
 
@@ -3479,11 +3485,16 @@
           const harmonized = typeof harmonizeUserVocab === 'function' ? harmonizeUserVocab(transcript) : transcript;
           const t = harmonized.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks|vos|voss|foss)[,.]?\s*/i, '').trim();
           const cleanQ = t.replace(/^(terus|lalu|kemudian|and\s+then|then)\s+/i, '').trim();
-          const finalQ = cleanQ || (transcript.trim() ? 'hai' : '');
-          if (finalQ.length >= 2) {
+          if (!cleanQ) {
+            // Wake word only: acknowledge visually & chime, do not trigger premature utterance
+            playUiChime('ready');
+            setCapsuleState('listening', 'LISTENING', 'Listening… speak your command');
+            return;
+          }
+          if (cleanQ.length >= 2) {
             stopVoice(true);
             try { recognition.stop(); } catch (_) {}
-            runAgentSwarm(finalQ);
+            runAgentSwarm(cleanQ);
           }
         }
       };

@@ -1692,23 +1692,25 @@ function cleanTextForSpeech(text) {
  * bypassing CORS restrictions that block content scripts.
  * Returns base64 data URI for instant playback in the page.
  */
-async function handleTtsAudioProxy({ text, lang = 'en' }) {
+async function handleTtsAudioProxy({ text, lang = 'en', apiKey = '', voiceId = '' }) {
   text = cleanTextForSpeech(text);
   if (!text || text.length < 2) throw new Error('Empty TTS text');
 
   // Strategy 1: ElevenLabs Multilingual v2 (ultra-realistic human voice)
+  const payloadKey = (apiKey && apiKey.trim()) || '';
   const envElKey = (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_API_KEY) || '';
   const storedElKey = (settingsCache.elevenlabsApiKey && settingsCache.elevenlabsApiKey.trim()) || '';
-  const elKey = storedElKey || envElKey;
+  const elKey = payloadKey || storedElKey || envElKey;
   if (elKey) {
     try {
-      let voiceId = (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || settingsCache.elevenlabsVoiceId || 'IKne3meq5aSn9XLyUdCD';
+      const payloadVoice = (voiceId && voiceId.trim()) || '';
+      let activeVoiceId = payloadVoice || (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || settingsCache.elevenlabsVoiceId || 'IKne3meq5aSn9XLyUdCD';
       // Auto-migrate legacy or previous voice IDs to Charlie
-      if (voiceId === '21m00Tcm4TlvDq8ikWAM' || voiceId === 'EXAVITQu4vr4xnSDxMaL' || voiceId === 'pNInz6obpgDQGcFmaJgB') {
-        voiceId = 'IKne3meq5aSn9XLyUdCD';
+      if (activeVoiceId === '21m00Tcm4TlvDq8ikWAM' || activeVoiceId === 'EXAVITQu4vr4xnSDxMaL' || activeVoiceId === 'pNInz6obpgDQGcFmaJgB') {
+        activeVoiceId = 'IKne3meq5aSn9XLyUdCD';
       }
       const model = settingsCache.elevenlabsModel || 'eleven_multilingual_v2';
-      const candidateVoices = [voiceId, 'IKne3meq5aSn9XLyUdCD', 'TX3LPaxmHKxFdv7VOQHJ', 'CwhRBWXzGAHq8TQ4Fs17'];
+      const candidateVoices = [activeVoiceId, 'IKne3meq5aSn9XLyUdCD', 'TX3LPaxmHKxFdv7VOQHJ', 'CwhRBWXzGAHq8TQ4Fs17'];
 
       for (const vid of [...new Set(candidateVoices)]) {
         try {
