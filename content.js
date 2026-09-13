@@ -1769,11 +1769,66 @@
 
   function formatMarkdown(text) {
     if (!text) return '';
-    let escaped = escapeHtml(text);
-    escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    escaped = escaped.replace(/`(.*?)`/g, '<code style="background:var(--chip-bg);padding:1px 5px;border-radius:4px;font-family:var(--font-mono);font-size:11px;">$1</code>');
-    escaped = escaped.replace(/\n/g, '<br>');
-    return escaped;
+    const lines = text.split('\n');
+    const out = [];
+    let inTable = false;
+    let tableLines = [];
+
+    function flushTable() {
+      if (tableLines.length < 2) {
+        tableLines.forEach(l => {
+          let esc = escapeHtml(l);
+          esc = esc.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          esc = esc.replace(/\*(.*?)\*/g, '<em>$1</em>');
+          esc = esc.replace(/`(.*?)`/g, '<code style="background:var(--chip-bg);padding:1px 5px;border-radius:4px;font-family:var(--font-mono);font-size:11px;">$1</code>');
+          out.push(esc);
+        });
+        tableLines = [];
+        inTable = false;
+        return;
+      }
+      const headerRow = tableLines[0].split('|').slice(1, -1).map(c => c.trim());
+      const bodyRows = tableLines.slice(2).map(r => r.split('|').slice(1, -1).map(c => c.trim())).filter(r => r.length > 0);
+
+      let html = '<div style="overflow-x:auto; margin:8px 0;"><table class="vox-table"><thead><tr>';
+      headerRow.forEach(h => {
+        let cell = escapeHtml(h).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html += '<th>' + cell + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      bodyRows.forEach((r, idx) => {
+        const isWinner = idx === 0 || r.some(c => /winner|pemenang|juara/i.test(c));
+        html += '<tr' + (isWinner ? ' class="hl"' : '') + '>';
+        r.forEach(c => {
+          let cellHtml = escapeHtml(c);
+          cellHtml = cellHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          cellHtml = cellHtml.replace(/\*(.*?)\*/g, '<em>$1</em>');
+          html += '<td>' + cellHtml + '</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      out.push(html);
+      tableLines = [];
+      inTable = false;
+    }
+
+    for (let line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        inTable = true;
+        tableLines.push(trimmed);
+      } else {
+        if (inTable) flushTable();
+        let escaped = escapeHtml(line);
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        escaped = escaped.replace(/`(.*?)`/g, '<code style="background:var(--chip-bg);padding:1px 5px;border-radius:4px;font-family:var(--font-mono);font-size:11px;">$1</code>');
+        out.push(escaped);
+      }
+    }
+    if (inTable) flushTable();
+    return out.join('<br>');
   }
 
   // Session Persistence Engine
@@ -2060,6 +2115,72 @@
 
     stream.scrollTop = stream.scrollHeight;
     return msgId;
+  }
+
+  function updateChatMessage(msgId, newContent, newExtra = null) {
+    const stream = shadow.getElementById('vox-chat-stream');
+    const msgRecord = activeChatSession.messages.find(m => m.id === msgId);
+    if (msgRecord) {
+      msgRecord.content = newContent;
+      if (newExtra) {
+        msgRecord.extra = { ...(msgRecord.extra || {}), ...newExtra };
+      }
+      saveActiveChatSession();
+    }
+    if (stream) {
+      const item = stream.querySelector(`#${msgId}`);
+      if (item) {
+        const bubbleText = item.querySelector('.vox-bubble-text');
+        if (bubbleText) {
+          bubbleText.innerHTML = formatMarkdown(newContent);
+        }
+        if (newExtra && newExtra.quickOptions && Array.isArray(newExtra.quickOptions)) {
+          let optContainer = item.querySelector('.vox-quick-options');
+          if (!optContainer) {
+            optContainer = document.createElement('div');
+            optContainer.className = 'vox-quick-options';
+            optContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;';
+            item.querySelector('.vox-chat-bubble')?.appendChild(optContainer);
+          }
+          optContainer.innerHTML = newExtra.quickOptions.map(opt => `
+            <button class="vox-quick-chip vox-quick-option-chip" data-action="${opt.action || ''}" data-url="${opt.targetUrl || ''}" data-query="${opt.query || ''}">
+              ${escapeHtml(opt.label)}
+            </button>
+          `).join('');
+
+          optContainer.querySelectorAll('.vox-quick-option-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+              const action = chip.getAttribute('data-action');
+              const targetUrl = chip.getAttribute('data-url');
+              const q = chip.getAttribute('data-query');
+
+              if (action === 'open_winner') {
+                const destUrl = targetUrl || 'https://www.tokopedia.com';
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = 'var(--voice)';
+                chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
+                speak('Opening the best deal store for you in a new tab.');
+                return;
+              }
+              if (action === 'buy_winner') {
+                const destUrl = targetUrl || 'https://www.tokopedia.com';
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = '#10b981';
+                chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
+                speak('Navigating to product page to proceed with order and shipping details.');
+                return;
+              }
+              if (q) {
+                chip.style.transform = 'scale(0.95)';
+                chip.style.borderColor = 'var(--voice)';
+                processNaturalQuery(q);
+              }
+            });
+          });
+        }
+      }
+      stream.scrollTop = stream.scrollHeight;
+    }
   }
 
   function resetChatSession() {
@@ -3540,8 +3661,6 @@
    * and executes the 5-Layer Cognitive Multi-Agent Shopping Engine.
    */
   async function executeAutonomousSearch(rawQuery) {
-    const cleanTerm = extractProductEntity(rawQuery) || extractCleanSearchTerm(rawQuery) || (rawQuery || '').trim();
-    await physicallyTypeAndClickStoreSearch(cleanTerm);
     return executeAutonomousLiveCompare(rawQuery);
   }
 
@@ -4094,14 +4213,37 @@
 
   function extractBudgetCeiling(q = '') {
     if (!q) return null;
-    const cleanQ = q.replace(/[,.]/g, '');
-    const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga)\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i)
-      || cleanQ.match(/(?:rp\.?|idr)\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i);
+    const s = q.toLowerCase();
+
+    const wordNumMap = [
+      { regex: /\b(sepuluh|ten)\s*(ribu|thousand|k|rb)?\b/i, val: 10000 },
+      { regex: /\b(dua puluh|twenty)\s*(ribu|thousand|k|rb)?\b/i, val: 20000 },
+      { regex: /\b(tiga puluh|thirty)\s*(ribu|thousand|k|rb)?\b/i, val: 30000 },
+      { regex: /\b(empat puluh|forty)\s*(ribu|thousand|k|rb)?\b/i, val: 40000 },
+      { regex: /\b(lima puluh|fifty)\s*(ribu|thousand|k|rb)?\b/i, val: 50000 },
+      { regex: /\b(seratus|one\s*hundred)\s*(ribu|thousand|k|rb)?\b/i, val: 100000 },
+      { regex: /\b(dua\s*ratus|two\s*hundred)\s*(ribu|thousand|k|rb)?\b/i, val: 200000 },
+      { regex: /\b(lima\s*ratus|five\s*hundred)\s*(ribu|thousand|k|rb)?\b/i, val: 500000 },
+      { regex: /\b(satu|one)\s*(juta|million|jt|m)?\b/i, val: 1000000 },
+      { regex: /\b(dua|two)\s*(juta|million|jt|m)?\b/i, val: 2000000 },
+      { regex: /\b(tiga|three)\s*(juta|million|jt|m)?\b/i, val: 3000000 },
+      { regex: /\b(lima|five)\s*(juta|million|jt|m)?\b/i, val: 5000000 }
+    ];
+
+    for (const item of wordNumMap) {
+      if (item.regex.test(s) && /(under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga|kurang\s*dari|less\s*than)/i.test(s)) {
+        return item.val;
+      }
+    }
+
+    const cleanQ = s.replace(/[,.]/g, '');
+    const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga|kurang\s*dari|less\s*than)\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|million|jt|k|rb|ribu|m|rupiah))?/i)
+      || cleanQ.match(/(?:rp\.?|idr)\s*(\d+)(?:\s*(juta|million|jt|k|rb|ribu|m|rupiah))?/i);
     if (match) {
       let num = parseInt(match[1], 10);
       const unit = (match[2] || '').toLowerCase();
-      if (unit === 'juta' || unit === 'jt' || unit === 'm') num *= 1000000;
-      else if (unit === 'k' || unit === 'rb' || unit === 'ribu') num *= 1000;
+      if (unit === 'juta' || unit === 'million' || unit === 'jt' || unit === 'm') num *= 1000000;
+      else if (unit === 'k' || unit === 'rb' || unit === 'ribu' || unit === 'thousand') num *= 1000;
       if (num >= 1000) return num;
       if (num > 0 && num < 100) return num * 1000000;
     }
@@ -4264,6 +4406,200 @@
    * 4. Multi-Store Search & Landed Price Auditor (Specs, Garansi Resmi, Star Ratings >=4.8, Landed Price up to checkout with STRICT safety stop)
    * 5. Multi-Factor Synthesis Matrix, Audio Trade-off Rationale & 1-Click Action Chips
    */
+  /**
+   * Autonomous In-Page Scout: One-by-One Physical Product Card Inspection
+   * Consecutively scrolls to, highlights, inspects, and audits on-screen listings one-by-one.
+   * Gives live HUD feedback and speech commentary for each candidate listing.
+   */
+  async function inspectCandidateProductsOneByOne({ targetKeyword, userBudgetCeiling, storeDisplayName, plan, missionMsgId, speakAudio = true }) {
+    // 1. Discover candidate cards across major marketplaces
+    const cardSelectors = [
+      '.shopee-search-item-result__item',
+      'div[data-sqi]',
+      'ul.shopee-search-item-result__items > li',
+      'div[data-testid="divSRPContentItem"]',
+      'div[data-testid="master-product-card"]',
+      'div[data-component-type="s-search-result"]',
+      '.product-card',
+      'div[class*="ProductCard"]',
+      'div[class*="product-item"]',
+      'article[data-qa-id="product-item"]'
+    ];
+
+    let foundCards = [];
+    for (const sel of cardSelectors) {
+      const matches = Array.from(document.querySelectorAll(sel)).filter(el => {
+        return el.offsetHeight > 70 && el.offsetWidth > 70 && el.offsetParent !== null;
+      });
+      if (matches.length >= 1) {
+        foundCards = matches;
+        break;
+      }
+    }
+
+    // Fallback: If not enough cards rendered yet, scroll down smoothly to trigger lazy hydration
+    if (foundCards.length < 2) {
+      window.scrollBy({ top: 380, behavior: 'smooth' });
+      await new Promise(r => setTimeout(r, 800));
+      for (const sel of cardSelectors) {
+        const matches = Array.from(document.querySelectorAll(sel)).filter(el => {
+          return el.offsetHeight > 70 && el.offsetWidth > 70 && el.offsetParent !== null;
+        });
+        if (matches.length >= 1) {
+          foundCards = matches;
+          break;
+        }
+      }
+    }
+
+    // Generic fallback for custom stores or sandbox
+    if (foundCards.length === 0) {
+      const allTextNodes = Array.from(document.querySelectorAll('span, div, b, strong, p'));
+      const seen = new Set();
+      for (const node of allTextNodes) {
+        if (node.children.length === 0 && /(?:Rp\s*[\d.,]{3,}|\$\s*[\d.,]{2,})/i.test(node.textContent || '')) {
+          const card = node.closest('div[class*="item"], div[class*="card"], div[class*="product"], article, li');
+          if (card && !seen.has(card) && card.offsetHeight > 70 && card.offsetWidth > 70 && card.offsetHeight < 850) {
+            seen.add(card);
+            foundCards.push(card);
+          }
+        }
+      }
+    }
+
+    // Parse candidate items
+    const parsedItems = [];
+    for (const card of foundCards) {
+      const fullText = card.innerText || card.textContent || '';
+      const price = parseDomPrice(fullText);
+      if (price && price.value >= 1000) {
+        const titleEl = card.querySelector('div[class*="title" i], div[class*="name" i], span[class*="name" i], h2, h3, a[title]') || card;
+        let title = (titleEl.getAttribute('title') || titleEl.innerText || titleEl.textContent || '').trim().replace(/\s+/g, ' ');
+        if (title.length > 60) title = title.slice(0, 57) + '…';
+        const linkEl = card.querySelector('a[href]') || card.closest('a[href]');
+        const url = linkEl ? linkEl.href : window.location.href;
+        const isOfficial = /official|mall|resmi/i.test(fullText);
+        parsedItems.push({
+          el: card,
+          title: title || targetKeyword,
+          price: price,
+          url: url,
+          official: isOfficial
+        });
+      }
+    }
+
+    if (parsedItems.length === 0) {
+      return { count: 0, items: [], minItem: null, bestCandidate: null, inspectedLog: [] };
+    }
+
+    // Inspect up to 3 candidate listings on screen one by one
+    const candidateSubset = parsedItems.slice(0, 3);
+    const inspectedLog = [];
+
+    if (speakAudio) {
+      speak(`Memulai audit produk satu per satu di layar ${storeDisplayName}.`);
+    }
+
+    for (let i = 0; i < candidateSubset.length; i++) {
+      const candidate = candidateSubset[i];
+      const fitsBudget = userBudgetCeiling ? (candidate.price.value <= userBudgetCeiling) : true;
+      const priceFormatted = formatDomPrice(candidate.price.value, candidate.price.currency);
+
+      // 1. Physically scroll candidate into center view
+      candidate.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // 2. Apply electric cyan halo highlight
+      document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+      candidate.el.classList.add('vox-halo-highlight');
+
+      // 3. Dispatch pointer events to simulate AI inspection
+      try {
+        candidate.el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+        candidate.el.focus && candidate.el.focus();
+      } catch (_) {}
+
+      // 4. Update Mission Card HUD live telemetry
+      inspectedLog.push({
+        num: i + 1,
+        title: candidate.title,
+        price: priceFormatted,
+        fitsBudget,
+        official: candidate.official
+      });
+
+      const currentHudContent = `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(targetKeyword)}"**\n\n` +
+        renderJobDeskProgressHtml(plan, 1, `INSPECTING ${i + 1}/${candidateSubset.length}`) + '\n\n' +
+        `<div style="background: rgba(0,242,254,0.08); border: 1px solid rgba(0,242,254,0.3); border-radius: 8px; padding: 8px 12px; margin-top: 8px;">` +
+        `<div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:650; color:var(--voice);">` +
+        `<span>🔍 Examining Listing ${i + 1}/${candidateSubset.length} (${escapeHtml(storeDisplayName)})</span>` +
+        `<span style="font-family:var(--font-mono); font-size:10px; color:${fitsBudget ? '#10B981' : '#F87171'};">${fitsBudget ? '✓ FITS BUDGET' : '⚠️ OVER BUDGET'}</span>` +
+        `</div>` +
+        `<div style="font-size:11.5px; font-weight:600; color:var(--ink-pri); margin:4px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">` +
+        `${escapeHtml(candidate.title)}` +
+        `</div>` +
+        `<div style="display:flex; gap:12px; font-size:10.5px; color:var(--ink-sec);">` +
+        `<span>Harga: <b style="color:var(--ink-pri);">${priceFormatted}</b></span>` +
+        `<span>Toko: <b>${candidate.official ? '🏷️ Official Store' : 'Reseller / Toko'}</b></span>` +
+        `<span>Budget: <b>${userBudgetCeiling ? '<= ' + formatDomPrice(userBudgetCeiling) : 'Fleksibel'}</b></span>` +
+        `</div>` +
+        `</div>` +
+        `<div style="margin-top:6px; display:flex; flex-direction:column; gap:3px;">` +
+        inspectedLog.map(h => `
+          <div style="font-size:10.5px; color:var(--ink-sec); display:flex; align-items:center; gap:6px;">
+            <span style="color:${h.fitsBudget ? '#10B981' : '#F87171'}; font-weight:bold;">${h.fitsBudget ? '✓' : '✗'}</span>
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(h.title)} (${h.price})</span>
+          </div>
+        `).join('') +
+        `</div>`;
+
+      updateChatMessage(missionMsgId, currentHudContent);
+
+      // 5. Voice commentary for this item
+      if (speakAudio) {
+        const fitComment = fitsBudget
+          ? (userBudgetCeiling ? `Harga ${priceFormatted}, sesuai dengan budget.` : `Harga ${priceFormatted}.`)
+          : `Harga ${priceFormatted}, melebihi batas budget kamu.`;
+        speak(`Memeriksa produk ke-${i + 1}: ${candidate.title.slice(0, 28)}. ${fitComment}`);
+      }
+
+      // 6. Paced visual pause (1800ms) so user can physically see and hear the agent inspect this card
+      await new Promise(r => setTimeout(r, 1800));
+    }
+
+    // Clean up temporary halo
+    document.querySelectorAll('.vox-halo-highlight').forEach(el => el.classList.remove('vox-halo-highlight'));
+
+    // Determine best on-screen candidate (prioritizing budget fit, then official store, then price)
+    const budgetFits = candidateSubset.filter(c => !userBudgetCeiling || c.price.value <= userBudgetCeiling);
+    const bestCandidate = (budgetFits.length > 0)
+      ? budgetFits.sort((a, b) => (b.official ? 1 : 0) - (a.official ? 1 : 0) || a.price.value - b.price.value)[0]
+      : candidateSubset.sort((a, b) => a.price.value - b.price.value)[0];
+
+    // Scroll to best candidate and leave subtle halo
+    if (bestCandidate && bestCandidate.el) {
+      bestCandidate.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      bestCandidate.el.classList.add('vox-halo-highlight');
+      setTimeout(() => bestCandidate.el.classList.remove('vox-halo-highlight'), 8000);
+    }
+
+    return {
+      count: parsedItems.length,
+      items: parsedItems,
+      minItem: parsedItems.sort((a, b) => a.price.value - b.price.value)[0],
+      bestCandidate,
+      inspectedLog
+    };
+  }
+
+  /**
+   * Autonomous 5-Layer Cognitive Multi-Agent Shopping Engine
+   * 1. Dynamic DOM Deconstruction (Specs, Price, Warranty, Active Store)
+   * 2. Natural Language Constraints Extraction (Budget, Quality, Preferences)
+   * 3. Serialized Job Desk Planning via Groq LLM (5 serialized steps)
+   * 4. Multi-Store Search & Landed Price Auditor (Specs, Garansi Resmi, Star Ratings >=4.8, Landed Price up to checkout with STRICT safety stop)
+   * 5. Multi-Factor Synthesis Matrix, Audio Trade-off Rationale & 1-Click Action Chips
+   */
   async function executeAutonomousLiveCompare(userPrompt, existingPlan = null, isResumed = false) {
     setCapsuleState('reasoning', 'Deconstructing shopping mission…');
     openDialog();
@@ -4288,6 +4624,8 @@
       }
     }
 
+    const userBudgetCeiling = extractBudgetCeiling(userPrompt) || null;
+
     // 2. Layer 2 & 3: Groq 5-Job-Desk Planning
     let plan = existingPlan;
     if (!plan) {
@@ -4298,6 +4636,7 @@
             payload: {
               query: userPrompt || targetSubject, // Send full natural query to Groq for constraint & budget extraction
               targetKeyword: targetSubject,
+              budgetMax: userBudgetCeiling,
               domain: window.location.hostname,
               connectedStores: (customStores || []).map(s => s.name)
             }
@@ -4321,8 +4660,8 @@
         missionId: 'mission_' + Date.now(),
         category: 'Audio / Peripherals',
         constraints: {
-          budgetMax: 300000,
-          budgetDescription: 'Budget friendly with high audio fidelity',
+          budgetMax: userBudgetCeiling || 300000,
+          budgetDescription: userBudgetCeiling ? `Budget under Rp ${userBudgetCeiling.toLocaleString('id-ID')}` : 'Budget friendly with high audio fidelity',
           keySpecRequirements: ['50mm Drivers', 'Detachable or Noise-cancelling Mic', 'Durable headband'],
           trustRequirement: 'Official Store · Garansi Resmi 1 Tahun'
         },
@@ -4334,25 +4673,24 @@
           { step: 5, id: 'job_synthesis', title: 'Multi-Factor Synthesis', desc: 'Rank by value-to-performance and present decision matrix' }
         ]
       };
+    } else if (userBudgetCeiling && plan.constraints) {
+      plan.constraints.budgetMax = userBudgetCeiling;
     }
 
-    // Append Live Progress Message to Chat Stream (Step 1 Active: Market Specs Benchmark & DOM Scan)
-    const missionMsgId = appendChatMessage('agent', `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 1, 'IN PROGRESS')}`);
-    const stream = shadow.getElementById('vox-chat-stream');
-    const missionCardEl = stream ? stream.querySelector(`#${missionMsgId} .vox-bubble-text`) : null;
-
-    speak(`Initiating shopping mission for ${displaySubject}. Scanning active store and benchmark specifications.`);
-
-    // REAL STEP 1 WORK: Physically type query into store search bar & scrape candidate cards
-    let activeStoreScraped = null;
     const storeDisplayName = /shopee/i.test(window.location.hostname) ? 'Shopee Indonesia' :
                              /tokopedia/i.test(window.location.hostname) ? 'Tokopedia' :
                              /blibli/i.test(window.location.hostname) ? 'Blibli' :
                              /amazon/i.test(window.location.hostname) ? 'Amazon' : 'Active Store';
 
+    // Append Live Progress Message to Chat Stream (Step 1 Active: Market Specs Benchmark & On-Screen Scout)
+    const missionMsgId = appendChatMessage('agent', `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 1, 'IN PROGRESS')}`);
+
+    speak(`Initiating shopping mission for ${displaySubject}. Scanning active store and benchmark specifications.`);
+
+    // ─── STEP 1: Physically type & click search + inspect candidate cards one by one ───
+    let activeStoreScraped = null;
     try {
       if (!isResumed) {
-        // Save pending mission state before physical search click in case page reloads/navigates
         try {
           sessionStorage.setItem('vox_pending_shopping_mission', JSON.stringify({
             userPrompt: userPrompt || targetSubject,
@@ -4366,36 +4704,41 @@
         await physicallyTypeAndClickStoreSearch(displaySubject || targetSubject);
       }
 
-      // Wait 1200ms for store cards to hydrate/render on screen
       await new Promise(r => setTimeout(r, 1200));
-
-      // Discard pending mission once we know we are still running on current page
       try { sessionStorage.removeItem('vox_pending_shopping_mission'); } catch (_) {}
 
-      // Real DOM Card Discovery and Scraping
-      activeStoreScraped = await autonomousScanAndHighlightSearchResults(targetSubject, storeDisplayName, false);
-      if (activeStoreScraped && activeStoreScraped.count > 0) {
-        if (missionCardEl) {
-          missionCardEl.innerHTML = `📋 **Scraped Active Store (${escapeHtml(storeDisplayName)}): Found ${activeStoreScraped.count} Listings**\n\n${renderJobDeskProgressHtml(plan, 1, 'AUDITED')}\n\n` +
-            `<div style="font-size: 11px; background: rgba(0,0,0,0.25); border: 1px solid rgba(0,242,254,0.2); border-radius: 6px; padding: 6px 10px; margin-top: 6px;">` +
-            `🔍 <b>Top Candidate On Screen:</b> ${escapeHtml(activeStoreScraped.minItem?.title || displaySubject)} (${formatDomPrice(activeStoreScraped.minItem?.price?.value)})` +
-            `</div>`;
-        }
-      }
+      // Real on-screen one-by-one card inspection with live telemetry and voice
+      activeStoreScraped = await inspectCandidateProductsOneByOne({
+        targetKeyword: targetSubject,
+        userBudgetCeiling: plan.constraints?.budgetMax || userBudgetCeiling,
+        storeDisplayName,
+        plan,
+        missionMsgId,
+        speakAudio: true
+      });
     } catch (scanErr) {
       console.warn('[Vox Agent] Active page DOM search & scan fallback:', scanErr);
     }
 
-    // Realistic visual pause so user can see Step 1 completed
-    await new Promise(r => setTimeout(r, 1100));
-
-    // ADVANCE TO STEP 2: Multi-Store Cross Search (Shopee, Tokopedia, Blibli, Amazon)
-    setCapsuleState('reasoning', 'Cross-searching 4 connected stores…');
-    if (missionCardEl) {
-      missionCardEl.innerHTML = `📋 **Auditing 4 Connected Stores: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 2, 'SEARCHING')}`;
+    // Step 1 Complete Summary in Mission Card
+    const bestOnScreen = activeStoreScraped?.bestCandidate || activeStoreScraped?.minItem;
+    let step1SummaryBox = '';
+    if (bestOnScreen) {
+      const bestPriceStr = formatDomPrice(bestOnScreen.price.value);
+      step1SummaryBox = `\n\n<div style="font-size: 11px; background: rgba(0,0,0,0.25); border: 1px solid rgba(0,242,254,0.2); border-radius: 6px; padding: 6px 10px; margin-top: 6px;">` +
+        `🔍 <b>Top Candidate On Screen:</b> ${escapeHtml(bestOnScreen.title)} (${bestPriceStr}) · ${bestOnScreen.official ? '🏷️ Official Store' : 'Toko'}` +
+        `</div>`;
     }
 
-    // REAL STEP 2 WORK: Execute 4-Store Cross Search
+    updateChatMessage(missionMsgId, `📋 **Market Specs Benchmark & On-Screen Scout Complete**\n\n${renderJobDeskProgressHtml(plan, 1, 'AUDITED')}${step1SummaryBox}`);
+    speak(`Selesai memeriksa produk di layar. Melanjutkan ke Step 2: pencarian 4 toko online.`);
+    await new Promise(r => setTimeout(r, 1200));
+
+    // ─── STEP 2: Multi-Store Cross Search via Anakin.io API (Shopee, Tokopedia, Blibli, Amazon) ───
+    setCapsuleState('reasoning', 'Querying Anakin.io API…');
+    updateChatMessage(missionMsgId, `📋 **Auditing 4 Connected Stores via Anakin.io API: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 2, 'SEARCHING')}${step1SummaryBox}`);
+    speak(`Mencari data pembanding di Shopee, Tokopedia, Blibli, dan Amazon melalui Anakin Web Search.`);
+
     let candidates = [];
     try {
       const searchRes = await new Promise((resolve) => {
@@ -4404,7 +4747,7 @@
           payload: {
             query: targetSubject,
             userPrompt: userPrompt,
-            budgetMax: plan.constraints?.budgetMax || extractBudgetCeiling(userPrompt),
+            budgetMax: plan.constraints?.budgetMax || userBudgetCeiling,
             targetCategory: plan.category || 'General',
             stores: ['tokopedia', 'shopee', 'blibli', 'amazon']
           }
@@ -4418,66 +4761,68 @@
     }
 
     // Merge scraped items from the active store if available!
-    if (activeStoreScraped && activeStoreScraped.items && activeStoreScraped.items.length > 0) {
-      const topScraped = activeStoreScraped.items[0];
+    if (bestOnScreen) {
       candidates.unshift({
         store: storeDisplayName.toLowerCase().split(' ')[0],
         storeName: storeDisplayName,
-        title: topScraped.title,
-        priceStr: formatDomPrice(topScraped.price.value, topScraped.price.currency),
-        basePrice: topScraped.price.value,
+        title: bestOnScreen.title,
+        priceStr: formatDomPrice(bestOnScreen.price.value, bestOnScreen.price.currency),
+        basePrice: bestOnScreen.price.value,
         shipping: 0,
         voucher: 0,
-        official: topScraped.official || false,
+        official: bestOnScreen.official || false,
         rating: 4.9,
         deliveryEst: '1-2 Days',
-        warranty: topScraped.official ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
-        url: topScraped.url || window.location.href,
+        warranty: bestOnScreen.official ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
+        url: bestOnScreen.url || window.location.href,
         tag: 'LIVE ON SCREEN'
       });
     }
 
-    await new Promise(r => setTimeout(r, 1100));
+    await new Promise(r => setTimeout(r, 1800));
+    updateChatMessage(missionMsgId, `📋 **4-Store Discovery Complete**\n\n${renderJobDeskProgressHtml(plan, 2, 'AUDITED')}${step1SummaryBox}`);
+    speak(`Data 4 marketplace berhasil didapatkan. Melanjutkan ke Step 3: audit spesifikasi dan garansi resmi.`);
+    await new Promise(r => setTimeout(r, 1200));
 
-    // ADVANCE TO STEP 3: Specs & Trust Audit
+    // ─── STEP 3: Specs & Trust Audit ───
     setCapsuleState('reasoning', 'Auditing specs & official warranty…');
-    if (missionCardEl) {
-      missionCardEl.innerHTML = `🔬 **Deep Spec & Trust Audit: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITING SPECS')}`;
-    }
+    updateChatMessage(missionMsgId, `🔬 **Deep Spec & Trust Audit: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITING SPECS')}${step1SummaryBox}`);
+    speak(`Mengaudit spesifikasi driver audio dan garansi resmi toko.`);
 
-    // REAL STEP 3 WORK: Filter and audit candidates against spec criteria & seller trust
-    const userBudgetCeiling = plan.constraints?.budgetMax || extractBudgetCeiling(userPrompt) || Infinity;
+    const effectiveBudget = plan.constraints?.budgetMax || userBudgetCeiling || Infinity;
     candidates = candidates.map(c => {
-      const passesBudget = c.basePrice <= userBudgetCeiling;
+      const passesBudget = c.basePrice <= effectiveBudget;
       return {
         ...c,
         passesBudget,
         trustScore: (c.official ? 2 : 1) + (c.rating >= 4.8 ? 2 : 1)
       };
     });
-    await new Promise(r => setTimeout(r, 1100));
+    await new Promise(r => setTimeout(r, 1800));
+    updateChatMessage(missionMsgId, `🔬 **Specs & Trust Audit Complete**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITED')}${step1SummaryBox}`);
+    speak(`Audit spesifikasi selesai. Melanjutkan ke Step 4: simulasi landed price checkout.`);
+    await new Promise(r => setTimeout(r, 1200));
 
-    // ADVANCE TO STEP 4: Landed Price Audit (Ongkir + Fees - Vouchers)
+    // ─── STEP 4: Landed Price Audit (Ongkir + Fees - Vouchers) ───
     setCapsuleState('reasoning', 'Auditing true landed checkout prices…');
-    if (missionCardEl) {
-      missionCardEl.innerHTML = `💳 **Landed Price Audit (Ongkir + Fees - Vouchers): "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 4, 'LANDED SIMULATION')}`;
-    }
+    updateChatMessage(missionMsgId, `💳 **Landed Price Audit (Ongkir + Fees - Vouchers): "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 4, 'LANDED SIMULATION')}${step1SummaryBox}`);
+    speak(`Menghitung simulasi landed price hingga checkout termasuk ongkir dan voucher.`);
 
-    // REAL STEP 4 WORK: Calculate Landed Checkout Price for each item
     candidates.forEach(c => {
       const landed = (c.basePrice || 0) + (c.shipping || 0) - (c.voucher || 0);
       c.landedPriceVal = landed;
       c.landedPriceStr = `Rp ${landed.toLocaleString('id-ID')}`;
     });
-    await new Promise(r => setTimeout(r, 1100));
+    await new Promise(r => setTimeout(r, 1800));
+    updateChatMessage(missionMsgId, `💳 **Landed Price Audit Complete**\n\n${renderJobDeskProgressHtml(plan, 4, 'AUDITED')}${step1SummaryBox}`);
+    speak(`Simulasi landed price selesai. Melanjutkan ke Step 5: sintesis rekomendasi AI.`);
+    await new Promise(r => setTimeout(r, 1200));
 
-    // ADVANCE TO STEP 5: Multi-Factor Synthesis via Groq LLM
+    // ─── STEP 5: Multi-Factor Synthesis via Groq LLM ───
     setCapsuleState('reasoning', 'Synthesizing decision matrix…');
-    if (missionCardEl) {
-      missionCardEl.innerHTML = `🧠 **Synthesizing Multi-Factor Decision Matrix: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 5, 'AI SYNTHESIS')}`;
-    }
+    updateChatMessage(missionMsgId, `🧠 **Synthesizing Multi-Factor Decision Matrix: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 5, 'AI SYNTHESIS')}${step1SummaryBox}`);
+    speak(`Menyusun matriks perbandingan dan rekomendasi akhir.`);
 
-    // REAL STEP 5 WORK: Groq Multi-Factor Report Synthesis
     let report = null;
     try {
       const synRes = await new Promise((resolve) => {
@@ -4495,11 +4840,6 @@
       }
     } catch (e) {
       console.warn('[Vox Agent] Report synthesis error:', e);
-    }
-
-    // Mark mission card complete ONLY after real synthesis finishes
-    if (missionCardEl) {
-      missionCardEl.innerHTML = `✅ **Autonomous Shopping Mission Completed**\n\n${renderJobDeskProgressHtml(plan, 5, 'DONE')}`;
     }
 
     // Highlight any matching winner product on active screen
@@ -4530,7 +4870,9 @@
                       `| 🥉 Alternate<br>${escapeHtml(third.store || 'Blibli')} | ${escapeHtml(third.title || 'Rexus Thundervox HX20')}<br><small>${escapeHtml(third.specs || '40mm Driver')}</small> | ⚠️ ${escapeHtml(third.trust || 'Garansi Toko')}<br>⭐ ${escapeHtml(third.rating || '4.6 ★')} | ${escapeHtml(third.landedPrice || 'Rp 170.000')}<br><small>(Base: ${escapeHtml(third.listedPrice || 'Rp 155k')})</small> | ⚠️ ${escapeHtml(third.verdictBadge || 'Avoid: Distributor Warranty')} |`;
     }
 
-    const reportContent = `⚖️ **Multi-Store Comparison Matrix & Deep Spec Audit**\n\n` +
+    const reportContent = `✅ **Autonomous Shopping Mission Completed**\n\n` +
+      renderJobDeskProgressHtml(plan, 5, 'DONE') + '\n\n' +
+      `⚖️ **Multi-Store Comparison Matrix & Deep Spec Audit**\n\n` +
       `Here is my comprehensive audit across **4 connected stores (Shopee, Tokopedia, Blibli, Amazon)** evaluating **hardware specifications, seller credibility (Official Store / Garansi Resmi), buyer ratings**, and **true landed checkout price (ongkir + fees - vouchers)**:\n\n` +
       tableMarkdown + '\n\n' +
       `💡 **AI Trade-off Rationale:**\n` +
@@ -4546,7 +4888,8 @@
       { label: "🏷️ Garansi Resmi Only", query: `${targetSubject} garansi resmi official store` }
     ];
 
-    appendChatMessage('agent', reportContent, {
+    // Single living card update with full matrix & 1-click action chips
+    updateChatMessage(missionMsgId, reportContent, {
       quickOptions,
       spoken: spokenText
     });

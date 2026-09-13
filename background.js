@@ -1285,14 +1285,37 @@ function detectCategoryFromQuery(q = '') {
 
 function extractBudgetCeiling(q = '') {
   if (!q) return null;
-  const cleanQ = q.replace(/[,.]/g, '');
-  const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga)\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i)
-    || cleanQ.match(/(?:rp\.?|idr)\s*(\d+)(?:\s*(juta|jt|k|rb|ribu|m|rupiah))?/i);
+  const s = q.toLowerCase();
+
+  const wordNumMap = [
+    { regex: /\b(sepuluh|ten)\s*(ribu|thousand|k|rb)?\b/i, val: 10000 },
+    { regex: /\b(dua puluh|twenty)\s*(ribu|thousand|k|rb)?\b/i, val: 20000 },
+    { regex: /\b(tiga puluh|thirty)\s*(ribu|thousand|k|rb)?\b/i, val: 30000 },
+    { regex: /\b(empat puluh|forty)\s*(ribu|thousand|k|rb)?\b/i, val: 40000 },
+    { regex: /\b(lima puluh|fifty)\s*(ribu|thousand|k|rb)?\b/i, val: 50000 },
+    { regex: /\b(seratus|one\s*hundred)\s*(ribu|thousand|k|rb)?\b/i, val: 100000 },
+    { regex: /\b(dua\s*ratus|two\s*hundred)\s*(ribu|thousand|k|rb)?\b/i, val: 200000 },
+    { regex: /\b(lima\s*ratus|five\s*hundred)\s*(ribu|thousand|k|rb)?\b/i, val: 500000 },
+    { regex: /\b(satu|one)\s*(juta|million|jt|m)?\b/i, val: 1000000 },
+    { regex: /\b(dua|two)\s*(juta|million|jt|m)?\b/i, val: 2000000 },
+    { regex: /\b(tiga|three)\s*(juta|million|jt|m)?\b/i, val: 3000000 },
+    { regex: /\b(lima|five)\s*(juta|million|jt|m)?\b/i, val: 5000000 }
+  ];
+
+  for (const item of wordNumMap) {
+    if (item.regex.test(s) && /(under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga|kurang\s*dari|less\s*than)/i.test(s)) {
+      return item.val;
+    }
+  }
+
+  const cleanQ = s.replace(/[,.]/g, '');
+  const match = cleanQ.match(/(?:under|budget|max|di\s*bawah|dibawah|maksimal|maks|harga|kurang\s*dari|less\s*than)\s*(?:rp\.?|idr)?\s*(\d+)(?:\s*(juta|million|jt|k|rb|ribu|m|rupiah))?/i)
+    || cleanQ.match(/(?:rp\.?|idr)\s*(\d+)(?:\s*(juta|million|jt|k|rb|ribu|m|rupiah))?/i);
   if (match) {
     let num = parseInt(match[1], 10);
     const unit = (match[2] || '').toLowerCase();
-    if (unit === 'juta' || unit === 'jt' || unit === 'm') num *= 1000000;
-    else if (unit === 'k' || unit === 'rb' || unit === 'ribu') num *= 1000;
+    if (unit === 'juta' || unit === 'million' || unit === 'jt' || unit === 'm') num *= 1000000;
+    else if (unit === 'k' || unit === 'rb' || unit === 'ribu' || unit === 'thousand') num *= 1000;
     if (num >= 1000) return num;
     if (num > 0 && num < 100) return num * 1000000;
   }
