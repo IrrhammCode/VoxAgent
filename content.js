@@ -3330,248 +3330,6 @@
     return executeAutonomousLiveCompare(rawQuery);
   }
 
-  async function legacyAutonomousSearch(rawQuery) {
-    // 1. Extract pure product keyword using smart entity extractor
-    const cleanTerm = extractCleanSearchTerm(rawQuery) || (rawQuery || '').trim();
-
-    setCapsuleState('reasoning', `🔍 Searching "${cleanTerm.slice(0, 16)}"…`);
-
-    const currentHost = window.location.hostname.toLowerCase();
-    const storeName = currentHost.includes('shopee') ? 'Shopee' :
-                     currentHost.includes('tokopedia') ? 'Tokopedia' :
-                     currentHost.includes('amazon') ? 'Amazon' :
-                     currentHost.includes('blibli') ? 'Blibli' :
-                     currentHost.includes('lazada') ? 'Lazada' :
-                     document.title.split(/[-–|]/)[0].trim() || 'Store';
-
-    const interactive = generateSearchInteractiveFollowUp(cleanTerm, storeName);
-
-    // 2. Scan active DOM for store search inputs
-    const searchSelectors = [
-      'input.shopee-searchbar-input__input',
-      '.shopee-searchbar-input input',
-      '.shopee-searchbar input',
-      'input[aria-label*="shopee" i]',
-      'input[placeholder*="shopee" i]',
-      'input[placeholder*="voucher" i]',
-      'input[placeholder*="daftar" i]',
-      'input[data-unify="Search"]',
-      'input[placeholder*="Tokopedia" i]',
-      'input[aria-label*="tokopedia" i]',
-      '#twotabsearchtextbox',
-      'input[name="field-keywords"]',
-      'input[placeholder*="blibli" i]',
-      'input[placeholder*="lazada" i]',
-      'input[type="search"]',
-      'input[name="q"]',
-      'input[name="query"]',
-      'input[name="keyword"]',
-      'input[name="keywords"]',
-      'input[name="search"]',
-      'input[id*="search" i]',
-      'input[class*="search" i]',
-      'input[placeholder*="search" i]',
-      'input[placeholder*="cari" i]',
-      'input[aria-label*="search" i]',
-      'input[aria-label*="cari" i]'
-    ];
-
-    let searchInput = null;
-    for (const sel of searchSelectors) {
-      const el = document.querySelector(sel);
-      if (el && (el.offsetParent !== null || el.offsetWidth > 0 || el.getClientRects().length > 0)) {
-        searchInput = el;
-        break;
-      }
-    }
-
-    let inputSubmitted = false;
-
-    if (searchInput) {
-      try {
-        // Bring search bar cleanly into view at top of viewport
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        searchInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        searchInput.classList.add('vox-halo-highlight');
-        searchInput.focus();
-
-        // React 16-18 synthetic event compatibility:
-        // Clear React's internal _valueTracker cache so it detects the mutation
-        if (searchInput._valueTracker) {
-          searchInput._valueTracker.setValue('');
-        }
-
-        const nativeSetter = Object.getOwnPropertyDescriptor(
-          window.HTMLInputElement.prototype, 'value'
-        )?.set;
-
-        if (nativeSetter) {
-          nativeSetter.call(searchInput, cleanTerm);
-        } else {
-          searchInput.value = cleanTerm;
-        }
-
-        if (searchInput._valueTracker) {
-          searchInput._valueTracker.setValue('');
-        }
-
-        // Dispatch input and change events with composed: true
-        searchInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-        searchInput.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-
-        // Wait 150ms for React/Vue reactive render
-        await new Promise(r => setTimeout(r, 150));
-
-        // Find the physical search button
-        const searchContainer = searchInput.closest('form, .shopee-searchbar, .shopee-searchbar-input, [role="search"], .search-box, .search-bar, nav, header') || document;
-
-        const submitSelectors = [
-          'button.shopee-searchbar__search-button',
-          '.shopee-searchbar__search-button',
-          '.shopee-searchbar button',
-          'button[data-unify="Search"]',
-          'button[aria-label*="pencarian" i]',
-          'button[aria-label*="search" i]',
-          'button[aria-label*="cari" i]',
-          '#nav-search-submit-button',
-          'input#nav-search-submit-button',
-          'button[type="submit"]',
-          'input[type="submit"]',
-          '.btn-search',
-          '.search-btn',
-          'button.search-button',
-          'button.search',
-          '[role="search"] button',
-          'form button:last-of-type'
-        ];
-
-        let submitBtn = null;
-        for (const sel of submitSelectors) {
-          const btn = searchContainer.querySelector(sel);
-          if (btn && (btn.offsetParent !== null || btn.offsetWidth > 0 || btn.getClientRects().length > 0)) {
-            submitBtn = btn;
-            break;
-          }
-        }
-        if (!submitBtn) {
-          for (const sel of submitSelectors) {
-            const btn = document.querySelector(sel);
-            if (btn && (btn.offsetParent !== null || btn.offsetWidth > 0 || btn.getClientRects().length > 0)) {
-              submitBtn = btn;
-              break;
-            }
-          }
-        }
-
-        // Trigger keyboard Enter on input
-        const enterDown = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true });
-        const enterPress = new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true });
-        const enterUp = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true });
-        searchInput.dispatchEvent(enterDown);
-        searchInput.dispatchEvent(enterPress);
-        searchInput.dispatchEvent(enterUp);
-
-        // Physically press the search button with full pointer + mouse event simulation
-        if (submitBtn) {
-          submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          submitBtn.classList.add('vox-halo-highlight');
-
-          // Tactile button depression animation
-          submitBtn.style.transition = 'transform 0.15s ease, box-shadow 0.15s ease';
-          submitBtn.style.transform = 'scale(0.90)';
-          submitBtn.style.boxShadow = '0 0 25px rgba(0, 242, 254, 0.95)';
-
-          await new Promise(r => setTimeout(r, 220));
-
-          const rect = submitBtn.getBoundingClientRect();
-          const clickCoords = {
-            bubbles: true,
-            cancelable: true,
-            view: window,
-            clientX: rect.left + rect.width / 2,
-            clientY: rect.top + rect.height / 2
-          };
-
-          submitBtn.dispatchEvent(new PointerEvent('pointerdown', clickCoords));
-          submitBtn.dispatchEvent(new MouseEvent('mousedown', clickCoords));
-          submitBtn.dispatchEvent(new PointerEvent('pointerup', clickCoords));
-          submitBtn.dispatchEvent(new MouseEvent('mouseup', clickCoords));
-          submitBtn.dispatchEvent(new MouseEvent('click', clickCoords));
-          try { submitBtn.click(); } catch (_) {}
-
-          setTimeout(() => {
-            submitBtn.style.transform = '';
-            submitBtn.style.boxShadow = '';
-            submitBtn.classList.remove('vox-halo-highlight');
-          }, 350);
-
-          inputSubmitted = true;
-        }
-
-        // Form submit fallback
-        const searchForm = searchInput.closest('form');
-        if (searchForm) {
-          try {
-            if (typeof searchForm.requestSubmit === 'function') {
-              searchForm.requestSubmit();
-            } else {
-              searchForm.submit();
-            }
-            inputSubmitted = true;
-          } catch (_) {}
-        }
-
-        setTimeout(() => searchInput?.classList.remove('vox-halo-highlight'), 2000);
-      } catch (err) {
-        console.warn('[Vox Agent] In-page search input submission failed:', err);
-      }
-    }
-
-    // 3. Deliver Interactive Follow-up Question with Quick Options & Speech
-    appendChatMessage('agent', interactive.content, {
-      quickOptions: interactive.quickOptions,
-      spoken: interactive.spoken,
-      followUpQuestion: interactive.followUpQuestion
-    });
-    speak(interactive.spoken);
-
-    // 4. Navigation Fallback: If in-page submit didn't navigate within 650ms
-    setTimeout(() => {
-      if (inputSubmitted && window.location.href.includes(encodeURIComponent(cleanTerm).slice(0, 5))) {
-        setCapsuleState('idle', 'Search complete');
-        return;
-      }
-
-      // Build direct store search URL
-      let searchUrl = '';
-      if (currentHost.includes('shopee')) {
-        searchUrl = `https://${window.location.hostname}/search?keyword=${encodeURIComponent(cleanTerm)}`;
-      } else if (currentHost.includes('tokopedia')) {
-        searchUrl = `https://www.tokopedia.com/search?q=${encodeURIComponent(cleanTerm)}`;
-      } else if (currentHost.includes('amazon')) {
-        searchUrl = `https://${window.location.hostname}/s?k=${encodeURIComponent(cleanTerm)}`;
-      } else if (currentHost.includes('blibli')) {
-        searchUrl = `https://www.blibli.com/cari/${encodeURIComponent(cleanTerm)}`;
-      } else if (currentHost.includes('lazada')) {
-        searchUrl = `https://${window.location.hostname}/catalog/?q=${encodeURIComponent(cleanTerm)}`;
-      } else if (currentHost && !currentHost.includes('localhost') && currentHost.includes('.')) {
-        searchUrl = `https://${window.location.hostname}/search?q=${encodeURIComponent(cleanTerm)}`;
-      }
-
-      if (searchUrl && !window.location.href.includes(encodeURIComponent(cleanTerm))) {
-        console.log('[Vox Agent] Direct store search navigation fallback:', searchUrl);
-        setCapsuleState('reasoning', 'Navigating to search…');
-        window.location.assign(searchUrl);
-      } else {
-        setCapsuleState('idle', 'Search dispatched');
-        // If we stayed on the page (SPA search or already on search view), scan and highlight live DOM prices
-        setTimeout(async () => {
-          await autonomousScanAndHighlightSearchResults(cleanTerm, storeName);
-        }, 800);
-      }
-    }, inputSubmitted ? 650 : 250);
-  }
-
   /**
    * Autonomous Sign In / Login Flow
    * 1. Find and click "Sign In" / "Login" / "Masuk" button/link
@@ -4289,8 +4047,6 @@
       }
     }
 
-    const displaySubject = targetSubject.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
     // 2. Layer 2 & 3: Groq 5-Job-Desk Planning
     let plan = null;
     try {
@@ -4307,10 +4063,15 @@
       });
       if (planRes && planRes.success && planRes.data) {
         plan = planRes.data;
+        if (plan.cleanKeyword && plan.cleanKeyword.length >= 2) {
+          targetSubject = plan.cleanKeyword;
+        }
       }
     } catch (e) {
       console.warn('[Vox Agent] Mission planning fallback:', e);
     }
+
+    const displaySubject = targetSubject.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
     if (!plan) {
       plan = {
@@ -5275,7 +5036,7 @@
     if (/^(confirm\s*order|konfirmasi\s*pesanan|bayar\s*sekarang|place\s*order)$/i.test(q)) {
       return { intent: 'CONFIRM_ORDER' };
     }
-    if (/^(cancel\s*(checkout|order)?|batalkan|batal)$/i.test(q)) {
+    if (/^(cancel(\s*(checkout|order))?|batalkan(\s*pesanan)?|batal)$/i.test(q)) {
       return { intent: 'CANCEL_ORDER' };
     }
 
@@ -5312,23 +5073,23 @@
 
     // 7. Click / Select / Open specific product on screen
     // "klik yang termurah", "click the first one", "buka yang official store", "klik produk nomor 1"
-    if (/\b(klik|click|buka\s*(produk|item)?|open\s*(the|that)?|pilih|select|tap)\b/i.test(q) && !/pricing|search|compare/i.test(q)) {
+    if (/\b(klik|click|buka|open|pilih|select|tap)\s*(the|that|produk|item|barang)?\s*(yang|nomor|ke-|\d+|pertama|kedua|ketiga|winner|runner|official|murah)/i.test(q) && !/pricing|search|compare/i.test(q)) {
       return { intent: 'CLICK_ITEM' };
     }
 
-    // 8. 5-Layer Autonomous Shopping Mission (Search, Compare, Recommend, Product Inquiries)
-    // Any query asking to search, find, recommend, compare, or buy products
-    const isShoppingMission = /(compare|komparasi|bandingkan|bandingin|versus|\bvs\b|murahan\s*mana|bagusan\s*mana|worth\s*it\s*mana|termurah\s*tapi|budget\s*friendly|produk\s*lain|beda(nya)?\s*antara|rekomendasi|recommend|saran|pilihan|terbaik|termurah)/i.test(q) ||
-      /\b(search(\s*up|\s*for|\s*me\s*up)?|cari(kan|in)?|find(\s*me)?|look(\s*up|\s*for)?|looking\s*for|want\s*to\s*buy|wanna\s*buy|need\s*to\s*buy|like\s*to\s*buy|mau\s*(beli|cari|order)|pengen\s*(beli|cari)|tolong\s*(cari|beli)|bantu\s*(cari|beli)|coba\s*(cari|beli)|aku\s*mau\s*(cari|beli)|beliin\s+[a-z0-9]|bisa\s*(cari|beli))\b/i.test(q) ||
-      /\b(headset|headphone|earphone|tws|earbuds|laptop|notebook|mouse|keyboard|monitor|speaker|mic|microphone|hp|smartphone|iphone|samsung|gadget)\b/i.test(q) ||
-      /\b(harga|budget|under|di\s*bawah|rp\.?|idr)\s*[\d.,]+/i.test(q);
+    // 8. Explicit Page Reading & Navigation Q&A (ONLY when specifically asking to read/explain the current page/website)
+    const isExplicitPageQa = /^(apa\s*isi|jelaskan\s*(isi|halaman|artikel|web)|ringkas\s*(isi|halaman)|baca\s*deskripsi|tentang\s*apa\s*(halaman|website|toko|artikel)\s*ini|summarize\s*this\s*page|what\s*is\s*this\s*page\s*about)/i.test(q) ||
+      (/^(hai|halo|hello|hey|hei|hi|morning|salam|pagi|siang|malam)(\s*(vox|fox|copilot|ai)?)?$/i.test(q));
 
-    if (isShoppingMission) {
-      return { intent: 'SHOPPING_MISSION' };
+    if (isExplicitPageQa) {
+      return { intent: 'PAGE_QA' };
     }
 
-    // 9. Default to contextual AI Q&A (never hijack-searches!)
-    return { intent: 'PAGE_QA' };
+    // 9. Zero-Fragility Autonomous Shopping Mission (Search, Compare, Recommend, Inquire, Slang)
+    // EVERYTHING else is dynamically routed to the 5-Layer Cognitive Multi-Agent Shopping Engine.
+    // We NEVER rely on brittle, hardcoded product dictionaries (e.g. headset|laptop|mouse).
+    // The Groq LLM cognitive planner parses ANY product category (shoes, coffee, appliances, tech), slang, and constraints zero-shot.
+    return { intent: 'SHOPPING_MISSION' };
   }
 
   // 10. Dynamic Natural Language Query Processing
