@@ -6514,23 +6514,13 @@
             return;
           }
 
-          // If the user JUST said the wake word or greeting without a question (e.g. only "Hey Vox", "Hey Vos", "Halo Vox", "Vox")
-          const isWakeWordOnly = !withoutWake || /^(hey\s*(vox|fox|box|vos|voss|foss|folks)|heyvox|heyvos|halo\s*(vox|vos)|halovox|hai\s*(vox|vos)|haivox|hei\s*(vox|vos)|heivox|vox|vos|fox|hey\s*fox|heyfox|halo\s*asisten|hey\s*box|halo|hai|hey|hello|hi)$/i.test(clean);
-          if (isWakeWordOnly) {
-            console.log('[Vox Agent] Wake word acknowledged (chime & listen):', clean);
-            playUiChime('ready');
-            expandCapsule('Mendengarkan… Siap membantu! 🎙', 3000);
-            setCapsuleState('listening', 'Mendengarkan…');
-            dialogTranscript.textContent = 'Mendengarkan… silakan bicara.';
-            // Do NOT call speak(greeting) here to prevent voice collisions and double-speaking
-            // when the user speaks their question right after the wake word!
-            return;
-          }
+          // Extract query to process: if user asked a question, strip wake word;
+          // if user said ONLY the wake word / greeting ("Hey Vox"), process it as a natural greeting!
+          const targetQuery = (withoutWake && withoutWake.length >= 2) ? withoutWake : harmonized;
 
-          // Real question asked — prevent double execution only within 2.5s window
-          const isDuplicateInWindow = (withoutWake === lastProcessedQuery) && (Date.now() - lastProcessedTime < 2500);
-          if (withoutWake.length >= 2 && !isDuplicateInWindow) {
-            lastProcessedQuery = withoutWake;
+          const isDuplicateInWindow = (targetQuery === lastProcessedQuery) && (Date.now() - lastProcessedTime < 2500);
+          if (targetQuery.length >= 2 && !isDuplicateInWindow) {
+            lastProcessedQuery = targetQuery;
             lastProcessedTime = Date.now();
             stopCurrentSpeech(true);
             isSpeaking = false;
@@ -6542,19 +6532,21 @@
 
             // Attempt high-accuracy Groq Whisper transcription if recorded audio exists
             stopAudioRecordingAndTranscribe().then((whisperText) => {
-              let finalText = withoutWake;
+              let finalText = targetQuery;
               if (whisperText && whisperText.length >= 3) {
-                console.log(`[Vox Agent] Groq Whisper transcribed: "${whisperText}" (WebSpeech was: "${withoutWake}")`);
+                console.log(`[Vox Agent] Groq Whisper transcribed: "${whisperText}" (WebSpeech was: "${targetQuery}")`);
                 let cleanWhisper = harmonizeUserVocab(whisperText);
-                cleanWhisper = cleanWhisper.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks|vos|voss|foss)[,.]?\s*/i, '').trim();
-                cleanWhisper = cleanWhisper.replace(/^(terus|lalu|kemudian|and\s+then|then)\s+/i, '').trim();
-                if (cleanWhisper.length >= 2) {
+                let cleanWithoutWake = cleanWhisper.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks|vos|voss|foss)[,.]?\s*/i, '').trim();
+                cleanWithoutWake = cleanWithoutWake.replace(/^(terus|lalu|kemudian|and\s+then|then)\s+/i, '').trim();
+                if (cleanWithoutWake.length >= 2) {
+                  finalText = cleanWithoutWake;
+                } else if (cleanWhisper.length >= 2) {
                   finalText = cleanWhisper;
                 }
               }
               processNaturalQuery(finalText);
             }).catch(() => {
-              processNaturalQuery(withoutWake);
+              processNaturalQuery(targetQuery);
             });
           }
         }

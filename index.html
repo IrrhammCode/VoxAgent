@@ -3433,16 +3433,11 @@
           const harmonized = typeof harmonizeUserVocab === 'function' ? harmonizeUserVocab(transcript) : transcript;
           const t = harmonized.replace(/^(hey|hei|halo|hai|ok)?\s*(vox|fox|box|folks|vaux|vocks|foks|vos|voss|foss)[,.]?\s*/i, '').trim();
           const cleanQ = t.replace(/^(terus|lalu|kemudian|and\s+then|then)\s+/i, '').trim();
-          if (!cleanQ) {
-            // Wake word only: acknowledge visually & chime, do not trigger premature utterance
-            playUiChime('ready');
-            setCapsuleState('listening', 'LISTENING', 'Listening… speak your command');
-            return;
-          }
-          if (cleanQ.length >= 2) {
+          const targetQ = (cleanQ && cleanQ.length >= 2) ? cleanQ : harmonized;
+          if (targetQ.length >= 2) {
             stopVoice(true);
             try { recognition.stop(); } catch (_) {}
-            runAgentSwarm(cleanQ);
+            runAgentSwarm(targetQ);
           }
         }
       };
