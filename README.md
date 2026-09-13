@@ -1,6 +1,7 @@
 # 🌐 Vox Agent — Autonomous In-Browser AI Agent Helper
 
 [![Manifest V3](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-4285F4?logo=googlechrome&logoColor=white)](manifest.json)
+[![YouTube Demo](https://img.shields.io/badge/YouTube-Watch_Demo-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=IzESCmw3-E8)
 [![Groq Fast Inference](https://img.shields.io/badge/Groq-Sub--Second_Inference-F55036?logo=groq&logoColor=white)](https://groq.com)
 [![ElevenLabs TTS](https://img.shields.io/badge/ElevenLabs-Human_Male_Voice-000000?logo=elevenlabs&logoColor=white)](https://elevenlabs.io)
 [![Anakin.io](https://img.shields.io/badge/Anakin.io-Live_Web_Scraper-6366F1)](https://anakin.io)
@@ -8,6 +9,16 @@
 
 > **Anakin Forge Hackathon: Build AI Agents That Read, Reason, and Act**  
 > **Mission:** A living, voice-first autonomous AI Agent Helper that reads any live webpage, reasons through complex multi-step decisions, and executes actions directly in your browser without requiring manual clicks.
+
+---
+
+## 📺 Live Video Demo
+
+Watch the 2-minute autonomous demonstration across Apple (READ), Anakin (REASON), and Shopee (ACT):
+
+[![Vox Agent Demo Video](https://img.youtube.com/vi/IzESCmw3-E8/maxresdefault.jpg)](https://www.youtube.com/watch?v=IzESCmw3-E8)
+
+👉 **Direct YouTube Link**: [https://www.youtube.com/watch?v=IzESCmw3-E8](https://www.youtube.com/watch?v=IzESCmw3-E8)
 
 ---
 

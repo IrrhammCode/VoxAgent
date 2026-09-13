@@ -126,6 +126,7 @@ function Navbar() {
           <a className="transition hover:text-cyan-400" href="#how-to-use">HOW TO USE</a>
           <a className="transition hover:text-cyan-400" href="#capabilities">CAPABILITIES</a>
           <a className="transition hover:text-cyan-400" href="#architecture">ARCHITECTURE</a>
+          <a className="transition hover:text-cyan-400 text-cyan-400/90" href="#demo">DEMO</a>
         </div>
         <div className="flex items-center gap-3">
           <a href="https://github.com/IrrhammCode/VoxAgent" className="hidden rounded-lg border border-white/8 bg-white/[0.03] px-4 py-2 font-mono text-[10px] tracking-wider text-slate-400 transition hover:border-cyan-400/30 hover:text-cyan-300 sm:block">
@@ -143,6 +144,7 @@ function Navbar() {
             <a onClick={() => setOpen(false)} className="transition hover:text-cyan-400" href="#how-to-use">HOW TO USE</a>
             <a onClick={() => setOpen(false)} className="transition hover:text-cyan-400" href="#capabilities">CAPABILITIES</a>
             <a onClick={() => setOpen(false)} className="transition hover:text-cyan-400" href="#architecture">ARCHITECTURE</a>
+            <a onClick={() => setOpen(false)} className="transition hover:text-cyan-400 text-cyan-400" href="#demo">DEMO</a>
           </div>
         </div>
       )}
@@ -421,15 +423,37 @@ function DemoSection() {
     <section id="demo" className="mx-auto max-w-5xl px-6 py-28 text-center">
       <SectionLabel>DEMO RECORDING</SectionLabel>
       <h2 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">See It In Action</h2>
+      <p className="mx-auto mt-4 max-w-xl text-sm text-slate-400">
+        Watch Vox Agent autonomously read live DOM elements on Apple, simplify tech analogies on Anakin, and execute physical searches on Shopee with Cyan Halo spotlight.
+      </p>
 
-      <div className="group relative mt-14 aspect-video overflow-hidden rounded-2xl border border-cyan-400/15 bg-[#0a0f18] shadow-[0_0_50px_rgba(0,229,255,0.08)]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,229,255,0.08),transparent_40%)]" />
-        <button className="absolute left-1/2 top-1/2 grid h-18 w-18 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-300/40 bg-gradient-to-br from-cyan-400 to-cyan-500 text-[#060a10] shadow-[0_0_40px_rgba(0,229,255,0.35)] transition group-hover:scale-110 group-hover:shadow-[0_0_60px_rgba(0,229,255,0.5)]" aria-label="Play demo">
-          <Icon name="play" className="ml-1 h-8 w-8" />
-        </button>
-        <p className="absolute bottom-5 left-0 right-0 font-mono text-[10px] tracking-[0.2em] text-slate-600">
-          VOX AGENT / LIVE BROWSER DEMONSTRATION
-        </p>
+      <div className="relative mt-12 aspect-video overflow-hidden rounded-2xl border border-cyan-400/25 bg-[#0a0f18] shadow-[0_0_60px_rgba(0,229,255,0.12)]">
+        <iframe
+          className="h-full w-full"
+          src="https://www.youtube-nocookie.com/embed/IzESCmw3-E8?rel=0"
+          title="Vox Agent — Autonomous In-Browser AI Agent Demo"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+        <a
+          href="https://www.youtube.com/watch?v=IzESCmw3-E8"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-2.5 text-xs font-semibold text-red-400 transition hover:border-red-500/50 hover:bg-red-500/20"
+        >
+          <Icon name="play" className="h-3.5 w-3.5" /> Watch on YouTube
+        </a>
+        <a
+          href="https://github.com/IrrhammCode/VoxAgent"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+        >
+          <Icon name="github" className="h-3.5 w-3.5" /> View Source Code
+        </a>
       </div>
     </section>
   );
