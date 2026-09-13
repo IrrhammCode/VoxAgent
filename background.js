@@ -1753,33 +1753,7 @@ async function handleTtsAudioProxy({ text, lang = 'en', apiKey = '', voiceId = '
     }
   }
 
-  // Strategy 2: Google Translate Neural TTS (free, no API key required)
-  // Service Worker has no CORS restriction, so this always works
-  const ttsLang = lang === 'id' ? 'id' : 'en';
-  const maxChunkLen = 190;
-  const chunks = splitTextForTts(text, maxChunkLen);
-  const audioChunks = [];
-
-  for (const chunk of chunks) {
-    try {
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=${ttsLang}&client=tw-ob`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const buffer = await res.arrayBuffer();
-        audioChunks.push(arrayBufferToBase64(buffer));
-      }
-    } catch (_) {}
-  }
-
-  if (audioChunks.length === 0) {
-    throw new Error('All TTS sources failed');
-  }
-
-  return {
-    source: 'google_neural',
-    audioChunks: audioChunks.map(b64 => `data:audio/mpeg;base64,${b64}`),
-    format: 'audio/mpeg'
-  };
+  throw new Error('ElevenLabs TTS unavailable or failed');
 }
 
 function arrayBufferToBase64(buffer) {

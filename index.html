@@ -3315,38 +3315,6 @@
       });
     }
 
-    function speakWebSpeech(text, lang, onDone) {
-      if (!window.speechSynthesis) {
-        if (onDone) onDone();
-        return;
-      }
-      try { window.speechSynthesis.resume(); } catch (_) {}
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = lang;
-      u.rate = voiceSpeed * 1.02;
-      u.pitch = 0.98;
-
-      const voices = window.speechSynthesis.getVoices() || [];
-      let selectedVoice = null;
-      if (lang.startsWith('id')) {
-        selectedVoice = voices.find(v => /ardi|natural.*id.*male/i.test(v.name)) ||
-                        voices.find(v => /google.*indonesia/i.test(v.name)) ||
-                        voices.find(v => /gadis|damayanti/i.test(v.name)) ||
-                        voices.find(v => v.lang.startsWith('id'));
-      } else {
-        selectedVoice = voices.find(v => /daniel|guy|natural.*(male|guy|david)|david|mark/i.test(v.name)) ||
-                        voices.find(v => /google.*us english/i.test(v.name)) ||
-                        voices.find(v => /samantha.*enhanced/i.test(v.name)) ||
-                        voices.find(v => v.lang.startsWith('en'));
-      }
-      if (selectedVoice) u.voice = selectedVoice;
-
-      window._voxSimulatorUtterance = u;
-      u.onend = () => { window._voxSimulatorUtterance = null; if (onDone) onDone(); };
-      u.onerror = () => { window._voxSimulatorUtterance = null; if (onDone) onDone(); };
-      window.speechSynthesis.speak(u);
-    }
-
     async function speakVoice(text, onDone) {
       stopVoice(true);
       const thisVoiceSeqId = currentVoiceSeqId;
@@ -3373,11 +3341,8 @@
       isSpeaking = true;
       if (recognition) try { recognition.stop(); } catch (_) {}
 
-      const isIndonesian = /yang|dan|di|ini|untuk|dengan|tidak|worth|kegunaan|halo|kami|kamu|layak|harga|fitur/i.test(text);
-      const lang = isIndonesian ? 'id' : 'en';
-
-      // ElevenLabs API support (ultra-realistic voice)
-      const elKey = window.VOX_ENV?.ELEVENLABS_API_KEY || localStorage.getItem('elevenlabs_api_key');
+      // ElevenLabs API support (ultra-realistic human male voice: Charlie)
+      const elKey = (window.VOX_ENV?.ELEVENLABS_API_KEY || localStorage.getItem('elevenlabs_api_key') || '').trim();
       if (elKey) {
         try {
           let voiceId = window.VOX_ENV?.ELEVENLABS_VOICE_ID || 'IKne3meq5aSn9XLyUdCD';
@@ -3418,25 +3383,8 @@
         }
       }
 
-      if (thisVoiceSeqId !== currentVoiceSeqId) return;
-
-      if (voiceEngine === 'neural') {
-        try {
-          await playNeuralAudioStream(text, lang, finish);
-          return;
-        } catch (err) {
-          console.warn('[Simulator] Neural stream fallback:', err);
-        }
-      }
-
-      if (thisVoiceSeqId !== currentVoiceSeqId) return;
-      const hasElevenLabs = !!(window.VOX_ENV?.ELEVENLABS_API_KEY || localStorage.getItem('elevenlabs_api_key'));
-      if (hasElevenLabs) {
-        console.warn('[Simulator] ElevenLabs configured — suppressing robotic browser TTS.');
-        finish();
-        return;
-      }
-      speakWebSpeech(text, isIndonesian ? 'id-ID' : 'en-US', finish);
+      // No manual browser TTS: finish cleanly
+      finish();
     }
 
     btnAudioMute.addEventListener('click', () => {

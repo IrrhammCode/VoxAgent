@@ -6995,50 +6995,6 @@
     });
   }
 
-  function speakViaWebSpeech(text, lang, onDone) {
-    if (!window.speechSynthesis) {
-      if (onDone) onDone();
-      return;
-    }
-
-    try { window.speechSynthesis.resume(); } catch (_) {}
-
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    u.rate = voiceSpeed * 1.02;
-    u.pitch = 0.98;
-
-    const voices = window.speechSynthesis.getVoices() || [];
-    let selectedVoice = null;
-
-    if (lang.startsWith('id')) {
-      selectedVoice = voices.find(v => /ardi|natural.*id.*male/i.test(v.name)) ||
-                      voices.find(v => /google.*indonesia/i.test(v.name)) ||
-                      voices.find(v => /gadis|damayanti/i.test(v.name)) ||
-                      voices.find(v => v.lang.startsWith('id'));
-    } else {
-      selectedVoice = voices.find(v => /daniel|guy|natural.*(male|guy|david)|david|mark/i.test(v.name)) ||
-                      voices.find(v => /google.*us english/i.test(v.name)) ||
-                      voices.find(v => /samantha|jenny|aria/i.test(v.name)) ||
-                      voices.find(v => v.lang.startsWith('en'));
-    }
-
-    if (selectedVoice) u.voice = selectedVoice;
-
-    // Retain globally to prevent Chrome garbage-collection bug
-    window._voxUtterance = u;
-
-    u.onend = () => {
-      window._voxUtterance = null;
-      if (onDone) onDone();
-    };
-    u.onerror = () => {
-      window._voxUtterance = null;
-      if (onDone) onDone();
-    };
-
-    window.speechSynthesis.speak(u);
-  }
 
   function cleanTextForSpeech(text) {
     if (!text || typeof text !== 'string') return '';
@@ -7250,23 +7206,8 @@
 
     if (thisSpeechId !== currentSpeechId) return;
 
-    // Fallback chain ONLY when ElevenLabs is not configured
-    fallbackToNeuralOrWebSpeech(text, langCode, onSpeechDone, thisSpeechId);
-  }
-
-  async function fallbackToNeuralOrWebSpeech(text, langCode, onDone, speechId) {
-    if (speechId && speechId !== currentSpeechId) return;
-    stopCurrentSpeech(false);
-
-    // If ElevenLabs is configured, NEVER fall back to the robotic browser SpeechSynthesis voice!
-    const hasElevenLabs = !!(window.VOX_ENV?.ELEVENLABS_API_KEY || (typeof VOX_ENV !== 'undefined' && VOX_ENV?.ELEVENLABS_API_KEY) || localStorage.getItem('elevenlabs_api_key'));
-    if (hasElevenLabs) {
-      console.warn('[Vox Agent] ElevenLabs configured — suppressing robotic browser TTS to avoid unnatural speech.');
-      if (onDone) onDone();
-      return;
-    }
-
-    speakViaWebSpeech(text, langCode === 'id' ? 'id-ID' : 'en-US', onDone);
+    // Pure ElevenLabs execution only: no manual browser TTS fallback
+    onSpeechDone();
   }
 
   // Autonomous Target Element Locator & Auto-Scroll with Halo Spotlight
