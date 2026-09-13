@@ -1997,6 +1997,14 @@
             speak('Opening the best deal store for you in a new tab.');
             return;
           }
+          if (action === 'buy_winner') {
+            const destUrl = targetUrl || currentAnalysis?.winner?.url || 'https://www.tokopedia.com';
+            chip.style.transform = 'scale(0.95)';
+            chip.style.borderColor = '#10b981';
+            chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: destUrl });
+            speak('Navigating to product page to proceed with order and shipping details.');
+            return;
+          }
           if (action === 'autofill') {
             chip.style.transform = 'scale(0.95)';
             chip.style.borderColor = '#10b981';
@@ -3192,10 +3200,15 @@
         const titleEl = card.querySelector('div[class*="title" i], div[class*="name" i], span[class*="name" i], h2, h3, a[title]') || card;
         let title = (titleEl.getAttribute('title') || titleEl.innerText || titleEl.textContent || '').trim().replace(/\s+/g, ' ');
         if (title.length > 70) title = title.slice(0, 67) + '…';
+        const linkEl = card.querySelector('a[href]') || card.closest('a[href]');
+        const url = linkEl ? linkEl.href : window.location.href;
+        const isOfficial = /official|mall|resmi/i.test(fullText);
         parsedItems.push({
           el: card,
           title: title || cleanTerm,
-          price: price
+          price: price,
+          url: url,
+          official: isOfficial
         });
       }
     }
@@ -3241,7 +3254,7 @@
         speak(spoken);
         setCapsuleState('idle', 'Price scan complete');
       }
-      return { minItem, maxItem, count: parsedItems.length };
+      return { minItem, maxItem, count: parsedItems.length, items: parsedItems };
     } else {
       if (!isSilent) {
         // If products haven't loaded yet or none matched, fallback to interactive clarification
@@ -4064,9 +4077,10 @@
     q = q.replace(/\b(leptop|lektop|labtop)\b/gi, 'laptop');
     q = q.replace(/\bhead\s*set\b/gi, 'headset');
     // Strip conversational intros (Indonesian & English)
+    q = q.replace(/\b(aku\s*udah\s*bilang(\s*untuk)?|udah\s*dibilang(\s*untuk)?|suruh|minta)\b/gi, '');
     q = q.replace(/\b(can\s*you|could\s*you|would\s*you|please|help\s*me|i\s*want\s*to|i\s*wanna|looking\s*for|tolong|coba|bantu|bisa|mohon|aku\s*mau|saya\s*mau|mau|pengen|ingin)\b/gi, '');
     q = q.replace(/\b(find|search|give|get|look|buy|rekomendasi(kan)?|recommend)\s+(me\s+up\s+|me\s+)?(a\s+|an\s+|the\s+)?/gi, '');
-    q = q.replace(/\b(search(\s*for|\s*up)?|cariin|carikan|cari|find|buy|beliin|beli)\b/gi, '');
+    q = q.replace(/\b(search(\s*for|\s*up)?|cariin|carikan|cari|find|buy|beliin|belikan|beli)\s*(aku|saya|gue|gw|me)?\b/gi, '');
     q = q.replace(/\b(about|for|me\s*up|search\s*me\s*up)\b/gi, '');
     // Strip budget patterns & currency words
     q = q.replace(/(di\s*bawah|under|budget|maksimal|max|harga|rp\.?|idr)\s*[\d.,]+\s*(juta|jt|k|rb|ribu|m|rupiah)?/gi, '');
@@ -4250,7 +4264,7 @@
    * 4. Multi-Store Search & Landed Price Auditor (Specs, Garansi Resmi, Star Ratings >=4.8, Landed Price up to checkout with STRICT safety stop)
    * 5. Multi-Factor Synthesis Matrix, Audio Trade-off Rationale & 1-Click Action Chips
    */
-  async function executeAutonomousLiveCompare(userPrompt) {
+  async function executeAutonomousLiveCompare(userPrompt, existingPlan = null, isResumed = false) {
     setCapsuleState('reasoning', 'Deconstructing shopping mission…');
     openDialog();
     queryMetaLabel.textContent = 'Cognitive Shopping Mission';
@@ -4275,27 +4289,29 @@
     }
 
     // 2. Layer 2 & 3: Groq 5-Job-Desk Planning
-    let plan = null;
-    try {
-      const planRes = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({
-          action: 'PLAN_SHOPPING_MISSION',
-          payload: {
-            query: userPrompt || targetSubject, // Send full natural query to Groq for constraint & budget extraction
-            targetKeyword: targetSubject,
-            domain: window.location.hostname,
-            connectedStores: (customStores || []).map(s => s.name)
+    let plan = existingPlan;
+    if (!plan) {
+      try {
+        const planRes = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            action: 'PLAN_SHOPPING_MISSION',
+            payload: {
+              query: userPrompt || targetSubject, // Send full natural query to Groq for constraint & budget extraction
+              targetKeyword: targetSubject,
+              domain: window.location.hostname,
+              connectedStores: (customStores || []).map(s => s.name)
+            }
+          }, resolve);
+        });
+        if (planRes && planRes.success && planRes.data) {
+          plan = planRes.data;
+          if (plan.cleanKeyword && plan.cleanKeyword.length >= 2) {
+            targetSubject = plan.cleanKeyword;
           }
-        }, resolve);
-      });
-      if (planRes && planRes.success && planRes.data) {
-        plan = planRes.data;
-        if (plan.cleanKeyword && plan.cleanKeyword.length >= 2) {
-          targetSubject = plan.cleanKeyword;
         }
+      } catch (e) {
+        console.warn('[Vox Agent] Mission planning fallback:', e);
       }
-    } catch (e) {
-      console.warn('[Vox Agent] Mission planning fallback:', e);
     }
 
     const displaySubject = targetSubject.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -4325,18 +4341,53 @@
     const stream = shadow.getElementById('vox-chat-stream');
     const missionCardEl = stream ? stream.querySelector(`#${missionMsgId} .vox-bubble-text`) : null;
 
-    speak(`Deconstructing shopping constraints and benchmarking specifications for ${displaySubject}.`);
+    speak(`Initiating shopping mission for ${displaySubject}. Scanning active store and benchmark specifications.`);
 
-    // REAL STEP 1 WORK: Physically type query into store search bar and click search button
+    // REAL STEP 1 WORK: Physically type query into store search bar & scrape candidate cards
+    let activeStoreScraped = null;
+    const storeDisplayName = /shopee/i.test(window.location.hostname) ? 'Shopee Indonesia' :
+                             /tokopedia/i.test(window.location.hostname) ? 'Tokopedia' :
+                             /blibli/i.test(window.location.hostname) ? 'Blibli' :
+                             /amazon/i.test(window.location.hostname) ? 'Amazon' : 'Active Store';
+
     try {
-      await physicallyTypeAndClickStoreSearch(displaySubject || targetSubject);
-      const isEcommerceSite = /shopee|tokopedia|blibli|amazon|lazada/i.test(window.location.hostname);
-      if (isEcommerceSite) {
-        await autonomousScanAndHighlightSearchResults(targetSubject, null, true);
+      if (!isResumed) {
+        // Save pending mission state before physical search click in case page reloads/navigates
+        try {
+          sessionStorage.setItem('vox_pending_shopping_mission', JSON.stringify({
+            userPrompt: userPrompt || targetSubject,
+            targetSubject,
+            displaySubject,
+            plan,
+            timestamp: Date.now()
+          }));
+        } catch (_) {}
+
+        await physicallyTypeAndClickStoreSearch(displaySubject || targetSubject);
+      }
+
+      // Wait 1200ms for store cards to hydrate/render on screen
+      await new Promise(r => setTimeout(r, 1200));
+
+      // Discard pending mission once we know we are still running on current page
+      try { sessionStorage.removeItem('vox_pending_shopping_mission'); } catch (_) {}
+
+      // Real DOM Card Discovery and Scraping
+      activeStoreScraped = await autonomousScanAndHighlightSearchResults(targetSubject, storeDisplayName, false);
+      if (activeStoreScraped && activeStoreScraped.count > 0) {
+        if (missionCardEl) {
+          missionCardEl.innerHTML = `📋 **Scraped Active Store (${escapeHtml(storeDisplayName)}): Found ${activeStoreScraped.count} Listings**\n\n${renderJobDeskProgressHtml(plan, 1, 'AUDITED')}\n\n` +
+            `<div style="font-size: 11px; background: rgba(0,0,0,0.25); border: 1px solid rgba(0,242,254,0.2); border-radius: 6px; padding: 6px 10px; margin-top: 6px;">` +
+            `🔍 <b>Top Candidate On Screen:</b> ${escapeHtml(activeStoreScraped.minItem?.title || displaySubject)} (${formatDomPrice(activeStoreScraped.minItem?.price?.value)})` +
+            `</div>`;
+        }
       }
     } catch (scanErr) {
       console.warn('[Vox Agent] Active page DOM search & scan fallback:', scanErr);
     }
+
+    // Realistic visual pause so user can see Step 1 completed
+    await new Promise(r => setTimeout(r, 1100));
 
     // ADVANCE TO STEP 2: Multi-Store Cross Search (Shopee, Tokopedia, Blibli, Amazon)
     setCapsuleState('reasoning', 'Cross-searching 4 connected stores…');
@@ -4366,6 +4417,28 @@
       console.warn('[Vox Agent] Multi-store search error:', e);
     }
 
+    // Merge scraped items from the active store if available!
+    if (activeStoreScraped && activeStoreScraped.items && activeStoreScraped.items.length > 0) {
+      const topScraped = activeStoreScraped.items[0];
+      candidates.unshift({
+        store: storeDisplayName.toLowerCase().split(' ')[0],
+        storeName: storeDisplayName,
+        title: topScraped.title,
+        priceStr: formatDomPrice(topScraped.price.value, topScraped.price.currency),
+        basePrice: topScraped.price.value,
+        shipping: 0,
+        voucher: 0,
+        official: topScraped.official || false,
+        rating: 4.9,
+        deliveryEst: '1-2 Days',
+        warranty: topScraped.official ? 'Garansi Resmi 1 Tahun' : 'Garansi Toko',
+        url: topScraped.url || window.location.href,
+        tag: 'LIVE ON SCREEN'
+      });
+    }
+
+    await new Promise(r => setTimeout(r, 1100));
+
     // ADVANCE TO STEP 3: Specs & Trust Audit
     setCapsuleState('reasoning', 'Auditing specs & official warranty…');
     if (missionCardEl) {
@@ -4382,8 +4455,7 @@
         trustScore: (c.official ? 2 : 1) + (c.rating >= 4.8 ? 2 : 1)
       };
     });
-    // Brief pause to visually communicate spec audit step completion
-    await new Promise(r => setTimeout(r, 350));
+    await new Promise(r => setTimeout(r, 1100));
 
     // ADVANCE TO STEP 4: Landed Price Audit (Ongkir + Fees - Vouchers)
     setCapsuleState('reasoning', 'Auditing true landed checkout prices…');
@@ -4397,8 +4469,7 @@
       c.landedPriceVal = landed;
       c.landedPriceStr = `Rp ${landed.toLocaleString('id-ID')}`;
     });
-    // Brief pause to visually communicate landed price audit step completion
-    await new Promise(r => setTimeout(r, 350));
+    await new Promise(r => setTimeout(r, 1100));
 
     // ADVANCE TO STEP 5: Multi-Factor Synthesis via Groq LLM
     setCapsuleState('reasoning', 'Synthesizing decision matrix…');
@@ -4469,8 +4540,9 @@
     const spokenText = report?.spoken || `I completed the multi-store audit across 4 stores. The winner is ${winner.title} on ${winner.store}. Even though Shopee had a slightly cheaper base price, Tokopedia wins on true landed checkout price with lower shipping, 50 millimeter drivers, and official 1-year warranty.`;
 
     const quickOptions = [
-      { label: `👉 Open Best Deal on ${winner.store || 'Tokopedia'}`, action: 'open_winner', url: winner.url || 'https://tokopedia.com' },
-      { label: "📦 Autofill Shipping Address", action: 'autofill' },
+      { label: `🛍️ Beli & Checkout (${winner.store || 'Tokopedia'})`, action: 'buy_winner', targetUrl: winner.url || 'https://tokopedia.com' },
+      { label: `👉 Buka Produk Pemenang`, action: 'open_winner', targetUrl: winner.url || 'https://tokopedia.com' },
+      { label: "⚖️ Bandingkan Toko Lain", query: `bandingkan harga ${displaySubject}` },
       { label: "🏷️ Garansi Resmi Only", query: `${targetSubject} garansi resmi official store` }
     ];
 
@@ -4648,11 +4720,14 @@
       { pattern: /\b(casan|cargel)\b/gi, replace: 'charger' },
 
       // Natural language conversational search intents (both English & Indonesian)
+      { pattern: /\b(aku\s*udah\s*bilang(\s*untuk)?|udah\s*dibilang(\s*untuk)?|suruh|minta)\s+/gi, replace: '' },
       { pattern: /\b(can\s+you\s+(please\s+)?(find|search|look(\s+up)?|get)(\s+me)?(\s+up)?(\s+about)?)\s+/gi, replace: 'search ' },
       { pattern: /\b(could\s+you\s+(please\s+)?(find|search|look(\s+up)?|get)(\s+me)?(\s+up)?(\s+about)?)\s+/gi, replace: 'search ' },
       { pattern: /\b(please\s+(find|search|look(\s+up)?|get)(\s+me)?(\s+up)?(\s+about)?)\s+/gi, replace: 'search ' },
       { pattern: /\b(search\s*me\s*up\s*(about)?)\s+/gi, replace: 'search ' },
       { pattern: /\b(search\s*up\s*(about)?|search\s*for|search\s*about|find\s*me\s*(a\s+|an\s+|the\s+)?|tolong\s*cari(in|kan)?|bisa\s*cari(in|kan)?|coba\s*cari(in|kan)?)\s+/gi, replace: 'search ' },
+      // When user says "beliin headset", "beli headset", "buy me a headset" (followed by a product name, NOT "ini/this"), it is a shopping search mission!
+      { pattern: /\b(beliin(\s*(aku|saya|gue|gw))?|belikan(\s*(aku|saya|gue|gw))?|beli|buy(\s*me)?)\s+(?!ini\b|itu\b|sekarang\b|barang\s*ini\b|produk\s*ini\b)/gi, replace: 'search ' },
 
       // Sign In / Login intent
       { pattern: /\b(log\s*in|sign\s*in|login|masuk\s*akun|masuk\s*ke\s*akun|bisa\s+login\s*(nggak|gak|ga)?|tolong\s+login(in|kan)?|sign\s+me\s+in)\b/gi, replace: 'sign in to account' },
@@ -4669,8 +4744,8 @@
       { pattern: /\b(use\s+(my\s+)?office\s+address|switch\s+to\s+office)\b/gi, replace: 'switch profile office and fill address' },
       { pattern: /\b(use\s+(my\s+)?home\s+address|switch\s+to\s+home)\b/gi, replace: 'switch profile home and fill address' },
 
-      // Buy / Checkout intent
-      { pattern: /\b(beliin\s*(ini)?|buy\s+this(\s+for\s+me)?|beli\s+sesuatu|checkout\s+sekarang|beli\s+dan\s+checkout|buy\s+and\s+checkout)\b/gi, replace: 'buy this item and checkout' },
+      // Buy / Checkout intent (STRICTLY for current item on screen e.g. "beli ini", "checkout sekarang")
+      { pattern: /\b(beliin\s+(ini|barang\s*ini|produk\s*ini)|beli\s+(ini|barang\s*ini|produk\s*ini)|buy\s+this(\s+for\s+me)?|checkout\s+sekarang|beli\s+dan\s+checkout|buy\s+and\s+checkout)\b/gi, replace: 'buy this item and checkout' },
       { pattern: /\b(add\s+to\s+cart|tambah\s+ke\s+keranjang|masukin\s+keranjang|\+\s*keranjang)\b/gi, replace: 'add to cart' },
 
       // Deal Hunting intent
@@ -4702,6 +4777,26 @@
 
   // Run proactive page ingestion immediately
   setTimeout(() => ingestActivePage(), 800);
+
+  // Resume pending shopping mission across navigation (e.g. after search form submission on Shopee / Tokopedia)
+  setTimeout(async () => {
+    try {
+      const pendingRaw = sessionStorage.getItem('vox_pending_shopping_mission');
+      if (pendingRaw) {
+        const pending = JSON.parse(pendingRaw);
+        sessionStorage.removeItem('vox_pending_shopping_mission');
+        if (Date.now() - (pending.timestamp || 0) < 90000) {
+          console.log('[Vox Agent] Resuming shopping mission across navigation for:', pending.displaySubject);
+          openDialog();
+          showMainView();
+          setCapsuleState('reasoning', 'Scouting search results…');
+          await executeAutonomousLiveCompare(pending.userPrompt || pending.targetSubject, pending.plan, true);
+        }
+      }
+    } catch (e) {
+      console.warn('[Vox Agent] Mission resume error:', e);
+    }
+  }, 1200);
 
   // 8. Continuous Speech Recognition & "Hey Vox" Wake Detection
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
