@@ -7765,7 +7765,7 @@
     }
 
     // Explain Simply
-    if (/\b(jelaskan\s*(secara\s*)?sederhana|explain\s*(this\s*)?(simply|to\s*me\s*like\s*i'?m\s*5)|maksudnya\s*apa\s*(sih)?|apa\s*maksud\s*(dari)?|aku\s*(nggak|tidak|gak)\s*ngerti|ini\s*tuh\s*apa\s*(sih)?|demystify)\b/i.test(q)) {
+    if (/\b(jelaskan\s*(secara\s*)?sederhana|explain\s*(this\s*)?(simply|easily|to\s*me\s*like\s*i'?m\s*5|to\s*me)?|can\s*you\s*explain\s*(easily|simply)?|maksudnya\s*apa\s*(sih)?|apa\s*maksud\s*(dari)?|aku\s*(nggak|tidak|gak)\s*ngerti|i\s*(still\s*)?don'?t\s*(get|understand)\s*it|don'?t\s*understand|ini\s*tuh\s*apa\s*(sih)?|demystify)\b/i.test(q)) {
       return { intent: 'EXPLAIN_SIMPLY', steps: [], params: {} };
     }
 

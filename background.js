@@ -420,7 +420,7 @@ CLASSIFY the user's utterance into EXACTLY ONE of these intents:
 - SPOTLIGHT_TOUR: user wants a guided spotlight tour, explanation, or visual walkthrough of the page elements (e.g. "tour", "spotlight tour", "jelaskan halaman ini", "show me around", "pandu saya", "walk me through").
 - RESET_VOX_STATE: user wants to reset data, restart mic, or clear assistant state (e.g. "reset data", "reset vox", "bersihkan data", "mulai ulang").
 - DEEP_RESEARCH: user wants to research, evaluate, compare, or find the best item among all options visible on the page (e.g. "coba research dulu", "riset dulu", "menurut groq bagus yang mana", "pilihin yang paling bagus", "cariin yang bagus", "which one is the best pick", "analisis produk di halaman ini", "bandingkan produk").
-- EXPLAIN_SIMPLY: user asks to explain a concept or page content simply or with an analogy (e.g. "Web3 ini apa sih", "explain this simply", "aku nggak ngerti", "apa maksud konsep ini").
+- EXPLAIN_SIMPLY: user asks to explain a concept or page content simply or with an analogy (e.g. "Web3 ini apa sih", "explain this simply", "can you explain easily to me", "i still don't get it", "aku nggak ngerti", "apa maksud konsep ini").
 - MEDIA_CONTROL: user wants to play/pause media or search/play a song on YouTube (e.g. "play this song", "putar lagu ini", "play Bohemian Rhapsody", "pause video").
 - SHOPPING_MISSION: user wants to SEARCH for, FIND, or BROWSE a product/item across stores (e.g. "find gaming headset under 100k", "cari sepatu lari").
 - CHECKOUT: user wants to BUY, ADD TO CART, or CHECKOUT an item (e.g. "beli", "beli ini", "suruh beli", "buy", "buy now", "add to cart").
