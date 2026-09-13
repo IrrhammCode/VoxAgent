@@ -22,7 +22,7 @@ const DEFAULT_SETTINGS = {
   groqModel: (typeof self !== 'undefined' && self.VOX_ENV?.GROQ_MODEL) || 'qwen/qwen3.8-27b',
   elevenlabsApiKey: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_API_KEY) || '',
   elevenlabsVoiceId: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_VOICE_ID) || 'IKne3meq5aSn9XLyUdCD',
-  elevenlabsModel: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_MODEL) || 'eleven_multilingual_v2',
+  elevenlabsModel: (typeof self !== 'undefined' && self.VOX_ENV?.ELEVENLABS_MODEL) || 'eleven_turbo_v2_5',
   handsFree: (typeof self !== 'undefined' && self.VOX_ENV?.HANDS_FREE_MIC) ?? true,
   autonomousClick: (typeof self !== 'undefined' && self.VOX_ENV?.AUTONOMOUS_CLICK) ?? true,
   voxLanguage: (typeof self !== 'undefined' && self.VOX_ENV?.VOX_LANGUAGE) || 'en-US',
@@ -420,7 +420,7 @@ CLASSIFY the user's utterance into EXACTLY ONE of these intents:
 - SPOTLIGHT_TOUR: user wants a guided spotlight tour, explanation, or visual walkthrough of the page elements (e.g. "tour", "spotlight tour", "jelaskan halaman ini", "show me around", "pandu saya", "walk me through").
 - RESET_VOX_STATE: user wants to reset data, restart mic, or clear assistant state (e.g. "reset data", "reset vox", "bersihkan data", "mulai ulang").
 - DEEP_RESEARCH: user wants to research, evaluate, compare, or find the best item among all options visible on the page (e.g. "coba research dulu", "riset dulu", "menurut groq bagus yang mana", "pilihin yang paling bagus", "cariin yang bagus", "which one is the best pick", "analisis produk di halaman ini", "bandingkan produk").
-- EXPLAIN_SIMPLY: user asks to explain a concept or page content simply or with an analogy (e.g. "Web3 ini apa sih", "explain this simply", "can you explain easily to me", "i still don't get it", "aku nggak ngerti", "apa maksud konsep ini").
+- EXPLAIN_SIMPLY: user asks to explain a concept or page content simply or with an analogy (e.g. "explain this simply", "can you explain easily to me", "i still don't get it", "aku nggak ngerti", "apa maksud konsep ini"). In "spokenResponse", explain the core concept of this page using a vivid, intuitive everyday analogy that anyone can easily grasp, in natural spoken sentences without formatting.
 - MEDIA_CONTROL: user wants to play/pause media or search/play a song on YouTube (e.g. "play this song", "putar lagu ini", "play Bohemian Rhapsody", "pause video").
 - SHOPPING_MISSION: user wants to SEARCH for, FIND, or BROWSE a product/item across stores (e.g. "find gaming headset under 100k", "cari sepatu lari").
 - CHECKOUT: user wants to BUY, ADD TO CART, or CHECKOUT an item (e.g. "beli", "beli ini", "suruh beli", "buy", "buy now", "add to cart").
@@ -430,7 +430,7 @@ CLASSIFY the user's utterance into EXACTLY ONE of these intents:
 - REGISTER: user wants to CREATE or REGISTER a new account.
 - CLICK_ITEM: user wants to CLICK, SELECT, VIEW, or OPEN a specific product card, item, or button visible on screen.
 - WHATSAPP_ACTION: user wants to send research, notes, or message to WhatsApp, or share via WhatsApp (e.g. "kirim ke whatsapp", "send to whatsapp", "buka whatsapp web", "share ke wa"). In "params", set "targetContact": "pinned" or contact name.
-- PAGE_QA: user is asking a QUESTION about the current page/website content.
+- PAGE_QA: user is asking a QUESTION or asking for an overview of the current page/website (e.g. "what is this page talking about", "what is this page about", "what does this site do", "explain this page", "what are they selling"). In "spokenResponse", provide a crisp, authoritative 2-sentence conversational summary of what the current page is about and its key offerings, ready to be spoken aloud.
 - CONFIRM_ORDER: user is CONFIRMING a pending checkout/order.
 - CANCEL_ORDER: user is CANCELLING a pending checkout/order.
 - SUBMIT_FORM: user wants to SUBMIT a form on the page.
@@ -1583,11 +1583,11 @@ Return a valid JSON object strictly matching this schema:
   "spoken": "Conversational, natural, friendly speech text for voice output (no markdown symbols, no bullet points, ready to speak aloud in clear natural English)",
   "targetFocus": "${targetFocus}",
   "targetKeywords": ["keyword1", "keyword2", "keyword3"],
-  "followUpQuestion": "An interactive, proactive clarifying question asking the user back about their budget, series, or preference (e.g., 'What is your target budget, and are you looking for the budget LOQ series or the high-performance Legion 5?')",
+  "followUpQuestion": "A targeted clarifying question directly relevant to this specific page and user query (e.g., if on Apple, ask which model or feature to explore; if shopping, ask about budget range)",
   "quickOptions": [
-    { "label": "💰 Budget LOQ (Rp 12-16M)", "query": "Lenovo LOQ RTX 4050" },
-    { "label": "⚡ Mid Legion 5 (Rp 18-24M)", "query": "Lenovo Legion 5 RTX 4060" },
-    { "label": "🔥 Flagship Legion Pro (Rp 28M+)", "query": "Lenovo Legion Pro 7" }
+    { "label": "Relevant Option 1", "query": "Relevant query 1" },
+    { "label": "Relevant Option 2", "query": "Relevant query 2" },
+    { "label": "Relevant Option 3", "query": "Relevant query 3" }
   ],
   "worthIt": {
     "score": 85,
@@ -1606,18 +1606,17 @@ Return a valid JSON object strictly matching this schema:
 
 CRITICAL RULES:
 1. SHOPPING & PRODUCT INTELLIGENCE:
-   - You are a specialized Personal Shopper AI. Guide the user to make smart, cost-effective purchasing decisions.
+   - Guide the user with crisp, accurate analysis tailored to the active webpage.
    - When asked to compare, provide clear side-by-side specs, price comparisons, and highlight the best value.
    - When asked about pricing, verify whether there are hidden fees (shipping, warranty, taxes) and explain clearly.
 2. ESL LEARNER TOLERANCE:
    - The user speaks English with an Indonesian native background and may use mixed or informal phrasing (e.g., 'how much price', 'murahan mana', 'ada diskon gak', 'can you see view pricing', 'beliin ini').
-   - Deduce their shopping intent with empathy. Never correct their grammar. Respond in warm, clear, standard English.
+   - Deduce their intent with empathy. Never correct their grammar. Respond in warm, clear, standard English.
 3. BUTTON & CHECKOUT ACTIONS:
    - If the user asks to see pricing, buy, or check price ("view pricing", "buy now", "beliin ini"):
    - Acknowledge that you have located and opened the pricing/checkout section. Explain the price and cost structure clearly in spoken text.
 4. TWO-WAY INTERACTIVE CONVERSATION (ESSENTIAL):
-   - Shopping is an interactive conversation! Do NOT just give a flat, one-off answer and stop.
-   - ALWAYS formulate a targeted followUpQuestion asking the user about their specific budget, series preference, or use case.
+   - Formulate a targeted followUpQuestion directly relevant to the active page content (do NOT mention laptops or unrelated items if the page is Apple, Anakin, or another topic).
    - ALWAYS populate 3 to 5 clickable quickOptions chips so the user can easily tap to refine their choice.
 5. LANGUAGE:
    - Always respond in natural, fluent English (unless the user explicitly speaks pure Indonesian without English intent).
@@ -1709,43 +1708,46 @@ async function handleTtsAudioProxy({ text, lang = 'en', apiKey = '', voiceId = '
       if (activeVoiceId === '21m00Tcm4TlvDq8ikWAM' || activeVoiceId === 'EXAVITQu4vr4xnSDxMaL' || activeVoiceId === 'pNInz6obpgDQGcFmaJgB') {
         activeVoiceId = 'IKne3meq5aSn9XLyUdCD';
       }
-      const model = settingsCache.elevenlabsModel || 'eleven_multilingual_v2';
-      const candidateVoices = [activeVoiceId, 'IKne3meq5aSn9XLyUdCD', 'TX3LPaxmHKxFdv7VOQHJ', 'CwhRBWXzGAHq8TQ4Fs17'];
+      const model = settingsCache.elevenlabsModel || 'eleven_turbo_v2_5';
+      const candidateModels = [...new Set([model, 'eleven_turbo_v2_5', 'eleven_flash_v2_5', 'eleven_multilingual_v2'])];
+      const candidateVoices = [...new Set([activeVoiceId, 'IKne3meq5aSn9XLyUdCD', 'TX3LPaxmHKxFdv7VOQHJ', 'CwhRBWXzGAHq8TQ4Fs17'])];
 
-      for (const vid of [...new Set(candidateVoices)]) {
-        try {
-          const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'xi-api-key': elKey
-            },
-            body: JSON.stringify({
-              text: text.slice(0, 4000),
-              model_id: model,
-              voice_settings: {
-                stability: 0.38,
-                similarity_boost: 0.80,
-                style: 0.45,
-                use_speaker_boost: true
-              }
-            })
-          });
+      for (const m of candidateModels) {
+        for (const vid of candidateVoices) {
+          try {
+            const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'xi-api-key': elKey
+              },
+              body: JSON.stringify({
+                text: text.slice(0, 4000),
+                model_id: m,
+                voice_settings: {
+                  stability: 0.38,
+                  similarity_boost: 0.80,
+                  style: 0.45,
+                  use_speaker_boost: true
+                }
+              })
+            });
 
-          if (res.ok) {
-            const buffer = await res.arrayBuffer();
-            const base64 = arrayBufferToBase64(buffer);
-            console.log(`[Vox TTS] ElevenLabs generation SUCCESS via voice ${vid} (${base64.length} chars)`);
-            return {
-              source: 'elevenlabs',
-              audioDataUri: `data:audio/mpeg;base64,${base64}`,
-              format: 'audio/mpeg'
-            };
+            if (res.ok) {
+              const buffer = await res.arrayBuffer();
+              const base64 = arrayBufferToBase64(buffer);
+              console.log(`[Vox TTS] ElevenLabs generation SUCCESS via voice ${vid} & model ${m} (${base64.length} chars)`);
+              return {
+                source: 'elevenlabs',
+                audioDataUri: `data:audio/mpeg;base64,${base64}`,
+                format: 'audio/mpeg'
+              };
+            }
+            const errDetail = await res.text().catch(() => '');
+            console.warn(`[Vox TTS] ElevenLabs voice ${vid} model ${m} returned ${res.status}:`, errDetail);
+          } catch (vidErr) {
+            console.warn(`[Vox TTS] Voice ${vid} error:`, vidErr.message);
           }
-          const errDetail = await res.text().catch(() => '');
-          console.warn(`[Vox TTS] ElevenLabs voice ${vid} returned ${res.status}:`, errDetail);
-        } catch (vidErr) {
-          console.warn(`[Vox TTS] Voice ${vid} error:`, vidErr.message);
         }
       }
     } catch (err) {
@@ -1753,7 +1755,30 @@ async function handleTtsAudioProxy({ text, lang = 'en', apiKey = '', voiceId = '
     }
   }
 
-  throw new Error('ElevenLabs TTS unavailable or failed');
+  // Strategy 2: High-Quality Neural Audio Stream (100% Free & Unlimited, zero API key needed)
+  try {
+    const langCode = (lang || 'en').slice(0, 2);
+    const neuralUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(langCode)}&client=tw-ob&q=${encodeURIComponent(text.slice(0, 400))}`;
+    const neuralRes = await fetch(neuralUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      }
+    });
+    if (neuralRes.ok) {
+      const buffer = await neuralRes.arrayBuffer();
+      const base64 = arrayBufferToBase64(buffer);
+      console.log(`[Vox TTS] Free Neural Audio generation SUCCESS (${base64.length} chars)`);
+      return {
+        source: 'google_neural',
+        audioDataUri: `data:audio/mpeg;base64,${base64}`,
+        format: 'audio/mpeg'
+      };
+    }
+  } catch (fallbackErr) {
+    console.warn('[Vox TTS] Neural stream fallback failed:', fallbackErr);
+  }
+
+  throw new Error('All TTS generation strategies exhausted');
 }
 
 function arrayBufferToBase64(buffer) {

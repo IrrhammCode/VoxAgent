@@ -6314,9 +6314,10 @@
       { pattern: /\b(tek\s+spek|tech\s+spec|tech\s+specs|spesifikasi|spek|specs|fitur|features)\b/gi, replace: 'tech specs' },
       { pattern: /\b(buka|liat|show|view|open)\s+(spek|specs|specification|features)\b/gi, replace: 'view tech specs' },
 
-      // Overview intent
-      { pattern: /\b(wat\s+dis\s+web|dis\s+web\s+about\s+wat|wat\s+dis|what\s+is\s+dis|dis\s+web|website\s+apa\s+ini|ini\s+apa|apa\s+ini|explain\s+dis|jelasin)\b/gi, replace: 'what is this website about' },
-      { pattern: /\b(tel\s+me\s+about|tell\s+about|overview|summary)\b/gi, replace: 'explain this website' },
+      // Overview intent & What is this page talking about
+      { pattern: /\b(what|wat|wot)\s*(is|s)?\s*(this|dis|the)\s*(page|pitch|peach|place|space|base|web|website|site)?\s*(talking\s*about|talk\s*about|about|discussing|explaining)\b/gi, replace: 'what is this page talking about' },
+      { pattern: /\b(wat\s+dis\s+web|dis\s+web\s+about\s+wat|wat\s+dis|what\s+is\s+dis|dis\s+web|website\s+apa\s+ini|ini\s+apa|apa\s+ini|explain\s+dis|jelasin)\b/gi, replace: 'what is this page talking about' },
+      { pattern: /\b(tel\s+me\s+about|tell\s+about|overview|summary)\s*(this\s*(page|web|site))?\b/gi, replace: 'explain this page' },
 
       // ─── ACOUSTIC & ACCENT MISHEARING NORMALIZATION ───
       // When ESL/Indonesian speakers say "headset", Web Speech API in en-US frequently transcribes "headband", "had set", "hed set", "het set", etc.
@@ -7101,8 +7102,8 @@
         if (thisSpeechId !== currentSpeechId) return;
 
         if (proxyResult) {
-          if (proxyResult.source === 'elevenlabs' && proxyResult.audioDataUri) {
-            stopCurrentSpeech(false); // Ensure no old audio or Web Speech is running without invalidating this speech sequence
+          if ((proxyResult.source === 'elevenlabs' || proxyResult.source === 'google_neural') && proxyResult.audioDataUri) {
+            stopCurrentSpeech(false); // Ensure no old audio is running without invalidating this speech sequence
             const audio = new Audio(proxyResult.audioDataUri);
             currentAudio = audio;
             audio.playbackRate = voiceSpeed;
@@ -7119,12 +7120,12 @@
             audio.onended = onSpeechDone;
             audio.onerror = () => {
               if (thisSpeechId !== currentSpeechId) return;
-              console.warn('[Vox Agent] ElevenLabs audio playback error');
+              console.warn('[Vox Agent] Audio playback error');
               onSpeechDone();
             };
             try {
               await audio.play();
-              return; // SUCCESS: ElevenLabs is playing. DO NOT continue to fallback!
+              return; // SUCCESS: Audio is playing. DO NOT continue to fallback!
             } catch (playErr) {
               if (thisSpeechId !== currentSpeechId) return;
               console.warn('[Vox Agent] ElevenLabs play error:', playErr);
@@ -8927,9 +8928,41 @@
       return;
     }
 
+    // PAGE_QA: direct answers & overview of the current page/website
+    if (classified.intent === 'PAGE_QA') {
+      collapseCapsule();
+      if (classified.spokenResponse && classified.spokenResponse.length > 8) {
+        const spoken = classified.spokenResponse;
+        expandCapsule(spoken.slice(0, 60) + '…', 4000);
+        appendChatMessage('agent', spoken, {
+          spoken,
+          quickOptions: [
+            { label: '💡 Explain Simply', action: 'explain_simple' },
+            { label: '🔍 Research This Page', action: 'research_page' },
+            { label: '🔦 Spotlight Tour', action: 'run_tour' }
+          ]
+        });
+        speak(spoken);
+        return;
+      }
+    }
+
     // EXPLAIN_SIMPLY: demystify concept with everyday analogy
     if (classified.intent === 'EXPLAIN_SIMPLY') {
       collapseCapsule();
+      if (classified.spokenResponse && classified.spokenResponse.length > 15) {
+        const spoken = classified.spokenResponse;
+        expandCapsule(spoken.slice(0, 60) + '…', 4000);
+        appendChatMessage('agent', `💡 **Everyday Analogy**\n\n${spoken}`, {
+          spoken,
+          quickOptions: [
+            { label: '🔦 Spotlight Tour', action: 'run_tour' },
+            { label: '🔍 Deep Research', action: 'research_page' }
+          ]
+        });
+        speak(spoken);
+        return;
+      }
       const concept = classified.params?.topic || query;
       await executeExplainSimply(concept);
       return;
