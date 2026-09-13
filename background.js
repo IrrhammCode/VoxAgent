@@ -1394,6 +1394,180 @@ async function handleMultiStoreSearch(payload = {}) {
           url: 'https://www.amazon.com/s?k=gaming+headset'
         };
       }
+    } else if (targetCategory === 'Laptop' || /laptop|notebook|komputer|pc/i.test(query)) {
+      if (storeId === 'tokopedia') {
+        return {
+          store: 'Tokopedia',
+          title: 'Lenovo LOQ 15 Gaming Laptop (i5-13450HX, RTX 4050, 16GB, 512GB SSD)',
+          basePrice: 12850000,
+          shipping: 25000,
+          voucher: 0,
+          specs: 'Core i5-13450HX · RTX 4050 6GB 95W · 16GB DDR5 · 144Hz FHD 100% sRGB',
+          official: true,
+          warranty: 'Garansi Resmi 2 Tahun + ADP (Lenovo Indonesia)',
+          rating: 4.9,
+          unitsSold: '850+ terjual',
+          url: 'https://www.tokopedia.com/search?q=lenovo+loq+rtx+4050'
+        };
+      } else if (storeId === 'shopee') {
+        return {
+          store: 'Shopee',
+          title: 'ASUS TUF Gaming A15 (Ryzen 5 7535HS, RTX 3050, 8GB, 512GB)',
+          basePrice: 12499000,
+          shipping: 120000,
+          voucher: 0,
+          specs: 'Ryzen 5 7535HS · RTX 3050 4GB 75W · 8GB DDR5 · 144Hz Display',
+          official: true,
+          warranty: 'Garansi Resmi 2 Tahun (ASUS Indonesia)',
+          rating: 4.8,
+          unitsSold: '620+ terjual',
+          url: 'https://shopee.co.id/search?keyword=asus+tuf+gaming+a15'
+        };
+      } else if (storeId === 'blibli') {
+        return {
+          store: 'Blibli',
+          title: 'Acer Nitro V 15 Gaming (i5-13420H, RTX 2050 4GB, 8GB RAM)',
+          basePrice: 10999000,
+          shipping: 50000,
+          voucher: 0,
+          specs: 'Core i5-13420H · RTX 2050 4GB · 8GB DDR5 · 144Hz',
+          official: false,
+          warranty: 'Garansi Toko / Distributor 1 Tahun',
+          rating: 4.5,
+          unitsSold: '190 terjual',
+          url: 'https://www.blibli.com/cari/acer+nitro+v15'
+        };
+      } else {
+        return {
+          store: 'Amazon Global',
+          title: 'HP Victus 15 Gaming Laptop (Intel i5-13420H, RTX 3050, 16GB)',
+          basePrice: 14500000,
+          shipping: 250000,
+          voucher: 0,
+          specs: 'i5-13420H · RTX 3050 · 16GB RAM · US Layout',
+          official: true,
+          warranty: 'International Warranty',
+          rating: 4.4,
+          unitsSold: '3k+ ratings',
+          url: 'https://www.amazon.com/s?k=gaming+laptop'
+        };
+      }
+    } else if (targetCategory === 'Accessories' || /mouse|keyboard|monitor/i.test(query)) {
+      if (storeId === 'tokopedia') {
+        return {
+          store: 'Tokopedia',
+          title: 'Rexus Daxa Air IV Wireless Ultra-Lightweight Gaming Mouse',
+          basePrice: 399000,
+          shipping: 7000,
+          voucher: 0,
+          specs: 'PixArt PAW3395 26.000 DPI · 65g Weight · Tri-Mode Wireless',
+          official: true,
+          warranty: 'Garansi Resmi 1 Tahun (Rexus Indonesia)',
+          rating: 4.9,
+          unitsSold: '4.2k+ terjual',
+          url: 'https://www.tokopedia.com/search?q=rexus+daxa+air+iv'
+        };
+      } else if (storeId === 'shopee') {
+        return {
+          store: 'Shopee',
+          title: 'Fantech Helios XD3 Wireless Gaming Mouse',
+          basePrice: 389000,
+          shipping: 24000,
+          voucher: 0,
+          specs: 'PixArt PAW3335 16.000 DPI · 83g Weight · 2.4GHz Wireless',
+          official: true,
+          warranty: 'Garansi Resmi 1 Tahun (Fantech Care)',
+          rating: 4.8,
+          unitsSold: '2.8k+ terjual',
+          url: 'https://shopee.co.id/search?keyword=fantech+helios+xd3'
+        };
+      } else if (storeId === 'blibli') {
+        return {
+          store: 'Blibli',
+          title: 'Inphic Wireless Silent Optical Mouse Rechargeable',
+          basePrice: 180000,
+          shipping: 12000,
+          voucher: 0,
+          specs: 'Generic Optical Sensor 1600 DPI · Silent Click',
+          official: false,
+          warranty: 'Garansi Toko / Distributor',
+          rating: 4.5,
+          unitsSold: '540 terjual',
+          url: 'https://www.blibli.com/cari/mouse+wireless'
+        };
+      } else {
+        return {
+          store: 'Amazon Global',
+          title: 'Razer DeathAdder Essential Wired Gaming Mouse',
+          basePrice: 450000,
+          shipping: 40000,
+          voucher: 0,
+          specs: '6.400 DPI Optical Sensor · 5 Programmable Buttons',
+          official: true,
+          warranty: 'International Manufacturer Warranty',
+          rating: 4.6,
+          unitsSold: '10k+ ratings',
+          url: 'https://www.amazon.com/s?k=gaming+mouse'
+        };
+      }
+    } else if (targetCategory === 'Smartphone' || /hp|smartphone|iphone|samsung|xiaomi/i.test(query)) {
+      if (storeId === 'tokopedia') {
+        return {
+          store: 'Tokopedia',
+          title: 'Xiaomi Redmi Note 13 Pro 5G (12GB/512GB) Garansi Resmi',
+          basePrice: 4199000,
+          shipping: 10000,
+          voucher: 0,
+          specs: 'Snapdragon 7s Gen 2 · 200MP OIS Camera · 1.5K AMOLED 120Hz',
+          official: true,
+          warranty: 'Garansi Resmi Xiaomi Indonesia 15 Bulan',
+          rating: 4.9,
+          unitsSold: '5.1k+ terjual',
+          url: 'https://www.tokopedia.com/search?q=redmi+note+13+pro+5g'
+        };
+      } else if (storeId === 'shopee') {
+        return {
+          store: 'Shopee',
+          title: 'Samsung Galaxy A25 5G (8GB/256GB) Garansi Resmi SEIN',
+          basePrice: 3999000,
+          shipping: 35000,
+          voucher: 0,
+          specs: 'Exynos 1280 · 50MP OIS Camera · Super AMOLED 120Hz',
+          official: true,
+          warranty: 'Garansi Resmi SEIN 1 Tahun',
+          rating: 4.8,
+          unitsSold: '3.4k+ terjual',
+          url: 'https://shopee.co.id/search?keyword=samsung+galaxy+a25'
+        };
+      } else if (storeId === 'blibli') {
+        return {
+          store: 'Blibli',
+          title: 'Realme 11 Pro 5G (8GB/256GB) Edition',
+          basePrice: 3850000,
+          shipping: 20000,
+          voucher: 0,
+          specs: 'Dimensity 7050 · 100MP OIS Camera · Curved OLED',
+          official: false,
+          warranty: 'Garansi Toko / Distributor',
+          rating: 4.6,
+          unitsSold: '420 terjual',
+          url: 'https://www.blibli.com/cari/realme+11+pro'
+        };
+      } else {
+        return {
+          store: 'Amazon Global',
+          title: 'Google Pixel 7a 5G (128GB Unlocked)',
+          basePrice: 5800000,
+          shipping: 280000,
+          voucher: 0,
+          specs: 'Google Tensor G2 · 64MP Camera · Clean Android',
+          official: true,
+          warranty: 'US Warranty (IMEI Non-Resmi)',
+          rating: 4.5,
+          unitsSold: '2k+ ratings',
+          url: 'https://www.amazon.com/s?k=google+pixel+7a'
+        };
+      }
     }
 
     // Default general product

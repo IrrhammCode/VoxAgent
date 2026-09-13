@@ -3326,6 +3326,11 @@
    * and guarantees navigation to search results.
    */
   async function executeAutonomousSearch(rawQuery) {
+    // All searches in Vox Agent execute the 5-Layer Cognitive Multi-Agent Shopping Engine
+    return executeAutonomousLiveCompare(rawQuery);
+  }
+
+  async function legacyAutonomousSearch(rawQuery) {
     // 1. Extract pure product keyword using smart entity extractor
     const cleanTerm = extractCleanSearchTerm(rawQuery) || (rawQuery || '').trim();
 
@@ -4084,6 +4089,27 @@
   }
 
   /**
+   * Helper: Extract pure product entity / keyword from natural conversational queries.
+   * e.g. "tolong carikan headset murah di bawah 200 ribu yang bagus dan garansi resmi" -> "headset"
+   * e.g. "rekomendasi laptop gaming under 15 juta" -> "laptop gaming"
+   */
+  function extractProductEntity(rawQuery) {
+    if (!rawQuery) return '';
+    let q = rawQuery.toLowerCase().trim();
+    // Strip wake words
+    q = q.replace(/^(hey|halo|hai|ok)?\s*(vox|fox|copilot)?\s*[,.]?\s*/i, '');
+    // Strip conversational intros
+    q = q.replace(/\b(tolong|coba|bantu|bisa|mohon|please|help\s*me|aku\s*mau|saya\s*mau|mau|pengen|ingin|i\s*want\s*to|i\s*wanna|looking\s*for|cariin|carikan|cari|search(\s*for|\s*up)?|find|buy|beliin|beli|rekomendasi(kan)?|recommend)\b/gi, '');
+    // Strip budget patterns
+    q = q.replace(/(di\s*bawah|under|budget|maksimal|max|harga|rp\.?|idr)\s*[\d.,]+\s*(juta|jt|k|rb|ribu|m)?/gi, '');
+    // Strip evaluation & filler phrases
+    q = q.replace(/\b(yang\s*bagus|yang\s*murah|yang\s*terbaik|paling\s*bagus|paling\s*murah|terbaik|termurah|murah|bagus|budget\s*friendly|berkualitas|mantap|resmi|garansi\s*resmi|official\s*store|official|mall|original|ori|dong|ya|deh|nih|lah|kan|kah|please|dan|tapi|mana\s*yang|mana|ada)\b/gi, '');
+    q = q.replace(/\s+(on|in|di)\s+(shopee|tokopedia|lazada|blibli|amazon|google|store|marketplace|web|olshop).*$/i, '');
+    q = q.replace(/\s+/g, ' ').trim();
+    return q;
+  }
+
+  /**
    * Layer 1: Real-Time DOM Deconstruction & Entity Extraction
    * Dynamically inspects DOM for active store, product title, current price,
    * seller credibility (Official Store / Mall), official warranty status, and hardware specs.
@@ -4249,18 +4275,21 @@
     tableWrap.style.display = 'none';
     worthitWrap.style.display = 'none';
 
-    // 1. Layer 1: DOM Deconstruction
+    // 1. Layer 1: DOM Deconstruction & Entity Extraction
     const domDeconstruction = deconstructCurrentPage();
-    let targetSubject = (userPrompt || '').replace(/^(compare|bandingkan|komparasi|cek|check)\s*/i, '').trim();
-    if (!targetSubject || targetSubject.length < 3) {
+    const cleanEntity = extractProductEntity(userPrompt);
+    let targetSubject = cleanEntity;
+    if (!targetSubject || targetSubject.length < 2) {
       if (domDeconstruction.title && domDeconstruction.title.length > 3) {
-        targetSubject = domDeconstruction.title;
+        targetSubject = extractProductEntity(domDeconstruction.title) || domDeconstruction.title.slice(0, 30);
       } else {
         const urlParams = new URLSearchParams(window.location.search);
         const searchQ = urlParams.get('keyword') || urlParams.get('q') || urlParams.get('k') || '';
-        targetSubject = extractCleanSearchTerm(searchQ) || 'Gaming Headset with Mic';
+        targetSubject = extractProductEntity(searchQ) || 'Gaming Headset';
       }
     }
+
+    const displaySubject = targetSubject.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
     // 2. Layer 2 & 3: Groq 5-Job-Desk Planning
     let plan = null;
@@ -4269,7 +4298,8 @@
         chrome.runtime.sendMessage({
           action: 'PLAN_SHOPPING_MISSION',
           payload: {
-            query: targetSubject,
+            query: userPrompt || targetSubject, // Send full natural query to Groq for constraint & budget extraction
+            targetKeyword: targetSubject,
             domain: window.location.hostname,
             connectedStores: (customStores || []).map(s => s.name)
           }
@@ -4303,7 +4333,7 @@
     }
 
     // Append Live Progress Message to Chat Stream
-    const missionMsgId = appendChatMessage('agent', `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(targetSubject)}"**\n\n${renderJobDeskProgressHtml(plan, 1, 'IN PROGRESS')}`);
+    const missionMsgId = appendChatMessage('agent', `📋 **Initiating Autonomous Shopping Mission: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 1, 'IN PROGRESS')}`);
     const stream = shadow.getElementById('vox-chat-stream');
     const missionCardEl = stream ? stream.querySelector(`#${missionMsgId} .vox-bubble-text`) : null;
 
@@ -4313,7 +4343,7 @@
     await new Promise(r => setTimeout(r, 600));
     setCapsuleState('reasoning', 'Cross-searching 4 connected stores…');
     if (missionCardEl) {
-      missionCardEl.innerHTML = `📋 **Auditing 4 Connected Stores: "${escapeHtml(targetSubject)}"**\n\n${renderJobDeskProgressHtml(plan, 2, 'SEARCHING')}`;
+      missionCardEl.innerHTML = `📋 **Auditing 4 Connected Stores: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 2, 'SEARCHING')}`;
     }
 
     // Layer 4: Multi-Store Cross Search (Shopee, Tokopedia, Blibli, Amazon)
@@ -4324,6 +4354,7 @@
           action: 'EXECUTE_MULTI_STORE_SEARCH',
           payload: {
             query: targetSubject,
+            userPrompt: userPrompt,
             targetCategory: plan.category || 'General',
             stores: ['tokopedia', 'shopee', 'blibli', 'amazon']
           }
@@ -4340,21 +4371,21 @@
     await new Promise(r => setTimeout(r, 550));
     setCapsuleState('reasoning', 'Auditing specs & official warranty…');
     if (missionCardEl) {
-      missionCardEl.innerHTML = `🔬 **Deep Spec & Trust Audit: "${escapeHtml(targetSubject)}"**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITING SPECS')}`;
+      missionCardEl.innerHTML = `🔬 **Deep Spec & Trust Audit: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 3, 'AUDITING SPECS')}`;
     }
 
     // Step 3 -> Step 4: Landed Checkout Price Audit (Strict safety halt before payment)
     await new Promise(r => setTimeout(r, 550));
     setCapsuleState('reasoning', 'Auditing true landed checkout prices…');
     if (missionCardEl) {
-      missionCardEl.innerHTML = `💳 **Landed Price Audit (Ongkir + Fees - Vouchers): "${escapeHtml(targetSubject)}"**\n\n${renderJobDeskProgressHtml(plan, 4, 'LANDED SIMULATION')}`;
+      missionCardEl.innerHTML = `💳 **Landed Price Audit (Ongkir + Fees - Vouchers): "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 4, 'LANDED SIMULATION')}`;
     }
 
     // Step 4 -> Step 5: Multi-Factor Synthesis via Groq
     await new Promise(r => setTimeout(r, 600));
     setCapsuleState('reasoning', 'Synthesizing decision matrix…');
     if (missionCardEl) {
-      missionCardEl.innerHTML = `🧠 **Synthesizing Multi-Factor Decision Matrix: "${escapeHtml(targetSubject)}"**\n\n${renderJobDeskProgressHtml(plan, 5, 'AI SYNTHESIS')}`;
+      missionCardEl.innerHTML = `🧠 **Synthesizing Multi-Factor Decision Matrix: "${escapeHtml(displaySubject)}"**\n\n${renderJobDeskProgressHtml(plan, 5, 'AI SYNTHESIS')}`;
     }
 
     let report = null;
@@ -4365,7 +4396,7 @@
           payload: {
             plan,
             candidates,
-            userPrompt: targetSubject
+            userPrompt: userPrompt || targetSubject
           }
         }, resolve);
       });
@@ -5279,25 +5310,24 @@
       return { intent: 'CHECKOUT' };
     }
 
-    // 7. Compare Products / Specs / Prices
-    // "coba compare between produk lain", "cari yang termurah tapi paling bagus", "budget friendly", "bandingkan", "vs"
-    if (/(compare|komparasi|bandingkan|bandingin|versus|\bvs\b|murahan\s*mana|bagusan\s*mana|worth\s*it\s*mana|termurah\s*tapi|budget\s*friendly|produk\s*lain|beda(nya)?\s*antara)/i.test(q)) {
-      return { intent: 'COMPARE' };
-    }
-
-    // 8. Click / Select / Open specific product on screen
+    // 7. Click / Select / Open specific product on screen
     // "klik yang termurah", "click the first one", "buka yang official store", "klik produk nomor 1"
-    if (/\b(klik|click|buka\s*(produk|item)?|open\s*(the|that)?|pilih|select|tap)\b/i.test(q) && !/pricing|search/i.test(q)) {
+    if (/\b(klik|click|buka\s*(produk|item)?|open\s*(the|that)?|pilih|select|tap)\b/i.test(q) && !/pricing|search|compare/i.test(q)) {
       return { intent: 'CLICK_ITEM' };
     }
 
-    // 9. Explicit Search for a new product
-    const hasExplicitSearchVerbs = /\b(search(\s*up|\s*for|\s*me\s*up)?|cari(kan|in)?|find(\s*me)?|look(\s*up|\s*for)?|looking\s*for|want\s*to\s*buy|wanna\s*buy|need\s*to\s*buy|like\s*to\s*buy|mau\s*(beli|cari|order)|pengen\s*(beli|cari)|tolong\s*(cari|beli)|bantu\s*(cari|beli)|coba\s*(cari|beli)|aku\s*mau\s*(cari|beli)|beliin\s+[a-z0-9]|bisa\s*(cari|beli))\b/i.test(q);
-    if (hasExplicitSearchVerbs) {
-      return { intent: 'SEARCH' };
+    // 8. 5-Layer Autonomous Shopping Mission (Search, Compare, Recommend, Product Inquiries)
+    // Any query asking to search, find, recommend, compare, or buy products
+    const isShoppingMission = /(compare|komparasi|bandingkan|bandingin|versus|\bvs\b|murahan\s*mana|bagusan\s*mana|worth\s*it\s*mana|termurah\s*tapi|budget\s*friendly|produk\s*lain|beda(nya)?\s*antara|rekomendasi|recommend|saran|pilihan|terbaik|termurah)/i.test(q) ||
+      /\b(search(\s*up|\s*for|\s*me\s*up)?|cari(kan|in)?|find(\s*me)?|look(\s*up|\s*for)?|looking\s*for|want\s*to\s*buy|wanna\s*buy|need\s*to\s*buy|like\s*to\s*buy|mau\s*(beli|cari|order)|pengen\s*(beli|cari)|tolong\s*(cari|beli)|bantu\s*(cari|beli)|coba\s*(cari|beli)|aku\s*mau\s*(cari|beli)|beliin\s+[a-z0-9]|bisa\s*(cari|beli))\b/i.test(q) ||
+      /\b(headset|headphone|earphone|tws|earbuds|laptop|notebook|mouse|keyboard|monitor|speaker|mic|microphone|hp|smartphone|iphone|samsung|gadget)\b/i.test(q) ||
+      /\b(harga|budget|under|di\s*bawah|rp\.?|idr)\s*[\d.,]+/i.test(q);
+
+    if (isShoppingMission) {
+      return { intent: 'SHOPPING_MISSION' };
     }
 
-    // 10. Default to contextual AI Q&A (never hijack-searches!)
+    // 9. Default to contextual AI Q&A (never hijack-searches!)
     return { intent: 'PAGE_QA' };
   }
 
@@ -5380,8 +5410,8 @@
       return;
     }
 
-    // 6. Autonomous Live Product & Price Comparison
-    if (classified.intent === 'COMPARE') {
+    // 6. Autonomous 5-Layer Cognitive Multi-Agent Shopping Engine (Compare, Search, Recommendations)
+    if (classified.intent === 'SHOPPING_MISSION' || classified.intent === 'COMPARE' || classified.intent === 'SEARCH') {
       await executeAutonomousLiveCompare(query);
       return;
     }
@@ -5396,12 +5426,6 @@
     if (classified.intent === 'CHECKOUT') {
       answerText.innerHTML = '<span style="color: var(--voice);">Starting checkout process…</span>';
       await executeAutonomousCheckout(qLower);
-      return;
-    }
-
-    // 9. Pure Product Search (Only when intent is SEARCH)
-    if (classified.intent === 'SEARCH') {
-      await executeAutonomousSearch(query);
       return;
     }
 
